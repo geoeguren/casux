@@ -1,0 +1,226 @@
+/* ============================================================
+   HOME — Pantalla inicial, prompt box, chips
+   ============================================================ */
+
+#screen-home {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #F0EDE8;
+  padding-left: var(--sb-w-collapsed);
+  transition: padding-left .22s ease;
+}
+#screen-home.sidebar-expanded { padding-left: var(--sb-w-expanded); }
+body:not(.day), html:not(.day) #screen-home { background: #212121; }
+
+.home-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 44px;
+  width: 100%;
+  max-width: 640px;
+  padding: 0 48px;
+}
+
+.home-greeting {
+  font-family: var(--font-serif);
+  font-size: clamp(22px, 3vw, 34px);
+  font-weight: 400;
+  color: var(--cream);
+  letter-spacing: 0.01em;
+  text-align: center;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+@media (max-width: 1024px) {
+  /* En mobile el sidebar flota encima — el home nunca se desplaza */
+  #screen-home.sidebar-expanded {
+    padding-left: var(--sb-w-collapsed);
+  }
+}
+
+@media (max-width: 600px) {
+  .home-greeting { white-space: normal; }
+}
+
+/* ── Prompt box ──────────────────────────────────────────── */
+.prompt-box {
+  width: 100%;
+  background: #2e2e2e;
+  border: 1.5px solid transparent;
+  border-radius: 100px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 10px 22px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.10);
+  transition: border-color var(--transition), box-shadow var(--transition), border-radius var(--transition);
+}
+.prompt-box:focus-within {
+  border-color: #555555;
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.08), 0 2px 12px rgba(0,0,0,.10);
+}
+.prompt-box.multiline {
+  border-radius: 24px;
+  align-items: flex-end;
+  padding: 14px 10px 10px 22px;
+}
+.prompt-box.compact {
+  background: rgba(255,255,255,0.03);
+  border-color: var(--border-md);
+  box-shadow:
+    0 0 0 8px rgba(150,150,150,0.06),
+    0 0 0 18px rgba(150,150,150,0.03),
+    0 2px 12px rgba(0,0,0,0.15);
+}
+.prompt-box.compact:focus-within {
+  border-color: rgba(255,255,255,0.20);
+  box-shadow:
+    0 0 0 8px rgba(160,160,160,0.08),
+    0 0 0 20px rgba(160,160,160,0.04),
+    0 2px 12px rgba(0,0,0,0.20);
+}
+body.day, html.day .prompt-box.compact {
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.12);
+  box-shadow:
+    0 0 0 8px rgba(0,0,0,0.03),
+    0 0 0 18px rgba(0,0,0,0.015),
+    0 2px 12px rgba(0,0,0,0.06);
+}
+body.day, html.day .prompt-box.compact:focus-within {
+  border-color: rgba(0,0,0,0.22);
+  box-shadow:
+    0 0 0 8px rgba(0,0,0,0.04),
+    0 0 0 20px rgba(0,0,0,0.02),
+    0 2px 12px rgba(0,0,0,0.08);
+}
+#screen-home .prompt-box {
+  background: #f7f5f2;
+  border-color: #c8c4be;
+  box-shadow:
+    0 0 0 7px rgba(200,196,190,0.20),
+    0 0 0 15px rgba(200,196,190,0.11),
+    0 0 0 28px rgba(200,196,190,0.05),
+    0 4px 20px rgba(0,0,0,0.07);
+}
+#screen-home .prompt-box:focus-within {
+  border-color: #9a9690;
+  box-shadow:
+    0 0 0 7px rgba(150,146,140,0.18),
+    0 0 0 16px rgba(150,146,140,0.09),
+    0 0 0 30px rgba(150,146,140,0.04),
+    0 4px 20px rgba(0,0,0,0.09);
+}
+body.day, html.day #screen-home .prompt-box {
+  background: #f7f5f2;
+  border-color: #c8c4be;
+  box-shadow:
+    0 0 0 10px rgba(200,196,190,0.22),
+    0 0 0 22px rgba(200,196,190,0.13),
+    0 0 0 42px rgba(200,196,190,0.06),
+    0 0 0 64px rgba(200,196,190,0.02),
+    0 4px 24px rgba(0,0,0,0.07);
+}
+body:not(.day), html:not(.day) #screen-home .prompt-box {
+  background: #3a3a3a;
+  border-color: rgba(255,255,255,0.10);
+  box-shadow:
+    0 0 0 10px rgba(80,80,80,0.22),
+    0 0 0 22px rgba(80,80,80,0.12),
+    0 0 0 42px rgba(80,80,80,0.05),
+    0 0 0 64px rgba(80,80,80,0.02),
+    0 4px 24px rgba(0,0,0,0.35);
+}
+body:not(.day), html:not(.day) #screen-home .prompt-box:focus-within {
+  border-color: rgba(255,255,255,0.18);
+  box-shadow:
+    0 0 0 10px rgba(110,110,110,0.24),
+    0 0 0 24px rgba(110,110,110,0.13),
+    0 0 0 44px rgba(110,110,110,0.06),
+    0 0 0 68px rgba(110,110,110,0.02),
+    0 4px 24px rgba(0,0,0,0.40);
+}
+
+.prompt-textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  line-height: 1.5;
+  color: var(--cream);
+  min-height: 22px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 16px;
+  display: block;
+  vertical-align: middle;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.prompt-textarea::placeholder { color: rgba(226,221,212,0.4); }
+body.day, html.day .prompt-textarea::placeholder { color: rgba(26,24,20,0.35); }
+#screen-home .prompt-textarea { color: #1a1814; background: transparent; }
+#screen-home .prompt-textarea::placeholder { color: #b0aca6; }
+body.day, html.day #screen-home .prompt-textarea { color: #1a1814; background: transparent; }
+body.day, html.day #screen-home .prompt-textarea::placeholder { color: #b0aca6; }
+body:not(.day), html:not(.day) #screen-home .prompt-textarea { color: #e8e4de; background: transparent; }
+body:not(.day), html:not(.day) #screen-home .prompt-textarea::placeholder { color: rgba(200,196,190,0.40); }
+
+.prompt-send {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #1a1814;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background var(--transition), transform var(--transition);
+}
+.prompt-send:hover  { background: var(--accent-hover); color: #fff; }
+.prompt-send:active { transform: scale(.96); }
+.prompt-send svg { width: 15px; height: 15px; }
+.chat-input-area .prompt-send { background: var(--accent); color: #1a1814; }
+.chat-input-area .prompt-send:hover { background: var(--accent-hover); color: #fff; }
+body.day .prompt-send, html.day .prompt-send { background: var(--accent); color: #fff; }
+body.day .prompt-send:hover, html.day .prompt-send:hover { background: var(--accent-hover); color: #fff; }
+body.day .prompt-send:active, html.day .prompt-send:active { transform: scale(.96); }
+body.day .chat-input-area .prompt-send, html.day .chat-input-area .prompt-send { background: var(--accent); color: #fff; }
+body.day .chat-input-area .prompt-send:hover, html.day .chat-input-area .prompt-send:hover { background: var(--accent-hover); color: #fff; }
+.prompt-send:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+
+/* ── Chips ───────────────────────────────────────────────── */
+
+/* Prompts sugeridos en la home */
+#home-suggested-prompts {
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+}
+#home-suggested-prompts .suggested-prompts {
+  justify-content: center;
+}
+
+/* Botón de stop — aparece en lugar del send mientras el LLM procesa */
+.prompt-stop {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--cream3);
+  color: var(--cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background var(--transition), transform var(--transition);
+  border: 0.5px solid var(--border-md);
+}
+.prompt-stop .material-icons { font-size: 16px; pointer-events: none; }
+.prompt-stop:hover  { background: var(--cream2); color: var(--cream); }
+.prompt-stop:active { transform: scale(.96); }
+.prompt-stop.hidden { display: none; }
+body.day .prompt-stop { background: #e8e4de; color: #3a3630; border-color: #c8c4be; }
+body.day .prompt-stop:hover { background: #d8d4ce; }

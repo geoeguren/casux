@@ -1,0 +1,353 @@
+/**
+ * i18n/es.js — Español (default)
+ */
+window.I18N_ES = {
+
+  // ── Pantalla de inicio ──────────────────────────────────────
+  home_placeholder:        '¿Qué mapa hacemos hoy?',
+
+  // ── Chat ────────────────────────────────────────────────────
+  chat_placeholder:        'Describí el mapa...',
+  chat_disclaimer:         'Casux puede cometer errores. La exactitud, actualización y disponibilidad de los datos geográficos son responsabilidad de cada organismo oficial.',
+  chat_login_required:     'Iniciá sesión para empezar a crear tus mapas.',
+  chat_login_prompt:       'Para guardar tus mapas y acceder al historial necesitás iniciar sesión. ¡Es rápido con Google!',
+  chat_login_btn:          'Continuar con Google',
+  chat_show_more:          'Mostrar más',
+  chat_show_less:          'Mostrar menos',
+
+  // ── Búsqueda ────────────────────────────────────────────────
+  search_placeholder:      'Buscar en chats...',
+  search_login_required:   'Iniciá sesión para buscar en tus mapas.',
+
+  // ── Mapa — topbar ───────────────────────────────────────────
+  map_title_placeholder:   'Título del mapa',
+  map_title_untitled:      'Sin título',
+  map_refresh:             'Actualizar mapa',
+  map_close:               'Cerrar mapa',
+  map_export:              'Exportar',
+  map_zoom_reset:          'Volver a la vista original',
+  map_layers:              'Capas',
+  map_labels:              'Etiquetas',
+  map_identify:            'Activar consulta de elementos',
+  map_identify_off:        'Desactivar consulta de elementos',
+  map_scroll_bottom:       'Ir al final',
+
+  // ── Leyenda ─────────────────────────────────────────────────
+  legend_title:            'Referencias',
+  legend_source:           'Fuente',
+  legend_expand:           'Expandir',
+  legend_collapse:         'Colapsar',
+  legend_name_edit:        'Click para editar',
+
+  // ── Panel de capas ──────────────────────────────────────────
+  layers_panel_title:      'Capas',
+  layers_panel_layers:     'Capas',
+  layers_basemap:          'Mapa base',
+  layers_edit:             'Editar capa',
+  layers_center:           'Centrar la vista en la capa',
+  layers_advanced:         'Edición avanzada',
+  layers_advanced_mobile:  'No disponible en móvil.',
+  layers_delete_success:   'Capa eliminada.',
+  layers_name_edit:        'Click para editar',
+
+  // ── Modal de edición avanzada ────────────────────────────────
+  adv_single:              'Símbolo único',
+  adv_categorized:         'Categorizado',
+  adv_graduated:           'Graduado',
+  adv_heatmap:             'Mapa de calor',
+  adv_coming_soon:         'Próximamente',
+  adv_accept:              'Aceptar',
+  adv_cancel:              'Cancelar',
+  adv_clear:               'Borrar clasificación',
+  adv_field:               'Campo',
+  adv_ramp:                'Rampa de color',
+  adv_classes:             'Clases',
+  adv_none_selected:       'Ninguno seleccionado',
+  adv_all_disabled:        'Todos los campos tienen más de {n} valores únicos y no son clasificables.',
+  adv_drag_reorder:        'Arrastrar para reordenar',
+  adv_delete_category:     'Eliminar categoría',
+  adv_edit_style:          'Editar estilo',
+
+  // ── Símbolo SVG (Maki) ──────────────────────────────────────
+  adv_svg_title:           'Símbolo svg',
+  adv_svg_placeholder:     'hospital, aeropuerto, parque…',
+  adv_svg_no_results:      'Sin resultados para "{q}"',
+  adv_svg_remove:          'Quitar ícono',
+  adv_svg_icon_color:      'Color del ícono',
+
+  // ── Estilo simple ────────────────────────────────────────────
+  style_geometry:          'Geometría',
+  style_size:              'Tamaño',
+  style_border_weight:     'Grosor del borde',
+  style_border_color:      'Color del borde',
+  style_fill_color:        'Color del relleno',
+  style_color:             'Color',
+  style_opacity:           'Opacidad',
+  style_weight:            'Grosor',
+  style_dash:              'Patrón de línea',
+  style_dash:              'Estilo de línea',
+
+  // ── Popup ────────────────────────────────────────────────────
+  popup_center:            'Centrar la vista en este elemento',
+
+  // ── Export ──────────────────────────────────────────────────
+  export_geojson:          'Capa vectorial',
+  export_jpeg:             'Imagen',
+  export_pdf:              'Archivo portable',
+  export_html:             'Embebido',
+  export_loading_jpeg:     'Generando imagen (jpeg)…',
+  export_loading_pdf:      'Generando archivo portable (pdf)…',
+  export_done_jpeg:        'Imagen (jpeg) generada con éxito.',
+  export_done_pdf:         'Archivo portable (pdf) generado con éxito.',
+  export_done_html:        'Archivo html generado con éxito.',
+  export_done_geojson:     'Capa vectorial (geojson) generada con éxito.',
+  export_area_too_large:   'El área que estás intentando exportar es demasiado grande. Hacé zoom e intentalo nuevamente.',
+  export_jpeg_mobile_unsupported: 'La exportación de imagen (jpeg) no está disponible en dispositivos móviles. Usá la exportación como archivo portable (pdf) o abrí Casux desde una computadora.',
+  export_mobile_unsupported: 'No disponible en dispositivos móviles. Abrí Casux desde una computadora para usar esta opción.',
+  export_error_jpeg:       'Error al generar imagen (jpeg): {msg}.',
+  export_error_pdf:        'Error al generar archivo portable (pdf): {msg}.',
+  export_pdf_too_many_features: 'El mapa tiene {n} geometrías (máx. {max} para pdf). Reducí las capas activas e intentá de nuevo.',
+  export_error_html:       'Error al generar el código html.',
+  export_no_layers:        'No hay ninguna capa para exportar.',
+  export_no_map:           'No hay ningún mapa activo.',
+  export_exporting:        'Exportando como {fmt}…',
+  export_done:             '{fmt} exportado.',
+  export_error:            'Error al exportar {fmt}.',
+
+  // ── Toasts generales ────────────────────────────────────────
+  toast_name_error:        'Error al actualizar el nombre.',
+  toast_save_error:        'No se pudo guardar. Revisá la conexión.',
+  toast_map_no_layers:     'El mapa está vacío.',
+  toast_timeout_area:      'La operación tardó demasiado. Intentá con un área más pequeña.',
+  toast_layer_error:       '{titulo} no respondió.',
+  toast_layers_error:      '{n} capas no respondieron.',
+  toast_n_2: 'Dos',
+  toast_n_3: 'Tres',
+  toast_n_4: 'Cuatro',
+  toast_n_5: 'Cinco',
+  toast_n_many: 'Varias',
+  toast_auth_error:        'Error de autenticación: {msg}.',
+  toast_cache_warning:     'Sin conexión al servidor. Usando datos en caché.',
+  toast_server_unavailable: 'El servidor de {org} no está disponible. Intentá de nuevo en unos minutos.',
+  toast_layer_fetch_error:  'No se pudo obtener "{typename}": {msg}.',
+  toast_layer_truncated:    '{titulo} es demasiado grande para cargar sin filtro. Pedí un departamento o región específica.',
+
+  // ── Toasts de clip ──────────────────────────────────────────
+  toast_display_limit:     '{titulo} tiene {n} elementos — demasiados para mostrar.',
+  toast_spatial_none:      '{titulo} no se puede recortar. Se muestra completa.',
+  toast_spatial_limit:     '{titulo} tiene {n} elementos — se muestra completa sin recorte.',
+  toast_spatial_fallback:  'El servidor tardó demasiado. Procesando en el dispositivo…',
+
+  // ── Sidebar / Auth ───────────────────────────────────────────
+  toast_auth_login_error:  'Error al iniciar sesión.',
+  toast_chats_load_error:  'No se pudieron cargar los chats.',
+  toast_chat_load_error:   'No se pudo cargar el chat.',
+  toast_chat_rename_error: 'Error al renombrar el chat.',
+  toast_chat_deleted:      'Mapa eliminado.',
+  toast_chat_delete_error: 'Error al eliminar el chat.',
+
+  // ── Chat header ──────────────────────────────────────────────
+  chat_rename_error:       'Error al renombrar el chat.',
+  chat_deleted:            'Chat eliminado.',
+  chat_delete_error:       'Error al eliminar el chat.',
+
+  // ── Acciones ──────────────────────────────────────────────
+  chat_delete:                   'Eliminar chat',
+  chat_delete_confirm_title:     'Eliminar chat',
+  chat_delete_confirm_body:      '¿Estás seguro que querés eliminar este chat? Esta acción no se puede deshacer.',
+  chat_delete_confirm_cancel:    'Cancelar',
+  chat_delete_confirm_ok:        'Eliminar',
+  chat_send:                   'Enviar',
+
+
+  // ── Saludos ──────────────────────────────────────────────────
+  greeting_morning_1:      'Todo mapa oculta algo.',
+  greeting_morning_2:      'Otro mapa por descubrir.',
+  greeting_morning_3:      'Todo está en el mapa.',
+  greeting_morning_4:      'Empezamos.',
+  greeting_morning_5:      '¿Qué mapa hacemos?',
+  greeting_afternoon_1:    'Todo mapa oculta algo.',
+  greeting_afternoon_2:    'Otro mapa por descubrir.',
+  greeting_afternoon_3:    '¿Qué mapa hacemos?',
+  greeting_afternoon_4:    'Todo está en el mapa.',
+  greeting_night_1:        'Todo mapa oculta algo.',
+  greeting_night_2:        'Otro mapa por descubrir.',
+  greeting_night_3:        'Los mejores mapas se hacen de noche.',
+  greeting_night_4:        'Todo está en el mapa.',
+  greeting_morning_n:      '{n}.',
+  greeting_afternoon_n:    '{n}.',
+  greeting_night_n:        '{n}.',
+  greeting_hello_n:        '{n}. ¿Qué mapa hacemos?',
+  greeting_hello_well_n:   '{n}. Todo mapa oculta algo.',
+  greeting_explore_n:      '{n}. Otro mapa por descubrir.',
+  greeting_night_owl_n:    '{n}. Los mejores mapas se hacen de noche.',
+  greeting_nologin_1:      'Iniciá sesión para guardar lo que explorés.',
+  greeting_nologin_2:      'Todo mapa oculta algo.',
+  greeting_nologin_3:      'Todo está en el mapa.',
+  greeting_nologin_4:      'Otro mapa por descubrir.',
+
+  // ── Sidebar ───────────────────────────────────────────────────
+  sidebar_menu:            'Menú',
+  sidebar_new_map:         'Nuevo mapa',
+  sidebar_search:          'Buscar',
+  sidebar_recent:          'Recientes',
+  sidebar_no_chats:        'No hay chats todavía',
+  sidebar_load_more:       'Cargar más',
+  sidebar_untitled:        'Sin título',
+
+  // ── Settings ─────────────────────────────────────────────────
+  settings_appearance:     'Aspecto',
+  settings_system:         'Sistema',
+  settings_light:          'Claro',
+  settings_dark:           'Oscuro',
+  settings_language:       'Idioma',
+  settings_ai_model:       'Modelo de IA',
+  settings_response_style: 'Modo',
+  settings_default:        'Predeterminado',
+  settings_efficient:      'Eficiente',
+  settings_detailed:       'Detallista',
+  settings_creative:       'Creativo',
+  settings_logout:         'Cerrar sesión',
+
+  // ── Export dropdown ──────────────────────────────────────────
+  export_btn_label:        'EXPORTAR',
+  export_opt_geojson:      'Capa vectorial',
+  export_opt_jpeg:         'Imagen',
+  export_opt_pdf:          'Archivo portable',
+  export_opt_html:         'Embebido',
+  export_opt_graphic:  'Salida gráfica',
+  export_hint_graphic:     'jpeg · pdf',
+  export_hint_html:        'html',
+  export_hint_geojson:     'geojson',
+
+  // ── Export HTML modal ────────────────────────────────────────
+  html_modal_title:        'Embebido',
+  html_basemap:            'Mapa base',
+  html_layers:             'Capas',
+  html_layers_none:        'Ninguna seleccionada',
+  html_identify:           'Consulta de elementos',
+  html_show_legend:        'Mostrar leyenda',
+  html_allow_zoom:         'Permitir zoom',
+  html_code:               'Código',
+
+  // ── Salida gráfica modal ─────────────────────────────────────
+  graphic_modal_title:     'Salida gráfica',
+  graphic_basemap:         'Mapa base',
+  graphic_interface:       'Interfaz',
+  graphic_loc_map:         'Mapa de localización',
+  graphic_grilla:          'Cuadrícula',
+  graphic_north:           'Flecha de norte',
+  graphic_legend_pos:      'Posición de la leyenda',
+  graphic_pos_auto:        'Automática',
+  graphic_pos_tl:          'Arriba a la izquierda',
+  graphic_pos_tc:      'Arriba al centro',
+  graphic_pos_ml:      'Centro a la izquierda',
+  graphic_pos_mr:      'Centro a la derecha',
+  graphic_pos_tr:          'Arriba a la derecha',
+  graphic_pos_bl:          'Abajo a la izquierda',
+  graphic_pos_bc:          'Abajo al centro',
+  graphic_pos_br:          'Abajo a la derecha',
+  graphic_formato:         'Formato',
+  graphic_download:        'Descargar',
+  html_copied:             'Copiado',
+  html_layers_selected:    '{n} capa{s} seleccionada{s}',
+  html_code_placeholder:   '// Seleccioná capas para generar el código',
+  html_code_error:         '// Error al generar el código: {msg}',
+  html_download:           'Descargar',
+  html_interface:          'Interfaz',
+  html_complex_hint:       'Algunas capas no pueden embeberse por su complejidad geométrica.',
+
+  // ── Panel de capas ───────────────────────────────────────────
+  shape_circle:            'Círculo',
+  shape_square:            'Cuadrado',
+  layers_delete_layer:     'Eliminar capa',
+  layers_delete_value:     'Eliminar',
+
+  // ── Modal avanzado — estilo ──────────────────────────────────
+  adv_size:                'Tamaño',
+  adv_weight:              'Grosor',
+  adv_opacity:             'Opacidad',
+  adv_border_color:        'Color del borde',
+  adv_fill_color:          'Color del relleno',
+  adv_color:               'Color',
+  adv_line_pattern:        'Patrón de línea',
+  adv_classes:             'Clases',
+
+  // ── Botones de estilo ─────────────────────────────────────────
+  style_what_to_change:    '¿Qué querés cambiar?',
+  style_ask_color:         '¿A qué color querés cambiarlo?',
+  style_ask_size:          '¿A qué tamaño querés cambiarlo?',
+  style_ask_weight:        '¿A qué grosor querés cambiarlo?',
+  style_ask_icon:          '¿Qué ícono querés usar?',
+  style_ask_geom:          '¿Qué forma querés usar?',
+  style_change_size:       'Cambiá el tamaño',
+  style_change_color_point:'Cambiá el color',
+  style_change_icon:       'Cambiá el ícono',
+  style_change_weight:     'Cambiá el grosor',
+  style_change_color_line: 'Cambiá el color',
+  style_change_fill:       'Cambiá el color del relleno',
+  style_change_border:     'Cambiá el color del borde',
+  style_applied:           'Listo, aplicado.',
+  style_confirm:           'Confirmar',
+  style_opening_editor:    'Abrí el editor de capas.',
+  style_other:             'Otro',
+
+  // ── Intenciones ───────────────────────────────────────────────
+  export_choose_format:    '¿En qué formato querés exportar?',
+  basemap_choose:          '¿Qué mapa de fondo querés usar?',
+  basemap_changed:         'Listo, cambié el mapa de fondo.',
+  map_cleared:             'Listo, limpié el mapa.',
+  layer_already_on_map:      'Esa capa ya está en el mapa.',
+  layer_not_found:           'No encontré esa capa en el mapa.',
+  layer_removed:             'Listo, saqué {titulo}.',
+  chat_renamed:            'Renombré el mapa como "{nombre}".',
+  basemap_gray:            'Positron',
+  basemap_dark:            'Dark Matter',
+  basemap_voyager:         'Voyager',
+  basemap_hint_gray:       'claro',
+  basemap_hint_dark:       'oscuro',
+  basemap_hint_voyager:    'color',
+
+  // ── Identify / popup ─────────────────────────────────────────
+  identify_on:             'Consultar elementos',
+  identify_off:            'Desactivar consulta',
+  popup_more_fields:       'Más campos',
+
+  // ── Paletas de color ─────────────────────────────────────────
+  palette_tierra:          'tierra',
+  palette_vivida:          'vívida',
+  palette_azules:          'azules',
+  palette_verdes:          'verdes',
+  palette_naranjas:        'naranjas',
+  palette_purpuras:        'púrpuras',
+  palette_rojo_amarillo:   'rojo-amarillo',
+  palette_teal:            'teal',
+  palette_cualitativa:     'cualitativa',
+  palette_rojo_azul:       'rojo → azul',
+  palette_marron_verde:    'marrón → verde',
+
+
+  // ── Tooltips adicionais ────────────────────────────────────
+  tooltip_refresh:         'Actualizar',
+  tooltip_back_chat:       'Cerrar mapa',
+  tooltip_delete_layer:  'Eliminar capa',
+  tooltip_edit_style:  'Editar estilo',
+
+
+  // ── Modal avançado — títulos e avisos ──────────────────────
+  adv_modal_title:  'Edición avanzada',
+  adv_no_fields:        'Esta capa no tiene campos clasificables.',
+  adv_simple_note:      'El estilo simple se edita directamente en el panel de capas.',
+  adv_no_numeric_fields:  'Esta capa no tiene campos numéricos.',
+
+  // Selector de modo
+  mode_selector_prompt:  '¿Cómo querés que responda Casux?',
+  mode_sub_default:      'Equilibrado con contexto',
+  mode_sub_eficiente:    'Directo, sin preguntas',
+  mode_sub_detallista:   'Detallado con fuentes',
+  mode_sub_creativo:      'Exploratorio y conceptual',
+  mode_chosen:           'Modo {mode} activado. Podés cambiarlo en cualquier momento desde el menú.',
+
+  sidebar_anon_sync:     'Sincronizar con Google',
+
+};

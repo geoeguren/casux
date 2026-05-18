@@ -1,0 +1,159 @@
+/* ============================================================
+   BASE — Variables, reset, tema
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #212121;
+  --bg2:      #2a2a2a;
+  --bg3:      #333333;
+  --bg-input: rgba(255,255,255,0.05);
+  --cream:    #E2DDD4;
+  --cream2:   rgba(226,221,212,0.55);
+  --cream3:   rgba(226,221,212,0.10);
+  --accent:       #3d52a0;
+  --accent-rgb:   61, 82, 160;
+  --accent-hover: #2d3d7a;
+  --border:   rgba(226,221,212,0.10);
+  --border-md:rgba(226,221,212,0.18);
+  --map-bg:   #1a1a1a;
+  --chat-w:   400px;
+  --nav-h:    64px;
+  --radius:   16px;
+  --radius-sm:8px;
+  --font-serif: 'Fraunces', serif;
+  --font-mono:  'DM Mono', monospace;
+  --font-sans:  'DM Sans', sans-serif;
+  --shadow-md: 0 4px 24px rgba(0,0,0,.35);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,.45);
+  --transition: .18s ease;
+  --sb-w-collapsed: 52px;
+  --sb-w-expanded:  240px;
+}
+
+html, body { height: 100%; overflow: clip; }
+body {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  color: var(--cream);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+button  { cursor: pointer; border: none; background: none; font-family: inherit; font-size: inherit; color: inherit; }
+input, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+textarea { resize: none; }
+
+/* Modo día */
+body.day, html.day {
+  --bg:        #F0EDE8;
+  --bg2:       #E8E4DE;
+  --bg3:       #DDD9D2;
+  --bg-input:  rgba(0,0,0,0.04);
+  --cream:     #1a1814;
+  --cream2:    rgba(26,24,20,0.55);
+  --cream3:    rgba(26,24,20,0.10);
+  --accent:       #3d52a0;
+  --accent-rgb:   61, 82, 160;
+  --accent-hover: #2d3d7a;
+  --border:    rgba(26,24,20,0.12);
+  --border-md: rgba(26,24,20,0.22);
+  --map-bg:    #d8d4cc;
+}
+
+/* Scrollbar global */
+* { scrollbar-width: thin; }
+::-webkit-scrollbar { width: 2px; height: 2px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Screens */
+.screen { display: none; width: 100%; height: 100%; }
+.screen.active { display: flex; }
+
+/* ============================================================
+   RESPONSIVE — Mobile (≤ 768px)
+   ============================================================ */
+
+@media (max-width: 1024px) {
+
+  /* Layout: chat y mapa ocupan pantalla completa, uno a la vez */
+  .screen.active {
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* Chat: pantalla completa, con espacio para el sidebar fixed */
+  .chat-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 !important;
+    padding-left: var(--sb-w-collapsed) !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Chat con mapa: ocultar chat, el mapa toma la pantalla */
+  .chat-panel.with-map {
+    display: none !important;
+  }
+
+  /* Sidebar: ocultar en mobile cuando hay mapa — clase añadida por JS */
+  .sidebar.mobile-hidden {
+    display: none !important;
+  }
+
+  /* Mapa: pantalla completa */
+  .map-panel {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+  }
+
+  /* Divisor: oculto en mobile */
+  .resize-divider {
+    display: none !important;
+  }
+
+
+
+}
+
+/* ============================================================
+   TOOLTIPS — elemento global gestionado por JS (tooltip.js)
+   El elemento #sm-tooltip se appendea al body y sigue al mouse.
+   ============================================================ */
+
+#sm-tooltip {
+  position: fixed;
+  z-index: 99999;
+  pointer-events: none;
+
+  background: #1a1a1a;
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 5px 9px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.25);
+  max-width: 220px;
+  white-space: normal;
+  text-align: center;
+
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+
+#sm-tooltip.visible {
+  opacity: 1;
+}
+
+
+
+/* Sin tooltips en mobile/tablet */
+@media (max-width: 1024px) {
+  #sm-tooltip { display: none !important; }
+}

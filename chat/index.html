@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Casux</title>
+
+  <!-- Tema: aplicar ANTES del primer paint para evitar destello noche→día -->
+  <script>
+    (function() {
+      try {
+        const saved = localStorage.getItem('sm_theme');
+        const auto  = (new Date().getHours() >= 7 && new Date().getHours() < 20) ? 'day' : 'night';
+        const theme = saved || auto;
+        if (theme === 'day') document.documentElement.classList.add('day');
+      } catch(e) {}
+    })();
+  </script>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Turf.js — defer: solo se necesita si el fallback al cliente se activa    -->
+  <!-- SRI: agregar integrity="sha384-<hash>" crossorigin="anonymous" antes     -->
+  <!-- de deployar a producción. Obtener hash con:                              -->
+  <!--   curl -s https://unpkg.com/@turf/turf@6.5.0/turf.min.js |              -->
+  <!--     openssl dgst -sha384 -binary | openssl base64 -A                     -->
+  <script defer src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=Fraunces:ital,opsz,wght@0,9..144,500;1,9..144,500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+
+  <link rel="stylesheet" href="../style/base.css" />
+  <link rel="stylesheet" href="../style/home.css" />
+  <link rel="stylesheet" href="../style/sidebar.css" />
+  <link rel="stylesheet" href="../style/chat.css" />
+  <link rel="stylesheet" href="../style/map.css" />
+  <link rel="stylesheet" href="../style/modals.css" />
+</head>
+<body>
+
+  <!-- ===== PANTALLA HOME ===== -->
+  <div id="screen-home" class="screen active">
+    <!-- Sidebar en home -->
+    <div class="sidebar sidebar-home" id="sidebar-home"></div>
+    <main class="home-main">
+
+      <h1 class="home-greeting" id="home-greeting"></h1>
+
+      <div class="prompt-box" id="prompt-box">
+        <textarea
+          id="initial-prompt"
+          class="prompt-textarea"
+          placeholder="" data-i18n-placeholder="home_placeholder"
+          rows="1"
+        ></textarea>
+        <button class="prompt-send" id="btn-send-initial">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5"></line>
+            <polyline points="5 12 12 5 19 12"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <div id="home-suggested-prompts"></div>
+
+    </main>
+  </div>
+
+  <!-- ===== PANTALLA DE TRABAJO ===== -->
+  <div id="screen-work" class="screen">
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar"></div>
+
+    <!-- Panel izquierdo: chat -->
+    <aside class="chat-panel" id="chat-panel">
+      <!-- Barra de título del chat -->
+      <div class="chat-header-bar" id="chat-header-bar" style="display:none">
+        <div class="chat-header-inner">
+          <input type="text" class="chat-header-title-input" id="chat-header-title"
+                 placeholder="Sin título" autocomplete="off" />
+        </div>
+        <button class="chat-header-delete-btn" id="chat-header-delete-btn" data-tooltip="" data-i18n-tooltip="chat_delete">
+          <span class="material-icons">delete</span>
+        </button>
+      </div>
+
+      <div class="chat-messages" id="chat-messages"></div>
+      <button class="btn-scroll-bottom" id="btn-scroll-bottom" >
+        <span class="material-icons">south</span>
+      </button>
+      <div class="chat-input-area">
+        <div class="prompt-box compact">
+          <textarea
+            id="chat-input"
+            class="prompt-textarea"
+            placeholder="" data-i18n-placeholder="chat_placeholder"
+            rows="1"
+          ></textarea>
+          <button class="prompt-send" id="btn-send-chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5"></line>
+            <polyline points="5 12 12 5 19 12"></polyline>
+          </svg>
+          </button>
+          <button class="prompt-stop hidden" id="btn-stop-chat" aria-label="Detener">
+            <span class="material-icons">stop</span>
+          </button>
+        </div>
+      </div>
+      <p class="chat-legend" data-i18n="chat_disclaimer"></p>
+    </aside>
+
+    <!-- Divisor redimensionable -->
+    <div class="resize-divider" id="resize-divider"></div>
+
+    <!-- Panel derecho: visor de mapa -->
+    <section class="map-panel" id="map-panel" style="display:none">
+
+      <div class="map-topbar" id="map-topbar">
+        <input
+          type="text"
+          id="map-title"
+          class="map-title-input"
+          value="Mi mapa"
+          placeholder="" data-i18n-placeholder="map_title_placeholder"
+        />
+        <div class="map-topbar-actions">
+          <div class="export-wrapper">
+            <button class="btn-export-text" id="btn-export" >
+              <span data-i18n="export_btn_label">EXPORTAR</span> <span class="material-icons">expand_more</span>
+            </button>
+            <div class="export-dropdown" id="export-dropdown">
+              <button class="export-option" id="export-graphic">
+                <span class="export-opt-label" data-i18n="export_opt_graphic">Salida gráfica</span>
+                <span class="export-opt-hint" data-i18n="export_hint_graphic">jpeg · pdf</span>
+              </button>
+              <button class="export-option" id="export-html">
+                <span class="export-opt-label" data-i18n="export_opt_html">Embebido</span>
+                <span class="export-opt-hint" data-i18n="export_hint_html">html</span>
+              </button>
+              <button class="export-option" id="export-geojson">
+                <span class="export-opt-label" data-i18n="export_opt_geojson">Capa vectorial</span>
+                <span class="export-opt-hint" data-i18n="export_hint_geojson">geojson</span>
+              </button>
+            </div>
+          </div>
+          <button class="btn-icon btn-map-action" id="btn-refresh-map" data-tooltip="" data-i18n-tooltip="tooltip_refresh">
+            <span class="material-icons">refresh</span>
+          </button>
+          <button class="btn-icon btn-map-action" id="btn-close-map" data-tooltip="" data-i18n-tooltip="tooltip_back_chat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="map-progress" id="map-progress"><div class="map-progress-bar" id="map-progress-bar"></div></div>
+
+      <div id="map-container">
+        <div id="leaflet-map"></div>
+
+        <!-- Controles izquierda -->
+        <div class="map-controls map-controls-left">
+          <button class="map-ctrl-btn" id="btn-zoom-in"    ><span class="material-icons">add</span></button>
+          <button class="map-ctrl-btn" id="btn-zoom-reset" data-tooltip="" data-i18n-tooltip="map_zoom_reset"><span class="material-icons">undo</span></button>
+          <button class="map-ctrl-btn" id="btn-zoom-out"   ><span class="material-icons">remove</span></button>
+        </div>
+
+        <!-- Controles derecha -->
+        <div class="map-controls map-controls-right">
+          <button class="map-ctrl-btn" id="btn-map-layers" data-tooltip="" data-i18n-tooltip="map_layers" style="display:none">
+            <span class="material-icons">layers</span>
+          </button>
+          <!-- ETIQUETAS: botón inhabilitado — funcionalidad pendiente para siguiente etapa.
+               Ver roadmap: "Etiquetas sobre features (labels)".
+               Al implementar: quitar disabled y style de opacidad, conectar al módulo de labels. -->
+          <!-- TODO(labels): Botón de etiquetas sobre el mapa — habilitarlo cuando se implemente setLabels() en map.js -->
+          <button class="map-ctrl-btn" id="btn-labels" data-tooltip="" data-i18n-tooltip="map_labels" disabled
+            style="display:none;opacity:0.35;cursor:not-allowed" aria-disabled="true">
+            <span class="material-icons">label</span>
+          </button>
+          <button class="map-ctrl-btn" id="btn-identify" data-tooltip="" data-i18n-tooltip="map_identify" style="display:none">
+            <span class="material-icons">question_mark</span>
+          </button>
+        </div>
+
+        <div class="map-empty hidden" id="map-empty">
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5" width="44" height="44" opacity="0.2">
+            <path d="M42 6L22 12L6 6v44l16 6 20-6 16 6V12L58 6z"/>
+            <line x1="22" y1="12" x2="22" y2="56"/>
+            <line x1="42" y1="6" x2="42" y2="50"/>
+          </svg>
+          <p>El mapa aparecerá aquí</p>
+        </div>
+        <div class="map-legend" id="map-legend"></div>
+      </div>
+
+    </section>
+
+    <!-- Editor de estilos -->
+  </div>
+
+  <!-- Modal de búsqueda -->
+  <div class="search-modal-backdrop" id="search-backdrop"></div>
+  <div class="search-modal" id="search-modal">
+    <div class="search-modal-input-row">
+      <span class="material-icons search-modal-icon">search</span>
+      <input type="text" id="search-input" class="search-modal-input" placeholder="" data-i18n-placeholder="search_placeholder" autocomplete="off" />
+      <button class="search-modal-close" id="search-close">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="search-modal-results" id="search-results"></div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- ── Librerías externas ──────────────────────────────────────── -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+
+  <!-- ── i18n — cargar antes que cualquier otro módulo ───────────── -->
+  <script src="../i18n/es.js"></script>
+  <script src="../i18n/en.js"></script>
+  <script src="../i18n/pt.js"></script>
+  <script src="../i18n/i18n.js"></script>   <!-- window.I18N, window.t -->
+  <script src="../src/tooltip.js"></script>  <!-- window.TOOLTIP — tooltips globales -->
+
+  <!-- ── Módulos de datos y capas ────────────────────────────────── -->
+  <script src="../src/palettes.js"></script>               <!-- window.PALETTES, window.PALETTE_LABELS -->
+  <script src="../src/maki-icons.js"></script>             <!-- window.MAKI_ICONS — catálogo de íconos Maki -->
+  <script src="../layers/sources.js"></script>             <!-- window.SOURCES  — registro de fuentes  -->
+  <script type="module" src="../layers/index.js"></script> <!-- window.LAYERS, window.GEO_MAPS         -->
+  <!-- index.html no cambia al agregar países — solo layers/index.js -->
+
+  <!-- ── Módulos de red / geo ─────────────────────────────────────── -->
+  <script src="../src/wfs.js"></script>              <!-- window.WFS              — fetch WFS con caché         -->
+  <script src="../src/rest.js"></script>             <!-- window.REST             — fetch ArcGIS REST con caché -->
+  <script src="../src/utils.js"></script>            <!-- window.UTILS            — utilidades compartidas         -->
+  <script src="../src/spatial-clip.js"></script>           <!-- window._SPATIAL_CLIP             — recorte geométrico          -->
+  <script src="../src/spatial-clip-exclude.js"></script>   <!-- window._SPATIAL_CLIP_EXCLUDE     — clip inverso                -->
+  <script src="../src/spatial-intersect.js"></script>      <!-- window._SPATIAL_INTERSECT        — intersección espacial        -->
+  <script src="../src/spatial-intersect-exclude.js"></script><!-- window._SPATIAL_INTERSECT_EXCLUDE — intersect inverso         -->
+  <script src="../src/spatial-buffer.js"></script>         <!-- window._SPATIAL_BUFFER           — área de influencia           -->
+  <script src="../src/spatial.js"></script>          <!-- window.SPATIAL          — orquestador espacial        -->
+
+  <!-- ── Módulos de mapa ──────────────────────────────────────────── -->
+  <script src="../src/map.js"></script>       <!-- window.MAP   — Leaflet                 -->
+  <script src="../src/export-utils.js"></script>    <!-- window.EXPORT_UTILS — utilidades compartidas   -->
+  <script src="../src/export-geojson.js"></script>  <!-- window.EXPORT_GEOJSON                           -->
+  <script src="../src/export-canvas.js"></script>   <!-- window.EXPORT_CANVAS — canvas JPEG              -->
+  <script src="../src/export-jpeg.js"></script>     <!-- window.EXPORT_JPEG                              -->
+  <script src="../src/export-pdf.js"></script>      <!-- window.EXPORT_PDF                               -->
+  <script src="../src/export-html.js"></script>     <!-- window.EXPORT_HTML                              -->
+  <script src="../src/export-graphic.js"></script>  <!-- window.EXPORT_GRAPHIC — modal salida gráfica    -->
+  <script src="../src/export.js"></script>          <!-- window.EXPORT — punto de entrada                -->
+
+  <!-- ── Módulos de UI ────────────────────────────────────────────── -->
+  <script src="../src/intent.js"></script>    <!-- window.INTENT — motor híbrido sin LLM  -->
+  <script src="../src/chat.js"></script>      <!-- window.CHAT, window.UI                 -->
+  <script src="../src/settings.js"></script>  <!-- window.SETTINGS                        -->
+  <script src="../src/auth.js"></script>      <!-- window.AUTH                            -->
+  <script src="../src/firebase.js"></script>  <!-- window.FB                              -->
+  <script src="../src/analytics.js"></script> <!-- window.ANALYTICS                       -->
+  <script src="../src/suggested-prompts.js"></script> <!-- window.SUGGESTED_PROMPTS        -->
+  <script src="../src/sidebar.js"></script>   <!-- window.SIDEBAR                         -->
+  <script src="../src/search.js"></script>    <!-- window.SEARCH                          -->
+  <script src="../src/chat-header.js"></script>  <!-- window.CHAT_HEADER                  -->
+  <script src="../src/map-controls.js"></script> <!-- window.MAP_CONTROLS                 -->
+  <script src="../src/layers-panel-utils.js"></script>  <!-- window.LP_UTILS  — helpers compartidos     -->
+  <script src="../src/layers-panel-style.js"></script>  <!-- window.LP_STYLE  — acordeón y estilos      -->
+  <script src="../src/layers-panel-modal.js"></script>  <!-- window.LP_MODAL  — modal avanzado           -->
+  <script src="../src/layers-panel.js"></script>        <!-- window.LP_PANEL, window.LAYERS_PANEL        -->
+
+  <!-- ── Orquestador principal (debe ir último) ───────────────────── -->
+  <script src="../src/app.js"></script>       <!-- window.APP, window.TOAST, window.THEME -->
+
+  <!-- ── Verificación de módulos en desarrollo ────────────────────── -->
+  <!-- Espera el evento layers:ready (disparado por layers/index.js)   -->
+  <!-- para asegurar que window.LAYERS ya está disponible al chequear. -->
+  <script>
+    window.addEventListener('layers:ready', function checkModules() {
+      const required = [
+        'I18N',
+        'UTILS',
+        'PALETTES', 'LAYERS', 'SOURCES',
+        'WFS', 'SPATIAL',
+        'MAP', 'EXPORT', 'EXPORT_GRAPHIC',
+        'CHAT', 'UI', 'SETTINGS', 'AUTH', 'FB',
+        'SIDEBAR', 'SEARCH', 'CHAT_HEADER', 'MAP_CONTROLS',
+        'LP_UTILS', 'LP_STYLE', 'LP_MODAL', 'LP_PANEL', 'LAYERS_PANEL',
+        'APP', 'TOAST', 'THEME'
+      ];
+      const missing = required.filter(m => !window[m]);
+      if (missing.length) {
+        console.error('[Casux] Módulos no cargados:', missing.join(', '));
+      }
+    }, { once: true });
+  </script>
+
+
+</body>
+</html>
