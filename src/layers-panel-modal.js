@@ -119,10 +119,26 @@ window.LP_MODAL = (() => {
     document.body.appendChild(modal);
 
     const bodyEl     = modal.querySelector('#adv-modal-body');
-    let   curMode    = initMode;
-    let   selPalette = initPalette;
+    let   curMode         = initMode;
+    let   selPalette      = initPalette;
+    let   paletteReversed = false;
 
     // ── Selector de rampa de color ────────────────────────────────
+
+    // Crea el botón de invertir rampa (sync_alt)
+    function _buildInvertBtn() {
+      const btn = document.createElement('button');
+      btn.className   = 'adv-ramp-invert-btn';
+      btn.title       = 'Invertir rampa';
+      btn.innerHTML   = '<span class="material-icons">sync_alt</span>';
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        paletteReversed = !paletteReversed;
+        btn.classList.toggle('active', paletteReversed);
+        if (curField) applyPreview();
+      });
+      return btn;
+    }
 
     function buildRampCsel(palKeys, currentPalette, onChange) {
       const wrap = document.createElement('div');
@@ -272,7 +288,9 @@ window.LP_MODAL = (() => {
       if (!field) return;
       await window.MAP.applyClassification(k, {
         type: curMode, field, palette, method, classes,
-        paletteColors: window.PALETTES[palette]
+        paletteColors: paletteReversed
+          ? (window.PALETTES[palette] || []).slice().reverse()
+          : (window.PALETTES[palette] || [])
       });
       buildCatItemsAdv();
     }
@@ -699,14 +717,19 @@ window.LP_MODAL = (() => {
         buildGlobalControls(bodyEl, geom);
 
         const rampRow   = document.createElement('div');
-        rampRow.className = 'adv-body-row';
+        rampRow.className = 'adv-body-row adv-ramp-row';
         const rampLabel = document.createElement('span');
         rampLabel.className   = 'adv-body-label';
         rampLabel.textContent = t('adv_ramp');
         const catPalKeys = Object.keys(window.CAT_PALETTES);
         const rampCsel   = buildRampCsel(catPalKeys, selPalette, () => { if (curField) applyPreview(); });
+        const invertBtn  = _buildInvertBtn();
         rampRow.appendChild(rampLabel);
-        rampRow.appendChild(rampCsel);
+        const rampRowInner = document.createElement('div');
+        rampRowInner.className = 'adv-ramp-row-inner';
+        rampRowInner.appendChild(rampCsel);
+        rampRowInner.appendChild(invertBtn);
+        rampRow.appendChild(rampRowInner);
         bodyEl.appendChild(rampRow);
 
         const itemsWrap = document.createElement('div');
@@ -783,14 +806,19 @@ window.LP_MODAL = (() => {
         buildGlobalControls(bodyEl, geom);
 
         const rampRow   = document.createElement('div');
-        rampRow.className = 'adv-body-row';
+        rampRow.className = 'adv-body-row adv-ramp-row';
         const rampLabel = document.createElement('span');
         rampLabel.className   = 'adv-body-label';
         rampLabel.textContent = t('adv_ramp');
         const seqPalKeys = Object.keys(window.SEQ_PALETTES);
         const rampCsel   = buildRampCsel(seqPalKeys, selPalette, () => { if (curField) applyPreview(); });
+        const invertBtn  = _buildInvertBtn();
         rampRow.appendChild(rampLabel);
-        rampRow.appendChild(rampCsel);
+        const rampRowInner = document.createElement('div');
+        rampRowInner.className = 'adv-ramp-row-inner';
+        rampRowInner.appendChild(rampCsel);
+        rampRowInner.appendChild(invertBtn);
+        rampRow.appendChild(rampRowInner);
         bodyEl.appendChild(rampRow);
 
         const itemsWrap = document.createElement('div');
