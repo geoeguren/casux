@@ -126,16 +126,17 @@ window.LP_MODAL = (() => {
     // ── Selector de rampa de color ────────────────────────────────
 
     // Crea el botón de invertir rampa (sync_alt)
-    function _buildInvertBtn() {
+    // onToggle: callback que se llama después de cambiar paletteReversed
+    function _buildInvertBtn(onToggle) {
       const btn = document.createElement('button');
-      btn.className   = 'adv-ramp-invert-btn';
-      btn.title       = 'Invertir rampa';
-      btn.innerHTML   = '<span class="material-icons">sync_alt</span>';
+      btn.className = 'adv-ramp-invert-btn';
+      btn.setAttribute('data-tooltip', t('adv_ramp_invert'));
+      btn.innerHTML = '<span class="material-icons">sync_alt</span>';
       btn.addEventListener('click', e => {
         e.stopPropagation();
         paletteReversed = !paletteReversed;
         btn.classList.toggle('active', paletteReversed);
-        if (curField) applyPreview();
+        onToggle?.();
       });
       return btn;
     }
@@ -723,7 +724,7 @@ window.LP_MODAL = (() => {
         rampLabel.textContent = t('adv_ramp');
         const catPalKeys = Object.keys(window.CAT_PALETTES);
         const rampCsel   = buildRampCsel(catPalKeys, selPalette, () => { if (curField) applyPreview(); });
-        const invertBtn  = _buildInvertBtn();
+        const invertBtn  = _buildInvertBtn(() => { if (curField) applyPreview(); });
         rampRow.appendChild(rampLabel);
         const rampRowInner = document.createElement('div');
         rampRowInner.className = 'adv-ramp-row-inner';
@@ -812,7 +813,7 @@ window.LP_MODAL = (() => {
         rampLabel.textContent = t('adv_ramp');
         const seqPalKeys = Object.keys(window.SEQ_PALETTES);
         const rampCsel   = buildRampCsel(seqPalKeys, selPalette, () => { if (curField) applyPreview(); });
-        const invertBtn  = _buildInvertBtn();
+        const invertBtn  = _buildInvertBtn(() => { if (curField) applyPreview(); });
         rampRow.appendChild(rampLabel);
         const rampRowInner = document.createElement('div');
         rampRowInner.className = 'adv-ramp-row-inner';
