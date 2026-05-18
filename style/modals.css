@@ -721,3 +721,42 @@ body.day, html.day .html-csel-chk-label--mono { color: #6a6560; }
 }
 .graphic-export-warn.hidden { display: none; }
 body.day, html.day .graphic-export-warn { color: #8a8580; }
+
+/* Salida gráfica: sin línea separadora entre el body y el footer */
+#graphic-export-modal .adv-modal-footer {
+  border-top: none;
+}
+
+/* Fila de rampa con botón de invertir */
+.adv-ramp-row-inner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+/* Botón de invertir rampa */
+.adv-ramp-invert-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-md);
+  background: transparent;
+  color: var(--cream2);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.adv-ramp-invert-btn .material-icons { font-size: 16px; pointer-events: none; }
+.adv-ramp-invert-btn:hover { background: var(--cream3); color: var(--cream); }
+.adv-ramp-invert-btn.active {
+  background: rgba(var(--accent-rgb), 0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+body.day .adv-ramp-invert-btn { color: #5a5650; border-color: #c8c4be; }
+body.day .adv-ramp-invert-btn:hover { background: rgba(0,0,0,0.06); color: #1a1814; }
+body.day .adv-ramp-invert-btn.active { background: rgba(var(--accent-rgb),0.12); border-color: var(--accent); color: var(--accent); }
