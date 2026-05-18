@@ -65,6 +65,7 @@ window.I18N_EN = {
   adv_none_selected:       'None selected',
   adv_all_disabled:        'All fields have more than {n} unique values and cannot be classified.',
   adv_drag_reorder:        'Drag to reorder',
+  adv_ramp_invert:         'Invert color ramp',
   adv_delete_category:     'Delete category',
   adv_edit_style:          'Edit style',
 
