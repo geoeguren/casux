@@ -248,7 +248,7 @@ body.day, html.day .sd-chat-opt:hover { background: rgba(0,0,0,0.05); }
    ─────────────────────────────────────────────────────────── */
 
 .adv-modal-backdrop {
-  position: fixed; inset: 0; z-index: 500;
+  position: fixed; inset: 0; z-index: 10000;
   background: rgba(0,0,0,0.45);
   backdrop-filter: blur(2px);
 }
@@ -260,7 +260,7 @@ body.day, html.day .sd-chat-opt:hover { background: rgba(0,0,0,0.05); }
   max-height: min(82vh, 680px);
   background: var(--bg2); border: 0.5px solid var(--border-md);
   border-radius: var(--radius); box-shadow: var(--shadow-lg);
-  z-index: 501;
+  z-index: 10001;
   display: flex; flex-direction: column; overflow: hidden;
   font-family: var(--font-sans);
 }
