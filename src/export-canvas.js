@@ -165,21 +165,8 @@ window.EXPORT_CANVAS = (() => {
         south = lb.south;
         north = lb.north;
       }
-      // Si el visor está parcialmente fuera de los datos (scroll lateral),
-      // intersectar para no exportar área vacía innecesaria
-      else if (west < lb.west || east > lb.east || south < lb.south || north > lb.north) {
-        const iWest  = Math.max(west,  lb.west);
-        const iEast  = Math.min(east,  lb.east);
-        const iSouth = Math.max(south, lb.south);
-        const iNorth = Math.min(north, lb.north);
-        if (iWest < iEast && iSouth < iNorth) {
-          west  = iWest;
-          east  = iEast;
-          south = iSouth;
-          north = iNorth;
-        }
-      }
-      // Si el visor está completamente dentro de los datos (zoom in) → no tocar
+      // En cualquier otro caso (zoom in o zoom regional con datos parcialmente visibles)
+      // respetar el encuadre exacto del visor — el usuario eligió esa vista.
     }
 
     // Margen: 8% del lado más corto en Mercator, uniforme en los 4 lados
