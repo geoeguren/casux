@@ -435,9 +435,10 @@ window.CHAT = (() => {
         SIDEBAR.updateCachedChat(currentChatId, { titulo: tituloNorm });
         SIDEBAR.refreshChats();
       } else if (mapPlan?.titulo) {
-        // El plan trae un título (resuelto por PIM sin pasar por LLM) y es distinto
-        // al que tiene el chat actualmente → el usuario cargó un mapa nuevo.
-        const tituloActual = window.APP?.getCurrentPlan?.()?.titulo || null;
+        // El plan trae un título (resuelto por PIM sin pasar por LLM).
+        // Comparar con el título visible en el header (no con getCurrentPlan,
+        // que ya fue pisado por renderMap antes de llegar acá).
+        const tituloActual = document.getElementById('chat-header-title')?.value?.trim() || null;
         const tituloNuevo  = toTitleCase(mapPlan.titulo);
         if (tituloNuevo && tituloNuevo !== tituloActual) {
           if (window.APP?.setChatHeader) window.APP.setChatHeader(tituloNuevo);
