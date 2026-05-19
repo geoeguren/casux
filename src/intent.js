@@ -132,7 +132,7 @@ window.INTENT = (() => {
 
   // ── 5. ESTILO ─────────────────────────────────────────────────
 
-  const PATRON_ESTILO = /\b(estilo|color(es)?|relleno|borde|grosor|tamano|icono|simbolo|apariencia|aspecto|hacelo\s+mas|ponelo|ponerlo|forma|geometria|style|fill|stroke|border|thickness|weight|icon|symbol|appearance|make\s+it|shape|circle|square|size|radius|cor|cores|preenchimento|borda|espessura|ícone|símbolo|aparência|forma|geometria|circulo|quadrado|tamanho)\b/i;
+  const PATRON_ESTILO = /\b(estilo|color(es)?|relleno|borde|grosor|tamano|icono|simbolo|apariencia|aspecto|hacelo\s+mas|ponelo|ponerlo|forma|geometria|style|fill|stroke|outline|thickness|weight|icon|symbol|appearance|make\s+it|shape|circle|square|size|radius|cor|cores|preenchimento|borda|espessura|ícone|símbolo|aparência|forma|geometria|circulo|quadrado|tamanho)\b/i;
 
   // Valores concretos, propiedades ya nombradas, o referencias contextuales
   const PATRON_ESTILO_ESPECIFICO = /\b(rojo|azul|verde|amarillo|naranja|violeta|rosa|negro|blanco|gris|celeste|marron|mas\s+(grande|chico|grueso|fino|oscuro|claro|transparente)|tambien|lo\s+mismo|idem|opacidad|transparencia|red|blue|green|yellow|orange|purple|pink|black|white|gray|grey|cyan|brown|bigger|smaller|larger|thicker|thinner|darker|lighter|transparent|opacity|same|vermelho|azul|verde|amarelo|laranja|violeta|rosa|preto|branco|cinza|ciano|marrom|maior|menor|mais\s+(grosso|fino|escuro|claro|transparente)|transparencia|opacidade|#[0-9a-fA-F]{3,6}|\d+(\.\d+)?\s*(px|pt|puntos?)?)\b/i;
