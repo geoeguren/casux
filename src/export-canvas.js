@@ -129,41 +129,7 @@ window.EXPORT_CANVAS = (() => {
   }
 
 
-  // ── Bounds para la miniatura de previa: visor exacto + aspecto A4 ─────
-  // Usa el encuadre real del visor sin ninguna lógica de intersección con capas.
-  // Solo ajusta el aspecto al formato A4 para que la previa sea proporcional.
-  function _calcPreviewBounds(mapInst) {
-    const toMercY   = lat => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
-    const fromMercY = y   => (Math.atan(Math.exp(y)) * 2 - Math.PI / 2) * 180 / Math.PI;
-    const A4_RATIO  = 1240 / 1754;
-
-    const b = mapInst.getBounds();
-    let west  = b.getWest();
-    let east  = b.getEast();
-    let south = b.getSouth();
-    let north = b.getNorth();
-
-    // Solo ajustar aspecto al A4 en Mercator, sin tocar el encuadre
-    const mercW  = (east - west) * Math.PI / 180;
-    const mercH  = toMercY(north) - toMercY(south);
-    const mercRatio = mercW / mercH;
-
-    if (mercRatio < A4_RATIO) {
-      const targetW  = mercH * A4_RATIO;
-      const extraLng = (targetW - mercW) * 180 / Math.PI / 2;
-      west -= extraLng;
-      east += extraLng;
-    } else {
-      const targetH = mercW / A4_RATIO;
-      const extraY  = (targetH - mercH) / 2;
-      south = fromMercY(toMercY(south) - extraY);
-      north = fromMercY(toMercY(north) + extraY);
-    }
-
-    return { w: west, e: east, s: south, n: north };
-  }
-
-    // ── Bounds de exportación: vista actual + margen generoso ─────
+  // ── Bounds de exportación: vista actual + margen generoso ─────
   // Toma los bounds del visor actual y los expande un 15% en todos los
   // lados (en espacio Mercator) para dar aire al mapa dentro del A4.
   function _calcViewBoundsWithMargin(mapInst) {
@@ -1804,13 +1770,10 @@ window.EXPORT_CANVAS = (() => {
     const mapInst = window.MAP?.getInstance();
     if (!mapInst) return;
 
-    // Bounds — encuadre exacto del visor, ajustado al aspecto A4.
-    // No se aplica la lógica de intersección con capas de _calcViewBoundsWithMargin:
-    // la previa debe mostrar lo que el usuario tiene en pantalla, incluyendo
-    // zonas sin datos (océano, áreas vacías), sin recortes ni expansiones.
+    // Bounds — mismos que la exportación real
     let bounds;
     try {
-      bounds = _calcPreviewBounds(mapInst);
+      bounds = _calcViewBoundsWithMargin(mapInst);
     } catch(e) {
       const b = mapInst.getBounds();
       bounds = { w: b.getWest(), e: b.getEast(), s: b.getSouth(), n: b.getNorth() };
