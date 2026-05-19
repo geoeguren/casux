@@ -994,12 +994,12 @@ window.UI = (() => {
       <div class="map-card-left">
         <span class="material-icons map-card-icon">map</span>
         <div class="map-card-info">
-          <span class="map-card-title">${plan.titulo || 'Mapa'}</span>
+          <span class="map-card-title">${plan.titulo || t('map_card_default_title')}</span>
           <span class="map-card-layers">${capas}</span>
         </div>
       </div>
       <button class="map-card-btn" data-plan='${JSON.stringify(plan).replace(/'/g, "&#39;")}'>
-        VER
+        ${t('map_card_btn_ver')}
       </button>
     `;
     el.querySelector('.map-card-btn').addEventListener('click', e => {
@@ -1696,11 +1696,11 @@ window.UI = (() => {
       <div class="map-card-left">
         <span class="material-icons map-card-icon">map</span>
         <div class="map-card-info">
-          <span class="map-card-title">${plan.titulo || 'Mapa'}</span>
+          <span class="map-card-title">${plan.titulo || t('map_card_default_title')}</span>
           <span class="map-card-layers">${capas}</span>
         </div>
       </div>
-      <button class="map-card-btn">VER</button>
+      <button class="map-card-btn">${t('map_card_btn_ver')}</button>
     `;
     el.querySelector('.map-card-btn').addEventListener('click', () => {
       window.MAP_CONTROLS?.setMapVisible(true);
