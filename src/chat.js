@@ -434,6 +434,17 @@ window.CHAT = (() => {
         await window.FB.updateChat(user.uid, currentChatId, { titulo: tituloNorm });
         SIDEBAR.updateCachedChat(currentChatId, { titulo: tituloNorm });
         SIDEBAR.refreshChats();
+      } else if (mapPlan?.titulo) {
+        // El plan trae un título (resuelto por PIM sin pasar por LLM) y es distinto
+        // al que tiene el chat actualmente → el usuario cargó un mapa nuevo.
+        const tituloActual = window.APP?.getCurrentPlan?.()?.titulo || null;
+        const tituloNuevo  = toTitleCase(mapPlan.titulo);
+        if (tituloNuevo && tituloNuevo !== tituloActual) {
+          if (window.APP?.setChatHeader) window.APP.setChatHeader(tituloNuevo);
+          await window.FB.updateChat(user.uid, currentChatId, { titulo: tituloNuevo });
+          SIDEBAR.updateCachedChat(currentChatId, { titulo: tituloNuevo });
+          SIDEBAR.refreshChats();
+        }
       }
 
       const data = { messages: history };
