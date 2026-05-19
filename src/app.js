@@ -721,7 +721,13 @@ window.APP = (() => {
           }
         }
 
-        window.MAP.addLayer(mapKey, inst.layerKey, geojson, style, toTitleCase(inst.tituloUI || inst.titulo || inst.descripcion || layerDef.tituloUI || layerDef.titulo));
+        const _lang    = window.I18N?.getLang?.() || 'es';
+        const _suf     = _lang === 'en' ? 'En' : _lang === 'pt' ? 'Pt' : 'Es';
+        const _tituloLayer = toTitleCase(
+          inst.tituloUI || inst.titulo || inst.descripcion ||
+          layerDef[`tituloUI${_suf}`] || layerDef.tituloUI || layerDef.titulo
+        );
+        window.MAP.addLayer(mapKey, inst.layerKey, geojson, style, _tituloLayer);
         // Restaurar visibilidad si fue ocultada
         if (inst.visible === false) window.MAP.restoreLayerVisible(mapKey, false);
         // Restaurar clasificación: prioridad al snapshot previo (editado por el usuario),
