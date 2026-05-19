@@ -969,7 +969,7 @@ window.UI = (() => {
     el.className = 'msg-error-card';
     const desc = externalMsg
       ? `<span class="error-card-desc error-card-external"><span class="material-icons" style="font-size:13px;vertical-align:-2px">info</span> ${externalMsg}</span>`
-      : `<span class="error-card-desc">La capa no respondió.</span>`;
+      : `<span class="error-card-desc">${t('error_no_response')}</span>`;
     el.innerHTML = `
       <div class="error-card-left">
         <span class="material-icons error-card-icon">${externalMsg ? 'cloud_off' : 'error_outline'}</span>
@@ -979,13 +979,13 @@ window.UI = (() => {
         </div>
       </div>
       <button class="error-card-btn" data-layer="${layerKey || ''}">
-        REINTENTAR
+        ${t('error_retry')}
       </button>
     `;
     el.querySelector('.error-card-btn').addEventListener('click', () => {
       const input = document.getElementById('chat-input');
       if (input) {
-        input.value = `Intentá cargar ${titulo} de nuevo`;
+        input.value = t('error_layer_retry', { titulo });
         input.focus();
         input.dispatchEvent(new Event('input'));
       }
