@@ -443,9 +443,10 @@ function buildSystemPrompt(capasRelevantes, todasLasCapas, tone, activeMap, sour
     ? `\nMAPA ACTIVO EN ESTE MOMENTO:\nTítulo: ${activeMap.titulo}\nCapas: ${activeMap.capas}\nCualquier pedido de cambio de estilo, nombre o eliminación de capa se refiere a ESTE mapa.\n`
     : '';
 
+  const langNames = { es: 'español', en: 'English', pt: 'português' };
   const langInstruction = userLang
-    ? `El usuario configuró su idioma preferido como "${userLang}". Respondé SIEMPRE en ese idioma, independientemente del idioma en que esté escrito el mensaje del usuario.`
-    : `Detectá el idioma del usuario por su mensaje y respondé en ese idioma.`;
+    ? `The user's preferred language is "${langNames[userLang] || userLang}". ALWAYS respond in that language, regardless of what language the user writes in.`
+    : `Detect the user's language from their message and respond in that same language.`;
 
   const toneAdaptation = tone === 'default' ? `
 TONO ADAPTATIVO: Leé el registro del usuario en su primer mensaje y mantené esa sintonía.
