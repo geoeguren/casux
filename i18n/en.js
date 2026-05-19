@@ -296,6 +296,7 @@ window.I18N_EN = {
   export_choose_format:    'What format would you like to export?',
   basemap_choose:          'Which background map would you like to use?',
   basemap_changed:         'Done, I changed the background map.',
+  map_drawing:             'Drawing…',
   map_cleared:             'Done, I cleared the map.',
   map_card_btn_ver:          'VIEW',
   map_card_default_title:    'Map',
