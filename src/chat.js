@@ -699,7 +699,9 @@ window.CHAT = (() => {
     const capa  = window.LAYERS?.[inst.layerKey];
     if (!capa) return null;
 
-    const nombreCapa = capa.tituloUI || capa.titulo || inst.layerKey;
+    const _lang      = window.I18N?.getLang?.() || 'es';
+    const _suf       = _lang === 'en' ? 'En' : _lang === 'pt' ? 'Pt' : 'Es';
+    const nombreCapa = capa[`tituloUI${_suf}`] || capa.tituloUI || capa.titulo || inst.layerKey;
 
     // Área espacial: clipArea o bufferArea
     const area = inst.clipArea || inst.bufferArea;
