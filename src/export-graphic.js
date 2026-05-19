@@ -94,7 +94,7 @@ window.EXPORT_GRAPHIC = (() => {
     const posSquaresHTML = POSICIONES.map(p => `
       <button class="graphic-pos-btn"
               data-pos="${p.id}"
-              title="${p.label()}"
+              data-tooltip="${p.label()}"
               aria-label="${p.label()}">
       </button>`).join('');
 
