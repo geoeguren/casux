@@ -171,6 +171,7 @@ window.EXPORT_GRAPHIC = (() => {
       modal.remove();
       backdrop.remove();
       document.removeEventListener('keydown', _onKeyDown);
+      mapInst.off('moveend', _redrawPreview);
     }
     function _onKeyDown(e) {
       if (e.key === 'Escape') closeModal();
@@ -266,6 +267,10 @@ window.EXPORT_GRAPHIC = (() => {
     // requestAnimationFrame garantiza que el browser pintó el DOM
     // antes de intentar dibujar en el canvas
     requestAnimationFrame(() => _redrawPreview());
+
+    // Sincronizar previa con el visor: si el mapa se mueve mientras el modal
+    // está abierto (p.ej. botón "Centrar en feature" del popup), redibujar.
+    mapInst.on('moveend', _redrawPreview);
 
     // Actualiza la clase del preview-wrap según la luminosidad del basemap
     // para que los botones de posición contrasten correctamente.
