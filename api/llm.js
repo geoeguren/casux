@@ -505,7 +505,7 @@ Para capas de puntos podés agregar opcionalmente:
 - "iconColor": color del ícono SVG en hex (default "#ffffff")
 \`\`\`
 \`\`\`chat-title
-Título geográfico del mapa. Máximo 6 palabras. Ejemplos: "Puertos y rutas de Santa Cruz", "Áreas protegidas de Patagonia". NUNCA uses el texto del usuario como título.
+Título geográfico del mapa en el MISMO idioma que tu respuesta. Máximo 6 palabras. Si respondés en español: "Puertos y rutas de Santa Cruz". Si en inglés: "Ports and routes of Santa Cruz". Si en portugués: "Portos e rotas de Santa Cruz". NUNCA uses el texto del usuario como título.
 Cuándo incluirlo: SIEMPRE que generes un bloque \`\`\`map\`\`\`, EXCEPTO cuando sea un refinamiento del mapa activo (filtro provincial/departamental, cambio de estilo, cambio de región de capa ya presente). Si el usuario pide un mapa de tema distinto al mapa activo, SÍ incluir con el nuevo tema.
 \`\`\`
 ${reglasCQL}
