@@ -24,17 +24,24 @@ const PROVIDER_TIMEOUT_MS = 8000;
 const { normalizar, STOPWORDS } = require('./_utils');
 const { checkOrigin } = require('./_cors');
 
-function buscarCapasRelevantes(textoUsuario, layers, max = 5) {
+function buscarCapasRelevantes(textoUsuario, layers, max = 5, userLang = 'es') {
   const norm = normalizar(textoUsuario);
   const palabras = norm.split(/\s+/).filter(p => p.length > 2 && !STOPWORDS.includes(p));
   // Excluir capas special y capas visible:false (gemelas, técnico-geodésicas)
   const capasValidas = Object.entries(layers).filter(([, capa]) => capa.special === false && capa.visible !== false);
   if (!palabras.length) return capasValidas.slice(0, max).map(([k, v]) => ({ key: k, ...v }));
+
+  // Usar campos del idioma del usuario si existen
+  const sufijo = userLang === 'en' ? 'En' : userLang === 'pt' ? 'Pt' : 'Es';
+
   const scored = capasValidas
     .map(([key, capa]) => {
-      const textoCapa = normalizar([capa.tituloUI || '', capa.titulo, capa.abstract || '', key,
-        (capa.keywords || []).join(' '),
-        (capa.attributes || []).map(a => (a.label || '') + ' ' + (a.campo || '')).join(' ')
+      const tituloUIi18n = capa[`tituloUI${sufijo}`] || capa.tituloUI || '';
+      const keywordsI18n = capa[`keywords${sufijo}`] || capa.keywords || [];
+      const textoCapa = normalizar([tituloUIi18n, capa.titulo, capa.abstract || '', key,
+        keywordsI18n.join(' '),
+        (capa.attributes || []).map(a => (a.label || '') + ' ' + (a.campo || '')).join(' '),
+        sufijo !== 'Es' ? (capa.tituloUI || '') : '',
       ].join(' '));
       let score = 0;
       if (textoCapa.includes(norm)) score += 10;
@@ -635,7 +642,7 @@ module.exports = async function handler(req, res) {
   if (!messages?.length) return res.status(400).json({ error: 'Se requiere messages' });
 
   const textoUsuario    = messages.filter(m => m.role === 'user').map(m => m.content).join(' ');
-  const capasRelevantes = buscarCapasRelevantes(textoUsuario, layers || {});
+  const capasRelevantes = buscarCapasRelevantes(textoUsuario, layers || {}, 5, userLang || 'es');
   console.log(`[llm] Capas relevantes para "${textoUsuario.slice(0, 60)}": ${capasRelevantes.map(c => c.key).join(', ')}`);
   const systemPrompt    = buildSystemPrompt(capasRelevantes, layers || {}, tone || 'default', activeMap, sources || {}, userLang || null);
 
