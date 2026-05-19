@@ -182,10 +182,10 @@ window.EXPORT_CANVAS = (() => {
       // Si el visor está completamente dentro de los datos (zoom in) → no tocar
     }
 
-    // Margen: 2.5% del lado más corto en Mercator, uniforme en los 4 lados
+    // Margen: 8% del lado más corto en Mercator, uniforme en los 4 lados
     const mercW  = (east - west) * Math.PI / 180;
     const mercH  = toMercY(north) - toMercY(south);
-    const pad    = Math.min(mercW, mercH) * 0.025;
+    const pad    = Math.min(mercW, mercH) * 0.08;
 
     west  -= pad * 180 / Math.PI;
     east  += pad * 180 / Math.PI;
