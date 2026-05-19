@@ -52,6 +52,9 @@ Ejemplos:
 Excepción: si el catálogo tiene una sola capa relevante y la zona es clara, generá el mapa directamente.
 ${tone === 'eficiente' ? 'En modo sintético: si podés inferir razonablemente la respuesta a ambas preguntas, generá el mapa sin preguntar.' : ''}`;
 
+  const reglasCobertura = `COBERTURA DISPONIBLE — REGLA OBLIGATORIA:
+El catálogo de capas que tenés disponible es el único con el que podés trabajar. Si el usuario pide datos de un país, región o temática que NO aparece en el catálogo (por ejemplo: cuencas hidrográficas, áreas de inundación, cobertura de suelo, datos climáticos, o cualquier capa que no figure en la lista), respondé con claridad que no contás con esa información. No preguntes como si pudieras resolverlo luego. Esto aplica también cuando el país figura en el catálogo pero no tiene capas relevantes para el pedido concreto.`;
+
   const reglasEstilo = `ESTILOS VISUALES:
 Siempre incluí un bloque "style" junto al bloque "map". Reglas:
 
@@ -72,6 +75,8 @@ MODO DE RESPUESTA: ${toneGuide}
 ${toneAdaptation}
 
 ${reglasAmbiguedad}
+
+${reglasCobertura}
 
 CAMBIOS DE ESTILO: Cuando el usuario pide cambiar un atributo (opacidad, color, grosor, tamaño, ícono, transparencia), actuá directamente con un valor razonable. No preguntes sobre atributos de estilo.
 ${closingQuestion}
