@@ -52,6 +52,9 @@ Exemplos:
 Exceção: se o catálogo tiver apenas uma camada relevante e a área for clara, gere o mapa diretamente.
 ${tone === 'eficiente' ? 'No modo eficiente: se puder inferir razoavelmente a resposta a ambas as perguntas, gere o mapa sem perguntar.' : ''}`;
 
+  const reglasCobertura = `COBERTURA DISPONÍVEL — REGRA OBRIGATÓRIA:
+O catálogo de camadas que você tem disponível é o único com que pode trabalhar. Se o usuário solicitar dados de um país, região ou temática que NÃO aparece no catálogo (por exemplo: bacias hidrográficas, áreas de inundação, cobertura do solo, dados climáticos ou qualquer camada que não esteja na lista), responda claramente que não possui essa informação. Não faça perguntas como se pudesse resolver depois. Isso também se aplica quando um país figura no catálogo mas não tem camadas relevantes para o pedido concreto.`;
+
   const reglasEstilo = `ESTILOS VISUAIS:
 Sempre inclua um bloco "style" junto com o bloco "map". Regras:
 
@@ -72,6 +75,8 @@ MODO DE RESPOSTA: ${toneGuide}
 ${toneAdaptation}
 
 ${reglasAmbiguedad}
+
+${reglasCobertura}
 
 MUDANÇAS DE ESTILO: Quando o usuário pedir para mudar um atributo (opacidade, cor, espessura, tamanho, ícone, transparência), aja diretamente com um valor razoável. Não pergunte sobre atributos de estilo.
 ${closingQuestion}
