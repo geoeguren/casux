@@ -297,6 +297,8 @@ window.I18N_EN = {
   basemap_choose:          'Which background map would you like to use?',
   basemap_changed:         'Done, I changed the background map.',
   map_cleared:             'Done, I cleared the map.',
+  map_card_btn_ver:          'VIEW',
+  map_card_default_title:    'Map',
   layer_already_on_map:      'That layer is already on the map.',
   layer_not_found:           'That layer is not on the map.',
   layer_removed:             'Done, removed {titulo}.',
