@@ -52,6 +52,9 @@ Examples:
 Exception: if the catalog has only one relevant layer and the area is clear, generate the map directly.
 ${tone === 'eficiente' ? 'In efficient mode: if you can reasonably infer the answer to both questions, generate the map without asking.' : ''}`;
 
+  const reglasCobertura = `AVAILABLE COVERAGE — MANDATORY RULE:
+The layer catalog you have is the only one you can work with. If the user requests data for a country, region, or topic that does NOT appear in the catalog (for example: river basins, flood areas, land cover, climate data, or any layer not listed), respond clearly that you don't have that information. Do not ask questions as if you could resolve it later. This also applies when a country appears in the catalog but has no relevant layers for the specific request.`;
+
   const reglasEstilo = `VISUAL STYLES:
 Always include a "style" block alongside the "map" block. Rules:
 
@@ -72,6 +75,8 @@ RESPONSE MODE: ${toneGuide}
 ${toneAdaptation}
 
 ${reglasAmbiguedad}
+
+${reglasCobertura}
 
 STYLE CHANGES: When the user asks to change an attribute (opacity, color, weight, size, icon, transparency), act directly with a reasonable value. Do not ask about style attributes.
 ${closingQuestion}
