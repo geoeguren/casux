@@ -330,56 +330,103 @@ window.INTENT = (() => {
     const matchPalabraCompleta = (texto, palabra) =>
       new RegExp('(?:^|\\s)' + palabra + '(?:\\s|$)').test(texto);
 
-    const resultados = Object.entries(layers).map(([key, capa]) => {
+    // ── Idioma de la UI para scoring multiidioma ─────────────────
+    //
+    // Si la capa tiene campos i18n (tituloUIEn, keywordsEn, etc.), el scorer
+    // usa los del idioma de la interfaz en vez de los campos base (siempre ES).
+    // Sufijos: 'Es' | 'En' | 'Pt'
+    const _uiLang  = window.I18N?.getLang?.() || window.SETTINGS?.get?.('lang') || 'es';
+    const _sufijo  = _uiLang === 'en' ? 'En' : _uiLang === 'pt' ? 'Pt' : 'Es';
+
+    // ── Pre-computar IDF por token ────────────────────────────────
+    //
+    // Filtrar por visible !== false antes de construir el índice y scorear.
+    // Excluye capas técnico-geodésicas y gemelas que no debería ver el usuario.
+    const capasVisibles = Object.entries(layers).filter(([, c]) => c.visible !== false);
+    const N = capasVisibles.length || 1;
+
+    // Contar en cuántas capas visibles aparece cada token como keyword (IDF).
+    // Un token exclusivo de 1 capa es señal fuerte; uno en 20 capas es ruido.
+    const df = new Map();
+    for (const [, capa] of capasVisibles) {
+      const vistos = new Set();
+      const kwArr = capa[`keywords${_sufijo}`] || capa.keywords || [];
+      for (const kw of kwArr) {
+        const kwNorm = normalizar(kw);
+        const formas = [kwNorm];
+        if (kwNorm.endsWith('es') && kwNorm.length > 4) formas.push(kwNorm.slice(0, -2));
+        if (kwNorm.endsWith('s')  && kwNorm.length > 3) formas.push(kwNorm.slice(0, -1));
+        for (const f of formas) {
+          if (!vistos.has(f)) { vistos.add(f); df.set(f, (df.get(f) || 0) + 1); }
+        }
+      }
+    }
+    function idf(token) {
+      const freq = df.get(token) || 1;
+      const raw  = Math.log(N / freq);
+      const max  = Math.log(N);
+      return max > 0 ? 0.5 + 0.5 * (raw / max) : 1.0;
+    }
+
+    // ── Score por posición del keyword ───────────────────────────
+    //
+    // Zona canónica (pos 0..CANON-1): peso 1.0.
+    // A partir de CANON: decae linealmente hasta 0.3 al final del array.
+    const CANON = 3;
+    function posWeight(pos, total) {
+      if (pos < CANON) return 1.0;
+      const tail = total - CANON;
+      if (tail <= 0) return 1.0;
+      return Math.max(0.3, 1 - 0.7 * ((pos - CANON) / tail));
+    }
+
+    const resultados = capasVisibles.map(([key, capa]) => {
       if (area?.pais) {
         const sourceCountry = window.SOURCES?.[capa.source]?.country;
         if (sourceCountry && sourceCountry !== area.pais) return { key, capa, score: 0 };
       }
+
+      // Usar campos del idioma de la UI si existen; caer al campo base si no.
+      const tituloUIi18n = capa[`tituloUI${_sufijo}`] || capa.tituloUI || '';
+      const tituloI18n   = capa[`titulo${_sufijo}`]   || capa.titulo   || '';
+      const keywordsI18n = capa[`keywords${_sufijo}`] || capa.keywords || [];
+
       const textoCapa = normalizar([
-        capa.tituloUI || '', capa.titulo || '', key,
-        (capa.keywords || []).join(' '),
+        tituloUIi18n, tituloI18n, key,
+        keywordsI18n.join(' '),
+        _sufijo !== 'Es' ? (capa.tituloUI || '') : '',
       ].join(' '));
 
-      // Keywords normalizados por separado — un match directo en keyword vale más
-      // que un match en el texto general (título, key). Permite pasar MIN_SCORE
-      // con un solo token muy específico (ej: "estadios" → keyword "estadio").
-      const keywordsNorm = (capa.keywords || []).map(k => normalizar(k));
+      const keywordsNorm = keywordsI18n.map((k, i) => ({
+        norm:  normalizar(k),
+        pos:   i,
+        total: keywordsI18n.length,
+      }));
 
-      // Títulos normalizados por separado — señal más directa que textoCapa general.
-      // Desempata capas con keywords genéricos compartidos cuando el usuario describe
-      // el título de una capa específica (ej: "pasos internacionales" → tituloUI de
-      // pasos_frontera_ar pero no de aduana_ar).
       const titulosNorm = [
-        normalizar(capa.tituloUI || ''),
-        normalizar(capa.titulo   || ''),
+        normalizar(tituloUIi18n),
+        normalizar(tituloI18n),
       ];
 
       let score = 0;
       if (textoCapa.includes(textoSinArea)) score += 10;
       for (const token of tokens) {
-        // Singulares candidatos: probar quitando 's' y 'es' por separado.
-        // 'navegables' → ['navegable', 'navegabl'] — solo el primero es válido.
-        // Se prueban ambos y se usa el que matchea, sin asumir cuál es correcto.
         const singulares = [];
-        if (token.endsWith('es') && token.length > 4) singulares.push(token.slice(0, -2)); // quita 'es'
-        if (token.endsWith('s')  && token.length > 3) singulares.push(token.slice(0, -1)); // quita 's'
-        // Filtrar singulares demasiado cortos
+        if (token.endsWith('es') && token.length > 4) singulares.push(token.slice(0, -2));
+        if (token.endsWith('s')  && token.length > 3) singulares.push(token.slice(0, -1));
         const singularesValidos = singulares.filter(s => s.length >= 4);
 
-        // Match en keywords (señal fuerte) → 4 pts
-        const enKeyword = keywordsNorm.some(k =>
-          k === token || singularesValidos.some(s => k === s)
+        const kwMatch = keywordsNorm.find(({ norm }) =>
+          norm === token || singularesValidos.some(s => norm === s)
         );
-        if (enKeyword) {
-          score += 4;
+        if (kwMatch) {
+          score += 4 * posWeight(kwMatch.pos, kwMatch.total) * idf(token);
         } else if (matchPalabraCompleta(textoCapa, token)) {
-          // Match en texto general (título, key) → 2 pts
           score += 2;
         } else if (singularesValidos.some(s => matchPalabraCompleta(textoCapa, s))) {
           score += 2;
         }
 
-        // Boost por match directo en título → +2 pts adicionales
         const enTitulo = titulosNorm.some(t =>
           t === token ||
           matchPalabraCompleta(t, token) ||
@@ -388,9 +435,6 @@ window.INTENT = (() => {
         if (enTitulo) score += 2;
       }
 
-      // Bonus por bigramas: pares de tokens consecutivos que matcheen un keyword
-      // como unidad. Resuelve empates donde un token genérico ("paso") aparece en
-      // varias capas pero la frase completa ("paso internacional") es específica.
       for (let i = 0; i < tokens.length - 1; i++) {
         const bigramaNorm = tokens[i] + ' ' + tokens[i + 1];
         const seg = tokens[i + 1];
@@ -401,12 +445,11 @@ window.INTENT = (() => {
           .filter(s => s.length >= 4)
           .map(s => tokens[i] + ' ' + s);
 
-        const bigramaEnKeyword = keywordsNorm.some(k =>
-          k === bigramaNorm || bigramasSingulares.some(b => k === b)
+        const bkw = keywordsNorm.find(({ norm }) =>
+          norm === bigramaNorm || bigramasSingulares.some(b => norm === b)
         );
-        if (bigramaEnKeyword) score += 3;
+        if (bkw) score += 3 * posWeight(bkw.pos, bkw.total) * idf(bigramaNorm);
 
-        // Bonus por bigrama en título → +2 pts adicionales
         const bigramaEnTitulo = titulosNorm.some(t =>
           t.includes(bigramaNorm) || bigramasSingulares.some(b => t.includes(b))
         );
@@ -421,7 +464,10 @@ window.INTENT = (() => {
       return null;
     }
 
-    const prioridad = (r) => (r.capa.visible !== false ? 2 : 0) + (r.capa.special === false ? 1 : 0);
+    // Desempate: line/polygon > point, luego special:false
+    const GEOM_PRIO = { line: 2, polygon: 1, point: 0 };
+    const prioridad = (r) =>
+      (GEOM_PRIO[r.capa.geomType] ?? 0) + (r.capa.special === false ? 1 : 0);
     resultados.sort((a, b) => b.score !== a.score ? b.score - a.score : prioridad(b) - prioridad(a));
 
     const mejor = resultados[0];
