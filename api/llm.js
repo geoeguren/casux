@@ -23,9 +23,9 @@ const PROVIDER_TIMEOUT_MS = 8000;
 
 const { normalizar, STOPWORDS } = require('./_utils');
 const { checkOrigin } = require('./_cors');
-const { buildSystemPrompt: buildPromptEs } = require('./prompts/es');
-const { buildSystemPrompt: buildPromptEn } = require('./prompts/en');
-const { buildSystemPrompt: buildPromptPt } = require('./prompts/pt');
+const { buildSystemPrompt: buildPromptEs } = require('./prompts/_es');
+const { buildSystemPrompt: buildPromptEn } = require('./prompts/_en');
+const { buildSystemPrompt: buildPromptPt } = require('./prompts/_pt');
 
 function buscarCapasRelevantes(textoUsuario, layers, max = 5, userLang = 'es') {
   const norm = normalizar(textoUsuario);
@@ -175,6 +175,19 @@ async function callGemini(apiKey, systemPrompt, messages) {
   return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
+// ── Mensajes de error i18n ────────────────────────────────────────
+const ERR = {
+  no_keys:       { es: 'No hay API keys configuradas',                                                                         en: 'No API keys configured',                                                                pt: 'Nenhuma chave de API configurada'                                                           },
+  no_messages:   { es: 'Se requiere messages',                                                                                 en: 'messages is required',                                                                  pt: 'messages é obrigatório'                                                                     },
+  non_retriable: { es: t('non_retriable', userLang),                                                  en: 'Could not get a response. Please try again.',                                           pt: 'Não foi possível obter uma resposta. Tente novamente.'                                      },
+  timeout:       { es: 'Los proveedores de IA tardaron demasiado. Intentá de nuevo en unos segundos.',                        en: 'AI providers took too long. Please try again in a few seconds.',                        pt: 'Os provedores de IA demoraram demais. Tente novamente em alguns segundos.'                  },
+  rate_limit:    { es: 'Los proveedores de IA están saturados en este momento. Intentá de nuevo en unos segundos.',           en: 'AI providers are overloaded right now. Please try again in a few seconds.',             pt: 'Os provedores de IA estão sobrecarregados no momento. Tente novamente em alguns segundos.' },
+  no_provider:   { es: 'No se pudo conectar con ningún proveedor de IA. Intentá de nuevo en unos segundos.',                  en: 'Could not connect to any AI provider. Please try again in a few seconds.',              pt: 'Não foi possível conectar a nenhum provedor de IA. Tente novamente em alguns segundos.'    },
+  no_available:  { es: 'No hay proveedores de IA disponibles. Verificá la configuración.',                                    en: 'No AI providers available. Check the configuration.',                                   pt: 'Nenhum provedor de IA disponível. Verifique a configuração.'                               },
+};
+function t(key, lang) { return ERR[key]?.[lang] || ERR[key]?.es || key; }
+
+
 // ── Handler ───────────────────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
@@ -190,11 +203,11 @@ module.exports = async function handler(req, res) {
   const geminiKey     = process.env.GEMINI_API_KEY;
 
   if (!cerebrasKey && !groqKey && !mistralKey && !geminiKey) {
-    return res.status(500).json({ error: 'No hay API keys configuradas' });
+    return res.status(500).json({ error: t('no_keys', 'es') });
   }
 
   const { messages, layers, sources, model, tone, activeMap, userLang } = req.body || {};
-  if (!messages?.length) return res.status(400).json({ error: 'Se requiere messages' });
+  if (!messages?.length) return res.status(400).json({ error: t('no_messages', req.body?.userLang || 'es') });
 
   const textoUsuario    = messages.filter(m => m.role === 'user').map(m => m.content).join(' ');
   const capasRelevantes = buscarCapasRelevantes(textoUsuario, layers || {}, 5, userLang || 'es');
@@ -263,8 +276,7 @@ module.exports = async function handler(req, res) {
       }
       // Error no retriable (400, 401, 500, etc.) — loguear el error técnico y mostrar mensaje genérico al usuario.
       console.error(`[llm] ${p.nombre} error no retriable: ${err.message}`);
-      const userMsg = 'No se pudo obtener una respuesta. Intentá de nuevo.';
-      res.write(`data: ${JSON.stringify({ error: userMsg })}\n\n`);
+      res.write(`data: ${JSON.stringify({ error: t('non_retriable', userLang) })}\n\n`);
       res.end();
       return;
     }
@@ -290,10 +302,10 @@ module.exports = async function handler(req, res) {
       const allTimeout   = providerErrors.every(e => e.err.name === 'TimeoutError' || e.err.name === 'AbortError');
       const allRateLimit = providerErrors.every(e => e.err.rateLimit);
       const finalMsg = allTimeout
-        ? 'Los proveedores de IA tardaron demasiado. Intentá de nuevo en unos segundos.'
+        ? t('timeout', userLang)
         : allRateLimit
-          ? 'Los proveedores de IA están saturados en este momento. Intentá de nuevo en unos segundos.'
-          : 'No se pudo conectar con ningún proveedor de IA. Intentá de nuevo en unos segundos.';
+          ? t('rate_limit', userLang)
+          : t('no_provider', userLang);
       console.error(`[llm] Todos los proveedores fallaron:`, providerErrors.map(e => `${e.nombre}: ${e.err.message}`).join(', '));
       res.write(`data: ${JSON.stringify({ error: finalMsg })}\n\n`);
       res.end();
@@ -305,8 +317,8 @@ module.exports = async function handler(req, res) {
   // enviar un error explícito en lugar de una respuesta vacía silenciosa.
   if (!success) {
     const msg = providerErrors.length
-      ? 'No se pudo conectar con ningún proveedor de IA. Intentá de nuevo en unos segundos.'
-      : 'No hay proveedores de IA disponibles. Verificá la configuración.';
+      ? t('no_provider', userLang)
+      : t('no_available', userLang);
     res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
     res.end();
     return;
