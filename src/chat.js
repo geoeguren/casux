@@ -954,7 +954,7 @@ window.UI = (() => {
     hideThinking();
     thinkingEl = document.createElement('div');
     thinkingEl.className = 'msg thinking';
-    thinkingEl.textContent = 'Trazando...';
+    thinkingEl.textContent = t('map_drawing');
     $msgs()?.appendChild(thinkingEl);
     scrollBottom();
   }
