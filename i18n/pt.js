@@ -297,6 +297,8 @@ window.I18N_PT = {
   basemap_choose:          'Qual mapa de fundo você quer usar?',
   basemap_changed:         'Pronto, mudei o mapa de fundo.',
   map_cleared:             'Pronto, limpei o mapa.',
+  map_card_btn_ver:          'VER',
+  map_card_default_title:    'Mapa',
   layer_already_on_map:      'Essa camada já está no mapa.',
   layer_not_found:           'Essa camada não está no mapa.',
   layer_removed:             'Pronto, removi {titulo}.',
