@@ -296,6 +296,7 @@ window.I18N_PT = {
   export_choose_format:    'Em qual formato você quer exportar?',
   basemap_choose:          'Qual mapa de fundo você quer usar?',
   basemap_changed:         'Pronto, mudei o mapa de fundo.',
+  map_drawing:             'Traçando…',
   map_cleared:             'Pronto, limpei o mapa.',
   map_card_btn_ver:          'VER',
   map_card_default_title:    'Mapa',
