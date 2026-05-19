@@ -1749,13 +1749,11 @@ window.EXPORT_CANVAS = (() => {
   // ── Miniatura para el modal de salida gráfica ────────────────
   // Dibuja un canvas pequeño (proporciones A4) con el color de fondo
   // del basemap seleccionado y las capas vectoriales activas.
-  // Limita a MAX_FEATURES features por capa para mantener la operación ligera.
   // Dibuja la miniatura del modal: mapa base real + capas vectoriales.
   // El canvas interno es 210×297 (A4) pero se renderiza pequeño via CSS.
   // Si basemap == basemap activo → captura tiles del DOM (instantáneo).
   // Si basemap difiere → descarga tiles por URL (red, cacheado).
   async function drawMiniPreview(canvas, activeLayers, basemap) {
-    const MAX_FEATURES = 2000;
     const ctx = canvas.getContext('2d');
     const w   = canvas.width;
     const h   = canvas.height;
@@ -1811,17 +1809,46 @@ window.EXPORT_CANVAS = (() => {
     ctx.clip();
 
     for (const layer of [...byGeom.polygon, ...byGeom.line, ...byGeom.point]) {
-      const features = (layer.geojson?.features || []).slice(0, MAX_FEATURES);
-      const cl = layer.classification;
+      const features = layer.geojson?.features || [];
+      const cl       = layer.classification;
+      const geomType = layer.geomType || 'polygon';
+
       for (const feat of features) {
         const baseStyle = window.EXPORT_UTILS.resolveFeatureStyle(feat, layer, cl);
         if (!baseStyle) continue;
+
         const style = {
           ...baseStyle,
           weight: Math.max(0.3, (baseStyle.weight ?? 1.5) * SCALE),
           radius: Math.max(1,   (baseStyle.radius ?? 5)   * SCALE * 1.5),
         };
-        _drawFeature(ctx, feat, layer.geomType, style, proj.lngToX, proj.latToY, w, h);
+
+        // Polígonos: saltear si proyectados ocupan menos de 1px² en la miniatura
+        if (geomType === 'polygon') {
+          const coords = _flatCoords(feat.geometry);
+          if (coords.length >= 2) {
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            for (const [lng, lat] of coords) {
+              const px = proj.lngToX(lng), py = proj.latToY(lat);
+              if (px < minX) minX = px; if (px > maxX) maxX = px;
+              if (py < minY) minY = py; if (py > maxY) maxY = py;
+            }
+            if ((maxX - minX) * (maxY - minY) < 1) continue;
+          }
+        }
+
+        // Líneas: saltear si el segmento completo es subpíxel
+        if (geomType === 'line') {
+          const coords = _flatCoords(feat.geometry);
+          if (coords.length >= 2) {
+            const x0 = proj.lngToX(coords[0][0]), y0 = proj.latToY(coords[0][1]);
+            const x1 = proj.lngToX(coords[coords.length-1][0]), y1 = proj.latToY(coords[coords.length-1][1]);
+            if (Math.abs(x1 - x0) < 0.5 && Math.abs(y1 - y0) < 0.5) continue;
+          }
+        }
+
+        // Puntos: sin límite — un arc() por punto es trivial incluso con miles
+        _drawFeature(ctx, feat, geomType, style, proj.lngToX, proj.latToY, w, h);
       }
     }
     ctx.restore();
