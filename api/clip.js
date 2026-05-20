@@ -26,9 +26,9 @@
  * bboxClip — más robusto con MultiLineString en módulos individuales.
  */
 
-const { fetchWFS }        = require('./_wfs');
-const { checkOrigin }     = require('./_cors');
-const { normalizarMascara } = require('./_geo');
+const { fetchWFS }                                      = require('./_wfs');
+const { checkOrigin }                                   = require('./_cors');
+const { normalizarMascara, areaRing, areaFeature }      = require('./_geo');
 
 const { booleanPointInPolygon, bbox, intersect, lineSplit } = require('./_turf');
 
@@ -36,39 +36,6 @@ const { booleanPointInPolygon, bbox, intersect, lineSplit } = require('./_turf')
 // la intersección debe representar al menos este porcentaje del área original.
 // Evita incluir polígonos de provincias limítrofes que apenas rozan el límite.
 const OVERLAP_POLYGON_MIN = 0.05;
-
-/**
- * Área aproximada de un anillo de coordenadas [lng, lat] en m²,
- * usando la fórmula de Gauss en proyección esférica (shoelace).
- * Suficientemente precisa para comparación relativa de overlap.
- */
-function areaRing(coords) {
-  const R = 6371000;
-  let area = 0;
-  for (let i = 0; i < coords.length - 1; i++) {
-    const [lng1, lat1] = coords[i];
-    const [lng2, lat2] = coords[i + 1];
-    area += (lng2 - lng1) * Math.PI / 180 * R * R *
-            Math.sin((lat1 + lat2) / 2 * Math.PI / 180);
-  }
-  return Math.abs(area);
-}
-
-/**
- * Área total de un Feature Polygon o MultiPolygon en m².
- * Solo usa el anillo exterior de cada parte (suficiente para overlap relativo).
- */
-function areaFeature(feat) {
-  const geom = feat.geometry;
-  if (!geom) return 0;
-  if (geom.type === 'Polygon') {
-    return areaRing(geom.coordinates[0]);
-  }
-  if (geom.type === 'MultiPolygon') {
-    return geom.coordinates.reduce((sum, part) => sum + areaRing(part[0]), 0);
-  }
-  return 0;
-}
 
 // Umbral para descartar fragmentos satelitales en un MultiPolygon resultado:
 // sub-polígonos menores a este porcentaje del sub-polígono más grande se eliminan.
@@ -84,7 +51,7 @@ function limpiarFragmentos(feat) {
   const partes = feat.geometry.coordinates;
   if (partes.length <= 1) return feat;
 
-  const areas = partes.map(coords => areaRing(coords[0]));
+  const areas   = partes.map(coords => areaRing(coords[0]));
   const maxArea = Math.max(...areas);
 
   const filtradas = partes.filter((_, i) => areas[i] >= maxArea * FRAGMENT_MIN_RATIO);
