@@ -410,6 +410,7 @@ body.day .summary-chip.soon-chip.active { color: #7a5c00; }
   flex-shrink: 0;
 }
 body.day .layer-count { color: #9a9590; }
+body.day .layer-count-restricted { color: #e57373; }
 
 /* Capas restringidas — superan window.CLIP_THRESHOLDS.display */
 .layer-row-restricted {
@@ -418,7 +419,8 @@ body.day .layer-count { color: #9a9590; }
 .layer-name-restricted  { color: #e57373; }
 .layer-key-restricted   { color: #e57373; opacity: 0.7; }
 .layer-geom-restricted .material-icons { color: #e57373; }
-.layer-count-restricted { color: #e57373; opacity: 1; }
+.layer-count-restricted { color: #e57373; }
+body.day .layer-count-restricted { color: #e57373; }
 .layer-restricted-icon {
   font-size: 14px;
   color: #e57373;
