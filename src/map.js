@@ -1025,12 +1025,13 @@ window.MAP = (() => {
     if (_popupFieldPrefs[layerKey]) {
       return allFields.filter(k => _popupFieldPrefs[layerKey].has(k));
     }
-    // Fuente de verdad: attributes con visible: true en la definición de la capa
+    // Fuente de verdad: los dos primeros attributes con visible: true.
+    // El usuario puede expandir con "Más campos".
     const layerDef = window.LAYERS?.[layerKey] || {};
     const attrs    = layerDef.attributes || [];
     if (attrs.length) {
       const visibleSet = new Set(
-        attrs.filter(a => a.visible !== false).map(a => a.campo)
+        attrs.filter(a => a.visible !== false).slice(0, 2).map(a => a.campo)
       );
       const fromAttrs = allFields.filter(k => visibleSet.has(k));
       if (fromAttrs.length) return fromAttrs;
