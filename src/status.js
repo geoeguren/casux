@@ -7,21 +7,16 @@
  */
 
 // ── Países ─────────────────────────────────────────────────────────
+// Leído de window.COUNTRIES (layers/countries.js — fuente de verdad única).
+// Los labels se resuelven desde i18n (keys: country_ar, country_uy, etc.)
 
-const COUNTRIES = [
-  { code: 'ar', label: 'Argentina', state: 'active'   },
-  { code: 'bo', label: 'Bolivia',   state: 'inactive'  },
-  { code: 'br', label: 'Brasil',    state: 'inactive'  },
-  { code: 'cl', label: 'Chile',     state: 'soon'      },
-  { code: 'co', label: 'Colombia',  state: 'inactive'  },
-  { code: 'ec', label: 'Ecuador',   state: 'inactive'  },
-  { code: 'gy', label: 'Guyana',    state: 'inactive'  },
-  { code: 'py', label: 'Paraguay',  state: 'inactive'  },
-  { code: 'pe', label: 'Perú',      state: 'inactive'  },
-  { code: 'sr', label: 'Surinam',   state: 'inactive'  },
-  { code: 'uy', label: 'Uruguay',   state: 'active'    },
-  { code: 've', label: 'Venezuela', state: 'inactive'  },
-];
+function getCountries() {
+  return (window.COUNTRIES || []).map(c => ({
+    code:  c.code,
+    label: window.I18N?.t?.('country_' + c.code) || c.code.toUpperCase(),
+    state: c.status || 'inactive',
+  }));
+}
 
 // ── Idioma ─────────────────────────────────────────────────────────
 
@@ -373,7 +368,7 @@ function initStatus() {
   searchIndex                   = buildSearchIndex(layersBySource);
 
   document.getElementById('country-list').innerHTML =
-    COUNTRIES.map(c => renderCountryBlock(c, layersBySource)).join('');
+    getCountries().map(c => renderCountryBlock(c, layersBySource)).join('');
 
   document.getElementById('global-search')
     .addEventListener('input', e => onGlobalSearch(e.target.value));
