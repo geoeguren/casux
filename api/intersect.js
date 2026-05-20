@@ -25,9 +25,9 @@
  * aparezcan en el resultado.
  */
 
-const { fetchWFS }          = require('./_wfs');
-const { checkOrigin }       = require('./_cors');
-const { normalizarMascara } = require('./_geo');
+const { fetchWFS }                              = require('./_wfs');
+const { checkOrigin }                           = require('./_cors');
+const { normalizarMascara, areaGeometria }      = require('./_geo');
 const { booleanPointInPolygon, bbox, intersect } = require('./_turf');
 
 // Umbrales de overlap minimo
@@ -61,33 +61,6 @@ function longitudRing(coords) {
   let total = 0;
   for (let i = 1; i < coords.length; i++) total += haversine(coords[i - 1], coords[i]);
   return total;
-}
-
-/**
- * Area aproximada de un poligono (coordenadas [lng, lat]) en m2
- * usando la formula de Gauss en la proyeccion esferica (shoelace).
- * Suficientemente precisa para la comparacion relativa de overlap.
- */
-function areaRing(coords) {
-  const R = 6371000;
-  let area = 0;
-  for (let i = 0; i < coords.length - 1; i++) {
-    const [lng1, lat1] = coords[i];
-    const [lng2, lat2] = coords[i + 1];
-    area += (lng2 - lng1) * Math.PI / 180 * (2 + Math.sin(lat1 * Math.PI / 180) + Math.sin(lat2 * Math.PI / 180));
-  }
-  return Math.abs(area) * R * R / 2;
-}
-
-function areaGeometria(geom) {
-  if (!geom) return 0;
-  if (geom.type === 'Polygon') {
-    return areaRing(geom.coordinates[0] || []);
-  }
-  if (geom.type === 'MultiPolygon') {
-    return geom.coordinates.reduce((sum, poly) => sum + areaRing(poly[0] || []), 0);
-  }
-  return 0;
 }
 
 /**
