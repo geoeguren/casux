@@ -103,9 +103,10 @@ function getLayersBySource() {
     if (!layer.source) continue;
     if (!result[layer.source]) result[layer.source] = [];
     result[layer.source].push({
-      titulo:   layerTitle(layer),
-      typename: layer.typename || '',
-      geomType: layer.geomType || 'polygon',
+      titulo:       layerTitle(layer),
+      typename:     layer.typename || '',
+      geomType:     layer.geomType || 'polygon',
+      featureCount: layer.featureCount ?? null,
     });
   }
   for (const key of Object.keys(result)) {
@@ -295,13 +296,17 @@ function geomIconHTML(type) {
 }
 
 function renderLayerRow(l) {
+  const count = l.featureCount != null
+    ? `<span class="layer-count">${l.featureCount.toLocaleString()}</span>`
+    : '';
   return `
     <div class="layer-row" data-typename="${l.typename}">
+      <div class="layer-geom">${geomIconHTML(l.geomType)}</div>
       <div class="layer-text">
         <span class="layer-name">${l.titulo}</span>
         <span class="layer-key">${l.typename}</span>
       </div>
-      <div class="layer-geom">${geomIconHTML(l.geomType)}</div>
+      ${count}
     </div>
   `;
 }
