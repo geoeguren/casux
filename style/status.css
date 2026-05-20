@@ -452,11 +452,7 @@ body.day .summary-chip.err.active { color: #8b1520; }
 }
 body.day .summary-chip.soon-chip.active { color: #7a5c00; }
 
-/* Pill 'todos' activo */
-.summary-chip.info.active {
-  background: var(--cream3);
-  border-color: var(--border-md);
-}
+/* Pill 'todos' activo — removed */
 
 .service-toggle { color: var(--cream2); transition: transform .2s; flex-shrink: 0; }
 .service-toggle .material-icons { font-size: 18px; }
@@ -471,13 +467,16 @@ body.day .summary-chip.soon-chip.active { color: #7a5c00; }
 }
 .service-card.open .layers-panel { display: block; }
 
+.layers-grid-scroll {
+  max-height: 320px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 .layers-grid {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  max-height: 320px;
-  overflow-y: auto;
-  overflow-x: hidden;
 }
 
 .layer-row {
@@ -531,31 +530,20 @@ body.day .summary-chip.soon-chip.active { color: #7a5c00; }
 }
 body.day .layer-count { color: #9a9590; }
 
-.layers-empty { font-size: 13px; color: var(--cream2); padding: 10px 0; text-align: center; }
-
-/* ── Tooltips ─────────────────────────────────── */
-/* z-index alto para que queden por encima de todo */
-
-[data-tooltip] { position: relative; }
-[data-tooltip]::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: #1a1a1a;
-  color: #fff;
-  font-family: var(--font-sans);
-  font-size: 11px;
-  padding: 4px 8px;
-  border-radius: 5px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity .12s ease;
-  z-index: 9999;
+/* Capas restringidas — superan window.CLIP_THRESHOLDS.display */
+.layer-row-restricted {
+  opacity: 0.75;
 }
-[data-tooltip]:hover::after { opacity: 1; }
+.layer-name-restricted { color: #e57373; }
+.layer-count-restricted { color: #e57373; opacity: 1; }
+.layer-restricted-icon {
+  font-size: 14px;
+  color: #e57373;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.layers-empty { font-size: 13px; color: var(--cream2); padding: 10px 0; text-align: center; }
 
 /* ── Responsive ───────────────────────────────── */
 
