@@ -2,10 +2,67 @@
  * src/status.js — Página de estado de geoservicios
  */
 
+// ── Strings i18n ───────────────────────────────────────────────────
+
+const UI = {
+  es: {
+    pageTitle:    'Estado de geoservicios',
+    pageSubtitle: 'Fuentes de los datos geoespaciales conectados a Casux en tiempo real.',
+    tabTitle:     'Casux — Estado de geoservicios',
+    backLabel:    'Volver al chat',
+    refreshBtn:   'Actualizar',
+    searchPlaceholder: 'Buscar capas…',
+    themeToggleTitle:  'Cambiar tema',
+    totalServices: 'servicios',
+    soon:          'próximamente',
+    online:        'en línea',
+    offline:       'sin respuesta',
+    checking:      'verificando…',
+    layers:        'capas',
+    noResults:     'Sin resultados',
+  },
+  en: {
+    pageTitle:    'Geoservice status',
+    pageSubtitle: 'Geospatial data sources connected to Casux in real time.',
+    tabTitle:     'Casux — Geoservice status',
+    backLabel:    'Back to chat',
+    refreshBtn:   'Refresh',
+    searchPlaceholder: 'Search layers…',
+    themeToggleTitle:  'Toggle theme',
+    totalServices: 'services',
+    soon:          'coming soon',
+    online:        'online',
+    offline:       'no response',
+    checking:      'checking…',
+    layers:        'layers',
+    noResults:     'No results',
+  },
+  pt: {
+    pageTitle:    'Estado dos geoserviços',
+    pageSubtitle: 'Fontes dos dados geoespaciais conectados ao Casux em tempo real.',
+    tabTitle:     'Casux — Estado dos geoserviços',
+    backLabel:    'Voltar ao chat',
+    refreshBtn:   'Atualizar',
+    searchPlaceholder: 'Buscar camadas…',
+    themeToggleTitle:  'Alternar tema',
+    totalServices: 'serviços',
+    soon:          'em breve',
+    online:        'on-line',
+    offline:       'sem resposta',
+    checking:      'verificando…',
+    layers:        'camadas',
+    noResults:     'Sem resultados',
+  },
+};
+
 // ── Idioma ─────────────────────────────────────────────────────────
 
 function getLang() {
   return window.I18N?.getLang?.() || window.SETTINGS?.get?.('lang') || 'es';
+}
+
+function ui(key) {
+  return (UI[getLang()] || UI.es)[key] || key;
 }
 
 function layerTitle(layer) {
@@ -16,13 +73,12 @@ function layerTitle(layer) {
 }
 
 function geomTooltip(type) {
-  const lang = getLang();
   const map = {
     es: { polygon: 'Polígono', line: 'Línea',  point: 'Punto' },
     en: { polygon: 'Polygon',  line: 'Line',   point: 'Point' },
     pt: { polygon: 'Polígono', line: 'Linha',  point: 'Ponto' },
   };
-  return (map[lang] || map.es)[type] || type;
+  return (map[getLang()] || map.es)[type] || type;
 }
 
 // ── Países ─────────────────────────────────────────────────────────
@@ -71,12 +127,21 @@ function buildSearchIndex(layersBySource) {
 }
 
 // ── Estado de filtro ───────────────────────────────────────────────
+// null = sin filtro | 'ok' = en línea | 'error' = sin respuesta | 'soon' = próximamente
 
 let activeFilter = null;
 
 // ── Health checks ──────────────────────────────────────────────────
 
 const healthState = {};
+
+// Países con state='soon' — sus servicios se muestran en amarillo independientemente del estado real
+function isSoonCountry(sourceKey) {
+  const src = window.SOURCES?.[sourceKey];
+  if (!src) return false;
+  const country = (window.COUNTRIES || []).find(c => c.code === src.country);
+  return country?.status === 'soon';
+}
 
 function buildCheckUrl(sourceKey) {
   const src = window.SOURCES?.[sourceKey];
@@ -106,16 +171,21 @@ function setStatus(sourceKey, status) {
 
   const dot = document.querySelector(`.service-card[data-source="${sourceKey}"] .service-status-dot`);
   const lbl = document.querySelector(`.service-card[data-source="${sourceKey}"] .service-status-label`);
-  if (dot) dot.className = 'service-status-dot ' + status;
+
+  // Servicios de países 'soon': siempre muestran amarillo, independientemente del estado real
+  const soon = isSoonCountry(sourceKey);
+
+  if (dot) {
+    dot.className = soon ? 'service-status-dot soon' : 'service-status-dot ' + status;
+  }
   if (lbl) {
-    const lang = getLang();
-    const labels = {
-      es: { checking: 'verificando…', ok: 'en línea',    error: 'sin respuesta' },
-      en: { checking: 'checking…',    ok: 'online',       error: 'no response'   },
-      pt: { checking: 'verificando…', ok: 'on-line',      error: 'sem resposta'  },
-    };
-    lbl.className   = 'service-status-label ' + status;
-    lbl.textContent = (labels[lang] || labels.es)[status];
+    const text = {
+      checking: ui('checking'),
+      ok:       ui('online'),
+      error:    ui('offline'),
+    }[status] || status;
+    lbl.className   = soon ? 'service-status-label soon' : 'service-status-label ' + status;
+    lbl.textContent = text;
   }
 
   applyFilter(activeFilter);
@@ -127,53 +197,70 @@ function setStatus(sourceKey, status) {
 function applyFilter(filter) {
   activeFilter = filter;
 
-  // Iterar TODOS los country-blocks
   document.querySelectorAll('.country-block').forEach(block => {
-    // Los inactive/soon sin servicios: siempre ocultar si hay filtro activo
-    if (block.classList.contains('country-inactive')) {
-      block.style.display = filter ? 'none' : '';
-      return;
-    }
-    if (block.classList.contains('country-soon-block')) {
-      // soon puede tener servicios — misma lógica que active
-    }
+    const code    = block.dataset.country;
+    const country = (window.COUNTRIES || []).find(c => c.code === code);
+    const state   = country?.status || 'inactive';
+    const cards   = block.querySelectorAll('.service-card');
 
-    const cards = block.querySelectorAll('.service-card');
+    // Sin servicios: mostrar solo cuando no hay filtro activo (o filtro 'soon' para soon)
     if (!cards.length) {
-      // soon sin servicios
-      block.style.display = filter ? 'none' : '';
+      if (!filter) {
+        block.style.display = '';
+      } else if (filter === 'soon' && state === 'soon') {
+        block.style.display = '';
+      } else {
+        block.style.display = 'none';
+      }
       return;
     }
 
+    // Filtro 'soon': mostrar solo bloques de países soon
+    if (filter === 'soon') {
+      block.style.display = state === 'soon' ? '' : 'none';
+      cards.forEach(card => { card.style.display = ''; });
+      return;
+    }
+
+    // Filtros 'ok' / 'error': excluir completamente bloques soon
+    if (filter && state === 'soon') {
+      block.style.display = 'none';
+      return;
+    }
+
+    // Sin filtro: mostrar todo
+    if (!filter) {
+      block.style.display = '';
+      cards.forEach(card => { card.style.display = ''; });
+      return;
+    }
+
+    // Filtro ok/error sobre bloques normales
     let visibleCount = 0;
     cards.forEach(card => {
-      const key    = card.dataset.source;
-      const status = healthState[key];
-      const show   = !filter || status === filter;
+      const s    = healthState[card.dataset.source];
+      const show = s === filter;
       card.style.display = show ? '' : 'none';
       if (show) visibleCount++;
     });
-
-    block.style.display = filter && visibleCount === 0 ? 'none' : '';
+    block.style.display = visibleCount === 0 ? 'none' : '';
   });
 
   updateSummary();
 }
 
 function updateSummary() {
-  const counts = { ok: 0, error: 0, checking: 0 };
-  for (const v of Object.values(healthState)) counts[v] = (counts[v] || 0) + 1;
+  // Contar solo servicios de países no-soon
+  let okCount = 0, errCount = 0, checkCount = 0, soonCount = 0;
+  for (const [key, status] of Object.entries(healthState)) {
+    if (isSoonCountry(key)) { soonCount++; continue; }
+    if (status === 'ok')       okCount++;
+    else if (status === 'error') errCount++;
+    else                         checkCount++;
+  }
 
   const totalSources = Object.keys(window.SOURCES || {}).length;
   const totalLayers  = Object.values(window._STATUS_LAYERS || {}).flat().length;
-  const lang         = getLang();
-
-  const labels = {
-    es: { total: 'servicios', layers: 'capas',   online: 'en línea',   offline: 'sin respuesta' },
-    en: { total: 'services',  layers: 'layers',  online: 'online',     offline: 'no response'   },
-    pt: { total: 'serviços',  layers: 'camadas', online: 'on-line',    offline: 'sem resposta'  },
-  };
-  const l = labels[lang] || labels.es;
 
   const mkChip = (cls, filter, count, text) => {
     const isActive = activeFilter === filter ? ' active' : '';
@@ -183,12 +270,13 @@ function updateSummary() {
   };
 
   document.getElementById('summary-bar').innerHTML = `
-    <div class="summary-chip info">
-      <span class="dot"></span>${totalSources} ${l.total} &middot; ${totalLayers} ${l.layers}
-    </div>
-    ${mkChip('ok',  'ok',    counts.ok    || 0, l.online)}
-    ${mkChip('err', 'error', counts.error || 0, l.offline)}
-    ${counts.checking ? `<div class="summary-chip pend"><span class="dot"></span>${counts.checking} …</div>` : ''}
+    <button class="summary-chip info${activeFilter === null ? ' active' : ''}" onclick="toggleFilter(null)">
+      <span class="dot"></span>${totalSources} ${ui('totalServices')}
+    </button>
+    ${mkChip('ok',   'ok',    okCount,   ui('online'))}
+    ${mkChip('err',  'error', errCount,  ui('offline'))}
+    ${soonCount ? mkChip('soon-chip', 'soon', soonCount, ui('soon')) : ''}
+    ${checkCount ? `<div class="summary-chip pend"><span class="dot"></span>${checkCount} …</div>` : ''}
   `;
 }
 
@@ -230,13 +318,11 @@ let searchIndex = [];
 function onGlobalSearch(value) {
   const q         = value.trim().toLowerCase();
   const resultsEl = document.getElementById('global-search-results');
-
   if (!q) {
     resultsEl.classList.remove('visible');
     resultsEl.innerHTML = '';
     return;
   }
-
   const matches = searchIndex
     .filter(l => l.titulo.toLowerCase().includes(q) || l.typename.toLowerCase().includes(q))
     .sort((a, b) => a.titulo.localeCompare(b.titulo, getLang()));
@@ -252,7 +338,7 @@ function onGlobalSearch(value) {
           <div class="search-geom-icon">${geomIconHTML(l.geomType)}</div>
         </div>
       `).join('')
-    : `<p class="search-no-results">—</p>`;
+    : `<p class="search-no-results">${ui('noResults')}</p>`;
 
   resultsEl.classList.add('visible');
 }
@@ -260,90 +346,77 @@ function onGlobalSearch(value) {
 // ── Render cards ───────────────────────────────────────────────────
 
 function renderServiceCard(sourceKey, layersBySource) {
-  const src    = window.SOURCES?.[sourceKey];
+  const src  = window.SOURCES?.[sourceKey];
   if (!src) return '';
   const layers = layersBySource[sourceKey] || [];
   const tipo   = src.wfsBase ? 'wfs' : 'rest';
+  const soon   = isSoonCountry(sourceKey);
 
   return `
     <div class="service-card" data-source="${sourceKey}">
       <div class="service-header" onclick="toggleService('${sourceKey}')">
-        <span class="service-status-dot checking"></span>
+        <span class="service-status-dot ${soon ? 'soon' : 'checking'}"></span>
         <div class="service-info">
           <div class="service-name">${src.label} <span class="badge">${tipo}</span></div>
-          <div class="service-layer-count">${layers.length} capas</div>
+          <div class="service-layer-count">${layers.length} ${ui('layers')}</div>
         </div>
-        <span class="service-status-label checking">verificando…</span>
+        <span class="service-status-label ${soon ? 'soon' : 'checking'}">${ui('checking')}</span>
         <span class="service-toggle"><span class="material-icons">expand_more</span></span>
       </div>
       <div class="layers-panel">
-        <div class="layers-grid">
-          ${renderLayers(layers)}
-        </div>
+        <div class="layers-grid">${renderLayers(layers)}</div>
       </div>
     </div>
   `;
 }
 
-// Render country block — active, soon y inactive comparten lógica de servicios
 function renderCountryBlock(country, layersBySource) {
   const { code, label, state } = country;
-  const badges = window.COUNTRIES_LABELS?.[getLang()] || window.COUNTRIES_LABELS?.es;
+  const badges    = window.COUNTRIES_LABELS?.[getLang()] || window.COUNTRIES_LABELS?.es;
+  const sources   = Object.keys(window.SOURCES || {}).filter(k => window.SOURCES[k].country === code);
+  const hasSources = sources.length > 0;
 
-  // Inactive sin servicios: solo header gris, no desplegable
-  if (state === 'inactive') {
-    const countrySources = Object.keys(window.SOURCES || {})
-      .filter(k => window.SOURCES[k].country === code);
+  // Determinar clases CSS y badge
+  let blockClass, headerClass, badgeHTML, clickable;
 
-    if (!countrySources.length) {
-      return `
-        <div class="country-block country-inactive" data-country="${code}">
-          <div class="country-header inactive">
-            <span class="country-name">${label}</span>
-          </div>
-        </div>
-      `;
-    }
-    // Inactive con servicios: misma estructura que active pero con estilo gris
+  if (state === 'active') {
+    blockClass  = 'country-active';
+    headerClass = '';
+    badgeHTML   = `<span class="country-active-label">${badges.active}</span>`;
+    clickable   = true;
+  } else if (state === 'soon') {
+    blockClass  = 'country-soon-block';
+    headerClass = hasSources ? '' : 'country-header-soon';
+    badgeHTML   = `<span class="country-soon">${badges.soon}</span>`;
+    clickable   = hasSources;
+  } else {
+    // inactive
+    blockClass  = 'country-inactive';
+    headerClass = hasSources ? '' : 'inactive';
+    badgeHTML   = '';
+    clickable   = hasSources;
   }
 
-  const countrySources = Object.keys(window.SOURCES || {})
-    .filter(k => window.SOURCES[k].country === code);
-
-  // Sin servicios y no active: solo header
-  if (!countrySources.length) {
-    const headerClass = state === 'soon' ? 'country-header country-header-soon' : 'country-header inactive';
-    const blockClass  = state === 'soon' ? 'country-soon-block' : 'country-inactive';
-    const badge       = state === 'soon' ? `<span class="country-soon">${badges.soon}</span>` : '';
+  if (!hasSources) {
     return `
       <div class="country-block ${blockClass}" data-country="${code}">
-        <div class="${headerClass}" ${state !== 'soon' ? 'style="opacity:.4;cursor:default;pointer-events:none"' : ''}>
+        <div class="country-header ${headerClass}">
           <span class="country-name">${label}</span>
-          ${badge}
+          ${badgeHTML}
         </div>
       </div>
     `;
   }
 
-  // Con servicios: desplegable, color según state
-  const blockClass  = state === 'active' ? 'country-active'
-                    : state === 'soon'   ? 'country-soon-block'
-                    : 'country-inactive-has-services';
-
-  const badgeHTML = state === 'active' ? `<span class="country-active-label">${badges.active}</span>`
-                  : state === 'soon'   ? `<span class="country-soon">${badges.soon}</span>`
-                  : '';
-
   return `
     <div class="country-block ${blockClass}" data-country="${code}">
-      <div class="country-header ${state !== 'active' && state !== 'soon' ? 'country-header-inactive-services' : ''}"
-           onclick="toggleCountry('${code}')">
+      <div class="country-header" onclick="toggleCountry('${code}')">
         <span class="country-name">${label}</span>
         ${badgeHTML}
         <span class="country-toggle"><span class="material-icons">expand_more</span></span>
       </div>
       <div class="services-list">
-        ${countrySources.map(k => renderServiceCard(k, layersBySource)).join('')}
+        ${sources.map(k => renderServiceCard(k, layersBySource)).join('')}
       </div>
     </div>
   `;
@@ -358,8 +431,6 @@ function toggleCountry(code) {
 function toggleService(sourceKey) {
   document.querySelector(`.service-card[data-source="${sourceKey}"]`).classList.toggle('open');
 }
-
-// ── Theme toggle (transitorio para testing) ────────────────────────
 
 function toggleTheme() {
   document.body.classList.toggle('day');
@@ -376,9 +447,25 @@ function runHealthChecks() {
   Promise.allSettled(checks).then(() => btn.classList.remove('spinning'));
 }
 
+// ── Aplicar i18n al HTML estático ──────────────────────────────────
+
+function applyStaticI18n() {
+  const lang = getLang();
+  document.title                                         = ui('tabTitle');
+  document.getElementById('page-title').textContent     = ui('pageTitle');
+  document.getElementById('page-subtitle').textContent  = ui('pageSubtitle');
+  document.getElementById('back-label').textContent     = ui('backLabel');
+  document.getElementById('btn-refresh-label').textContent = ui('refreshBtn');
+  document.getElementById('global-search').placeholder  = ui('searchPlaceholder');
+  document.getElementById('theme-toggle-btn').title     = ui('themeToggleTitle');
+  document.documentElement.lang = lang;
+}
+
 // ── Init ───────────────────────────────────────────────────────────
 
 function initStatus() {
+  applyStaticI18n();
+
   const layersBySource  = getLayersBySource();
   window._STATUS_LAYERS = layersBySource;
   searchIndex           = buildSearchIndex(layersBySource);
