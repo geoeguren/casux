@@ -26,3 +26,10 @@ window.COUNTRIES = [
   { code: 'uy', status: 'active', es: 'Uruguay',   en: 'Uruguay',    pt: 'Uruguai'    },
   { code: 've', status:  null,    es: 'Venezuela', en: 'Venezuela',  pt: 'Venezuela'  },
 ];
+
+// Labels por idioma para los badges de estado — igual que landing.js
+window.COUNTRIES_LABELS = {
+  es: { active: 'Disponible',  soon: 'Próximamente' },
+  en: { active: 'Available',   soon: 'Coming soon'  },
+  pt: { active: 'Disponível',  soon: 'Em breve'     },
+};
