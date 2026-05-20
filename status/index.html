@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Casux — Estado de servicios</title>
+  <meta name="description" content="Estado de los servicios de datos geoespaciales conectados a Casux."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=Fraunces:opsz,wght@9..144,300;9..144,500&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+  <link rel="stylesheet" href="../style/status.css"/>
+</head>
+<body>
+
+<div class="page">
+
+  <a href="/chat" class="back-link">
+    <span class="material-icons">arrow_back</span>
+    Volver al chat
+  </a>
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Estado de servicios</h1>
+      <p class="page-subtitle">Fuentes de datos geoespaciales conectadas a Casux</p>
+    </div>
+    <button class="refresh-btn" id="btn-refresh">
+      <span class="material-icons">refresh</span>
+      Verificar
+    </button>
+  </div>
+
+  <div class="global-search-wrap">
+    <div class="global-search-box">
+      <span class="material-icons global-search-icon">search</span>
+      <input
+        class="global-search"
+        id="global-search"
+        type="text"
+        placeholder="Buscar capas…"
+        autocomplete="off"
+      />
+    </div>
+    <div class="global-search-results" id="global-search-results"></div>
+  </div>
+
+  <div class="summary-bar" id="summary-bar"></div>
+  <div class="country-list" id="country-list"></div>
+
+</div>
+
+<script src="../src/status.js"></script>
+</body>
+</html>
