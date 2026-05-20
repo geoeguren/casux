@@ -69,7 +69,7 @@ const SOURCES_DATA = {
              'aeropuerto', 'puerto', 'zona franca'],
   },
 
-  pnme_ar: {
+  se_ar: {
     label:        'Secretaría de Educación',
     country:      'ar',
     countryLabel: 'Argentina',
