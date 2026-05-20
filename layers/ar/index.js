@@ -9,10 +9,10 @@
  */
 
 import { IGN_AR }  from './ign.js';
-import { PNME_AR } from './pnme.js';
+import { SE_AR } from './se.js';
 
 export const AR_LAYERS = {
   ...IGN_AR,
-  ...PNME_AR,
+  ...SE_AR,
   // Futuro: ...INDEC_AR, ...INTA_AR
 };
