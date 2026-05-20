@@ -97,16 +97,19 @@ function getCountries() {
 function getLayersBySource() {
   const result = {};
   if (!window.LAYERS) return result;
+  const displayThreshold = window.CLIP_THRESHOLDS?.display ?? 55000;
   for (const [, layer] of Object.entries(window.LAYERS)) {
     if (layer.special !== false) continue;
     if (layer.visible === false) continue;
     if (!layer.source) continue;
     if (!result[layer.source]) result[layer.source] = [];
+    const fc = layer.featureCount ?? null;
     result[layer.source].push({
       titulo:       layerTitle(layer),
       typename:     layer.typename || '',
       geomType:     layer.geomType || 'polygon',
-      featureCount: layer.featureCount ?? null,
+      featureCount: fc,
+      restricted:   fc != null && fc > displayThreshold,
       keywordsEs:   layer.keywordsEs || [],
       keywordsEn:   layer.keywordsEn || [],
       keywordsPt:   layer.keywordsPt || [],
@@ -131,9 +134,10 @@ function buildSearchIndex(layersBySource) {
 }
 
 // ── Estado de filtro ───────────────────────────────────────────────
-// null = sin filtro | 'ok' = en línea | 'error' = sin respuesta | 'soon' = próximamente
+// Set de filtros activos: 'ok' | 'error' | 'soon'
+// Set vacío = sin filtro (mostrar todo)
 
-let activeFilter = null;
+const activeFilters = new Set();
 
 // ── Health checks ──────────────────────────────────────────────────
 
@@ -192,58 +196,48 @@ function setStatus(sourceKey, status) {
     lbl.textContent = text;
   }
 
-  applyFilter(activeFilter);
+  applyFilters();
   updateSummary();
 }
 
-// ── Filtro ─────────────────────────────────────────────────────────
+// ── Filtros ────────────────────────────────────────────────────────
 
-function applyFilter(filter) {
-  activeFilter = filter;
+function applyFilters() {
+  const none = activeFilters.size === 0;
 
   document.querySelectorAll('.country-block').forEach(block => {
     const code    = block.dataset.country;
     const country = (window.COUNTRIES || []).find(c => c.code === code);
     const state   = country?.status || 'inactive';
+    const isSoon  = state === 'soon';
     const cards   = block.querySelectorAll('.service-card');
 
-    // Sin servicios: mostrar solo cuando no hay filtro activo (o filtro 'soon' para soon)
-    if (!cards.length) {
-      if (!filter) {
-        block.style.display = '';
-      } else if (filter === 'soon' && state === 'soon') {
-        block.style.display = '';
-      } else {
-        block.style.display = 'none';
-      }
-      return;
-    }
-
-    // Filtro 'soon': mostrar solo bloques de países soon
-    if (filter === 'soon') {
-      block.style.display = state === 'soon' ? '' : 'none';
-      cards.forEach(card => { card.style.display = ''; });
-      return;
-    }
-
-    // Filtros 'ok' / 'error': excluir completamente bloques soon
-    if (filter && state === 'soon') {
-      block.style.display = 'none';
-      return;
-    }
-
-    // Sin filtro: mostrar todo
-    if (!filter) {
+    if (none) {
       block.style.display = '';
-      cards.forEach(card => { card.style.display = ''; });
+      cards.forEach(c => { c.style.display = ''; });
       return;
     }
 
-    // Filtro ok/error sobre bloques normales
+    // Bloque soon: visible solo si 'soon' está en el set de filtros
+    if (isSoon) {
+      block.style.display = activeFilters.has('soon') ? '' : 'none';
+      cards.forEach(c => { c.style.display = ''; });
+      return;
+    }
+
+    // Bloques normales: 'soon' en filtros no los afecta
+    const statusFilters = [...activeFilters].filter(f => f !== 'soon');
+    if (!statusFilters.length) {
+      // Solo filtro soon activo, bloques normales se muestran todos
+      block.style.display = '';
+      cards.forEach(c => { c.style.display = ''; });
+      return;
+    }
+
     let visibleCount = 0;
     cards.forEach(card => {
       const s    = healthState[card.dataset.source];
-      const show = s === filter;
+      const show = statusFilters.includes(s);
       card.style.display = show ? '' : 'none';
       if (show) visibleCount++;
     });
@@ -253,32 +247,34 @@ function applyFilter(filter) {
   updateSummary();
 }
 
+function toggleFilter(filter) {
+  if (activeFilters.has(filter)) {
+    activeFilters.delete(filter);
+  } else {
+    activeFilters.add(filter);
+  }
+  applyFilters();
+}
+
 function updateSummary() {
-  // Contar solo servicios de países no-soon
   let okCount = 0, errCount = 0, checkCount = 0, soonCount = 0;
   for (const [key, status] of Object.entries(healthState)) {
     if (isSoonCountry(key)) { soonCount++; continue; }
-    if (status === 'ok')       okCount++;
+    if (status === 'ok')         okCount++;
     else if (status === 'error') errCount++;
     else                         checkCount++;
   }
 
-  const totalSources = Object.keys(window.SOURCES || {}).length;
-  const totalLayers  = Object.values(window._STATUS_LAYERS || {}).flat().length;
-
   const mkChip = (cls, filter, count, text) => {
-    const isActive = activeFilter === filter ? ' active' : '';
+    const isActive = activeFilters.has(filter) ? ' active' : '';
     return `<button class="summary-chip ${cls}${isActive}" onclick="toggleFilter('${filter}')">
       <span class="dot"></span>${count} ${text}
     </button>`;
   };
 
   document.getElementById('summary-bar').innerHTML = `
-    <button class="summary-chip info${activeFilter === null ? ' active' : ''}" onclick="toggleFilter(null)">
-      <span class="dot"></span>${totalSources} ${ui('totalServices')}
-    </button>
-    ${mkChip('ok',   'ok',    okCount,   ui('online'))}
-    ${mkChip('err',  'error', errCount,  ui('offline'))}
+    ${mkChip('ok',        'ok',    okCount,   ui('online'))}
+    ${mkChip('err',       'error', errCount,  ui('offline'))}
     ${soonCount ? mkChip('soon-chip', 'soon', soonCount, ui('soon')) : ''}
     ${checkCount ? `<div class="summary-chip pend"><span class="dot"></span>${checkCount} …</div>` : ''}
     <button class="refresh-btn" id="btn-refresh">
@@ -289,24 +285,34 @@ function updateSummary() {
   document.getElementById('btn-refresh')?.addEventListener('click', runHealthChecks);
 }
 
-function toggleFilter(filter) {
-  applyFilter(activeFilter === filter ? null : filter);
-}
-
 // ── Render helpers ─────────────────────────────────────────────────
 
 function geomIconHTML(type) {
-  const tip = geomTooltip(type);
-  if (type === 'polygon') return `<span class="material-icons" data-tooltip="${tip}" style="font-family:'Material Icons Outlined',sans-serif">hexagon</span>`;
-  if (type === 'line')    return `<span class="material-icons" data-tooltip="${tip}">horizontal_rule</span>`;
-  if (type === 'point')   return `<span class="material-icons" data-tooltip="${tip}">radio_button_unchecked</span>`;
+  if (type === 'polygon') return `<span class="material-icons" style="font-family:'Material Icons Outlined',sans-serif">hexagon</span>`;
+  if (type === 'line')    return `<span class="material-icons">horizontal_rule</span>`;
+  if (type === 'point')   return `<span class="material-icons">radio_button_unchecked</span>`;
   return `<span class="material-icons">layers</span>`;
 }
 
 function renderLayerRow(l) {
   const count = l.featureCount != null
-    ? `<span class="layer-count">${l.featureCount.toLocaleString()}</span>`
+    ? `<span class="layer-count${l.restricted ? ' layer-count-restricted' : ''}">${l.featureCount.toLocaleString()}</span>`
     : '';
+
+  if (l.restricted) {
+    return `
+      <div class="layer-row layer-row-restricted" data-typename="${l.typename}">
+        <div class="layer-geom">${geomIconHTML(l.geomType)}</div>
+        <div class="layer-text">
+          <span class="layer-name layer-name-restricted">${l.titulo}</span>
+          <span class="layer-key">${l.typename}</span>
+        </div>
+        ${count}
+        <span class="material-icons layer-restricted-icon">error_outline</span>
+      </div>
+    `;
+  }
+
   return `
     <div class="layer-row" data-typename="${l.typename}">
       <div class="layer-geom">${geomIconHTML(l.geomType)}</div>
@@ -383,7 +389,7 @@ function renderServiceCard(sourceKey, layersBySource) {
         <span class="service-toggle"><span class="material-icons">expand_more</span></span>
       </div>
       <div class="layers-panel">
-        <div class="layers-grid">${renderLayers(layers)}</div>
+        <div class="layers-grid-scroll"><div class="layers-grid">${renderLayers(layers)}</div></div>
       </div>
     </div>
   `;
