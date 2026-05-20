@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Casux — Estado de geoservicios</title>
+  <title>Casux</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=Fraunces:opsz,wght@9..144,300;9..144,500&display=swap" rel="stylesheet"/>
@@ -15,31 +15,26 @@
 
 <div class="page">
 
-  <a href="/chat" class="back-link">
+  <a href="/chat" class="back-link" id="back-link">
     <span class="material-icons">arrow_back</span>
-    Volver al chat
+    <span id="back-label"></span>
   </a>
 
   <div class="page-header">
     <div>
-      <h1 class="page-title">Estado de geoservicios</h1>
-      <p class="page-subtitle">Fuentes de los datos geoespaciales conectados a Casux en tiempo real.</p>
+      <h1 class="page-title" id="page-title"></h1>
+      <p class="page-subtitle" id="page-subtitle"></p>
     </div>
     <button class="refresh-btn" id="btn-refresh">
       <span class="material-icons">refresh</span>
-      Actualizar
+      <span id="btn-refresh-label"></span>
     </button>
   </div>
-
-  <button class="theme-toggle-btn" onclick="toggleTheme()" title="Cambiar tema">
-    <span class="material-icons">contrast</span>
-  </button>
 
   <div class="global-search-wrap">
     <div class="global-search-box">
       <span class="material-icons global-search-icon">search</span>
-      <input class="global-search" id="global-search" type="text"
-        placeholder="Buscar capas…" autocomplete="off"/>
+      <input class="global-search" id="global-search" type="text" autocomplete="off"/>
     </div>
     <div class="global-search-results" id="global-search-results"></div>
   </div>
@@ -48,6 +43,10 @@
   <div class="country-list" id="country-list"></div>
 
 </div>
+
+<button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-toggle-btn">
+  <span class="material-icons">contrast</span>
+</button>
 
 <script src="../i18n/es.js"></script>
 <script src="../i18n/en.js"></script>
