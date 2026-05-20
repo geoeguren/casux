@@ -47,7 +47,9 @@ Datos oficiales de fuentes públicas, consultados en tiempo real vía WFS/REST:
 
 **Uruguay (IGM):** departamentos, municipios, y capas de límites administrativos.
 
-**Próximamente:** Bolivia, Brasil, Chile, Colombia, Ecuador, Paraguay, Perú, Venezuela.
+**Chile (MOP):** red vial, aeropuertos, puertos, infraestructura hídrica, centros de salud, áreas protegidas, y más vía servicios ArcGIS REST.
+
+**Próximamente:** Bolivia, Brasil, Colombia, Ecuador, Paraguay, Perú, Venezuela.
 
 ### Análisis espacial
 - **Buffer:** área de influencia alrededor de una o más entidades
@@ -72,7 +74,7 @@ Datos oficiales de fuentes públicas, consultados en tiempo real vía WFS/REST:
 
 ## Tecnología
 
-- **Frontend:** JavaScript vanilla, MapLibre GL JS
+- **Frontend:** JavaScript vanilla, Leaflet
 - **Backend:** Vercel Serverless Functions (Node.js)
 - **Datos:** WFS (OGC Web Feature Service) y REST/ArcGIS
 - **IA:** pipeline con Cerebras → Groq → Gemini como fallback (streaming de tokens)
@@ -87,9 +89,9 @@ Datos oficiales de fuentes públicas, consultados en tiempo real vía WFS/REST:
 |---|---|
 | 🇦🇷 Argentina | ✅ Disponible |
 | 🇺🇾 Uruguay | ✅ Disponible |
+| 🇨🇱 Chile | ✅ Disponible |
 | 🇧🇴 Bolivia | 🔜 Próximamente |
 | 🇧🇷 Brasil | 🔜 Próximamente |
-| 🇨🇱 Chile | 🔜 Próximamente |
 | 🇨🇴 Colombia | 🔜 Próximamente |
 | 🇪🇨 Ecuador | 🔜 Próximamente |
 | 🇵🇾 Paraguay | 🔜 Próximamente |
@@ -104,8 +106,9 @@ Casux utiliza exclusivamente datos de organismos oficiales con acceso público:
 
 - **Instituto Geográfico Nacional (IGN)** — Argentina — [ign.gob.ar](https://www.ign.gob.ar)
 - **Instituto Geográfico Militar (IGM)** — Uruguay — [igm.gub.uy](https://www.igm.gub.uy)
+- **Ministerio de Obras Públicas (MOP)** — Chile — [mop.gob.cl](https://www.mop.gob.cl)
 
-Los datos se consultan en tiempo real vía estándares OGC (WFS 1.1.0) y se cachean localmente en IndexedDB por 24 horas para mejorar el rendimiento.
+Los datos se consultan en tiempo real vía estándares OGC (WFS 1.1.0 / ArcGIS REST) y se cachean localmente en IndexedDB por 24 horas para mejorar el rendimiento.
 
 ---
 
