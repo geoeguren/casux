@@ -1,23 +1,6 @@
 /**
  * src/status.js — Página de estado de geoservicios
- *
- * Lee window.SOURCES y window.LAYERS (sources.js + layers/index.js).
- * Usa window.I18N para nombres multilingüe de capas.
- * Espera 'layers:ready' antes de renderizar.
  */
-
-// ── Países ─────────────────────────────────────────────────────────
-// Leído de window.COUNTRIES (layers/countries.js — fuente de verdad única).
-// Los labels se resuelven desde i18n (keys: country_ar, country_uy, etc.)
-
-function getCountries() {
-  const lang = getLang();
-  return (window.COUNTRIES || []).map(c => ({
-    code:  c.code,
-    label: c[lang] || c.es || c.code.toUpperCase(),
-    state: c.status || 'inactive',
-  }));
-}
 
 // ── Idioma ─────────────────────────────────────────────────────────
 
@@ -40,6 +23,17 @@ function geomTooltip(type) {
     pt: { polygon: 'Polígono', line: 'Linha',  point: 'Ponto' },
   };
   return (map[lang] || map.es)[type] || type;
+}
+
+// ── Países ─────────────────────────────────────────────────────────
+
+function getCountries() {
+  const lang = getLang();
+  return (window.COUNTRIES || []).map(c => ({
+    code:  c.code,
+    label: c[lang] || c.es || c.code.toUpperCase(),
+    state: c.status || 'inactive',
+  }));
 }
 
 // ── Datos desde window ─────────────────────────────────────────────
@@ -77,7 +71,6 @@ function buildSearchIndex(layersBySource) {
 }
 
 // ── Estado de filtro ───────────────────────────────────────────────
-// null = sin filtro, 'ok' = solo en línea, 'error' = solo sin respuesta
 
 let activeFilter = null;
 
@@ -129,16 +122,30 @@ function setStatus(sourceKey, status) {
   updateSummary();
 }
 
-// ── Filtro por pills ───────────────────────────────────────────────
+// ── Filtro ─────────────────────────────────────────────────────────
 
 function applyFilter(filter) {
   activeFilter = filter;
-  const allActive = document.querySelectorAll('.country-block.country-active');
 
-  allActive.forEach(block => {
+  // Iterar TODOS los country-blocks
+  document.querySelectorAll('.country-block').forEach(block => {
+    // Los inactive/soon sin servicios: siempre ocultar si hay filtro activo
+    if (block.classList.contains('country-inactive')) {
+      block.style.display = filter ? 'none' : '';
+      return;
+    }
+    if (block.classList.contains('country-soon-block')) {
+      // soon puede tener servicios — misma lógica que active
+    }
+
     const cards = block.querySelectorAll('.service-card');
-    let visibleCount = 0;
+    if (!cards.length) {
+      // soon sin servicios
+      block.style.display = filter ? 'none' : '';
+      return;
+    }
 
+    let visibleCount = 0;
     cards.forEach(card => {
       const key    = card.dataset.source;
       const status = healthState[key];
@@ -147,8 +154,7 @@ function applyFilter(filter) {
       if (show) visibleCount++;
     });
 
-    // Ocultar el bloque país completo si ningún servicio pasa el filtro
-    block.style.display = visibleCount === 0 ? 'none' : '';
+    block.style.display = filter && visibleCount === 0 ? 'none' : '';
   });
 
   updateSummary();
@@ -163,34 +169,31 @@ function updateSummary() {
   const lang         = getLang();
 
   const labels = {
-    es: { total: 'servicios', layers: 'capas disponibles', online: 'en línea', offline: 'sin respuesta' },
-    en: { total: 'services',  layers: 'available layers',  online: 'online',   offline: 'no response'   },
-    pt: { total: 'serviços',  layers: 'camadas disponíveis',online: 'on-line', offline: 'sem resposta'  },
+    es: { total: 'servicios', layers: 'capas',   online: 'en línea',   offline: 'sin respuesta' },
+    en: { total: 'services',  layers: 'layers',  online: 'online',     offline: 'no response'   },
+    pt: { total: 'serviços',  layers: 'camadas', online: 'on-line',    offline: 'sem resposta'  },
   };
   const l = labels[lang] || labels.es;
 
-  const mkChip = (cls, filter, dotStyle, count, text) => {
-    const active = activeFilter === filter ? ' active' : '';
-    return `<button class="summary-chip ${cls}${active}" onclick="toggleFilter('${filter}')">
-      <span class="dot" style="${dotStyle}"></span>${count} ${text}
+  const mkChip = (cls, filter, count, text) => {
+    const isActive = activeFilter === filter ? ' active' : '';
+    return `<button class="summary-chip ${cls}${isActive}" onclick="toggleFilter('${filter}')">
+      <span class="dot"></span>${count} ${text}
     </button>`;
   };
 
   document.getElementById('summary-bar').innerHTML = `
-    <div class="summary-chip info" style="cursor:default">
-      <span class="dot" style="background:var(--accent);animation:none"></span>
-      ${totalSources} ${l.total} &middot; ${totalLayers} ${l.layers}
+    <div class="summary-chip info">
+      <span class="dot"></span>${totalSources} ${l.total} &middot; ${totalLayers} ${l.layers}
     </div>
-    ${mkChip('ok',    'ok',    '',  counts.ok    || 0, l.online)}
-    ${mkChip('err',   'error', '',  counts.error || 0, l.offline)}
-    ${counts.checking ? `<div class="summary-chip pend" style="cursor:default"><span class="dot"></span>${counts.checking} …</div>` : ''}
+    ${mkChip('ok',  'ok',    counts.ok    || 0, l.online)}
+    ${mkChip('err', 'error', counts.error || 0, l.offline)}
+    ${counts.checking ? `<div class="summary-chip pend"><span class="dot"></span>${counts.checking} …</div>` : ''}
   `;
 }
 
 function toggleFilter(filter) {
-  // Si ya está activo, desactivar; si no, activar
   applyFilter(activeFilter === filter ? null : filter);
-  updateSummary(); // re-render pills con estado active actualizado
 }
 
 // ── Render helpers ─────────────────────────────────────────────────
@@ -267,11 +270,8 @@ function renderServiceCard(sourceKey, layersBySource) {
       <div class="service-header" onclick="toggleService('${sourceKey}')">
         <span class="service-status-dot checking"></span>
         <div class="service-info">
-          <div class="service-name">${src.label}</div>
-          <div class="service-meta">
-            <span class="badge">${tipo}</span>
-            <span class="service-layer-count">${layers.length} capas</span>
-          </div>
+          <div class="service-name">${src.label} <span class="badge">${tipo}</span></div>
+          <div class="service-layer-count">${layers.length} capas</div>
         </div>
         <span class="service-status-label checking">verificando…</span>
         <span class="service-toggle"><span class="material-icons">expand_more</span></span>
@@ -285,40 +285,61 @@ function renderServiceCard(sourceKey, layersBySource) {
   `;
 }
 
+// Render country block — active, soon y inactive comparten lógica de servicios
 function renderCountryBlock(country, layersBySource) {
   const { code, label, state } = country;
-
-  if (state === 'inactive') {
-    return `
-      <div class="country-block country-inactive" data-country="${code}">
-        <div class="country-header inactive">
-          <span class="country-name">${label}</span>
-        </div>
-      </div>
-    `;
-  }
-
-  if (state === 'soon') {
-    const badges = window.COUNTRIES_LABELS?.[getLang()] || window.COUNTRIES_LABELS?.es;
-    return `
-      <div class="country-block country-soon-block" data-country="${code}">
-        <div class="country-header country-header-soon">
-          <span class="country-name">${label}</span>
-          <span class="country-soon">${badges.soon}</span>
-        </div>
-      </div>
-    `;
-  }
-
   const badges = window.COUNTRIES_LABELS?.[getLang()] || window.COUNTRIES_LABELS?.es;
+
+  // Inactive sin servicios: solo header gris, no desplegable
+  if (state === 'inactive') {
+    const countrySources = Object.keys(window.SOURCES || {})
+      .filter(k => window.SOURCES[k].country === code);
+
+    if (!countrySources.length) {
+      return `
+        <div class="country-block country-inactive" data-country="${code}">
+          <div class="country-header inactive">
+            <span class="country-name">${label}</span>
+          </div>
+        </div>
+      `;
+    }
+    // Inactive con servicios: misma estructura que active pero con estilo gris
+  }
+
   const countrySources = Object.keys(window.SOURCES || {})
     .filter(k => window.SOURCES[k].country === code);
 
+  // Sin servicios y no active: solo header
+  if (!countrySources.length) {
+    const headerClass = state === 'soon' ? 'country-header country-header-soon' : 'country-header inactive';
+    const blockClass  = state === 'soon' ? 'country-soon-block' : 'country-inactive';
+    const badge       = state === 'soon' ? `<span class="country-soon">${badges.soon}</span>` : '';
+    return `
+      <div class="country-block ${blockClass}" data-country="${code}">
+        <div class="${headerClass}" ${state !== 'soon' ? 'style="opacity:.4;cursor:default;pointer-events:none"' : ''}>
+          <span class="country-name">${label}</span>
+          ${badge}
+        </div>
+      </div>
+    `;
+  }
+
+  // Con servicios: desplegable, color según state
+  const blockClass  = state === 'active' ? 'country-active'
+                    : state === 'soon'   ? 'country-soon-block'
+                    : 'country-inactive-has-services';
+
+  const badgeHTML = state === 'active' ? `<span class="country-active-label">${badges.active}</span>`
+                  : state === 'soon'   ? `<span class="country-soon">${badges.soon}</span>`
+                  : '';
+
   return `
-    <div class="country-block country-active" data-country="${code}">
-      <div class="country-header" onclick="toggleCountry('${code}')">
+    <div class="country-block ${blockClass}" data-country="${code}">
+      <div class="country-header ${state !== 'active' && state !== 'soon' ? 'country-header-inactive-services' : ''}"
+           onclick="toggleCountry('${code}')">
         <span class="country-name">${label}</span>
-        <span class="country-active-label">${badges.active}</span>
+        ${badgeHTML}
         <span class="country-toggle"><span class="material-icons">expand_more</span></span>
       </div>
       <div class="services-list">
@@ -338,6 +359,12 @@ function toggleService(sourceKey) {
   document.querySelector(`.service-card[data-source="${sourceKey}"]`).classList.toggle('open');
 }
 
+// ── Theme toggle (transitorio para testing) ────────────────────────
+
+function toggleTheme() {
+  document.body.classList.toggle('day');
+}
+
 // ── Runner ─────────────────────────────────────────────────────────
 
 function runHealthChecks() {
@@ -352,9 +379,9 @@ function runHealthChecks() {
 // ── Init ───────────────────────────────────────────────────────────
 
 function initStatus() {
-  const layersBySource          = getLayersBySource();
-  window._STATUS_LAYERS         = layersBySource;
-  searchIndex                   = buildSearchIndex(layersBySource);
+  const layersBySource  = getLayersBySource();
+  window._STATUS_LAYERS = layersBySource;
+  searchIndex           = buildSearchIndex(layersBySource);
 
   document.getElementById('country-list').innerHTML =
     getCountries().map(c => renderCountryBlock(c, layersBySource)).join('');
@@ -370,7 +397,6 @@ function initStatus() {
 
   setTimeout(runHealthChecks, 100);
 
-  // Tema: leer de window.SETTINGS o fallback por hora
   const theme = window.SETTINGS?.get?.('theme');
   const h     = new Date().getHours();
   if (theme === 'day' || (!theme && h >= 7 && h < 20)) {
