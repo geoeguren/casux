@@ -1,3 +1,25 @@
+/**
+ * layers/ar/ssa.js — Capas de la Subsecretaría de Ambiente Argentina
+ *
+ * Subsecretaría de Ambiente — https://geo.ambiente.gob.ar/geoserver/ows
+ * Catálogo completo: 421 capas. Protocolo: WFS 1.1.0
+ *
+ * Convenciones:
+ *  - Keys con sufijo _ar para consistencia entre países.
+ *  - special: false            → capa general de uso público
+ *  - special: 'historico'      → datos de períodos pasados
+ *  - special: 'administrativo' → regionalizaciones internas de organismos
+ *  - special: 'auxiliar'       → capas de soporte sin valor semántico directo
+ *  - visible: true  → se muestra por defecto en el catálogo de la UI
+ *  - visible: false → disponible para el LLM, oculta en la UI por defecto
+ *
+ *  Regla: special:false implica visible:true, salvo excepciones documentadas:
+ *    - Capas con alta especificidad temática o de audiencia reducida
+ *      (series por especie marina, monitoreos puntuales ACUMAR, proyectos
+ *       de gestión interna, distribuciones potenciales de fauna, etc.)
+ *  - titulo y keywords en español — llm.js traduce al idioma del usuario.
+ */
+
 export const SSA_AR = {
 
   indicadoresyestadistica_ACUMAR_Nitrato_Puelche_2021_2024_ar: {
