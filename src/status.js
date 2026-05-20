@@ -125,14 +125,6 @@ function setStatus(sourceKey, status) {
     lbl.textContent = (labels[lang] || labels.es)[status];
   }
 
-  const src = window.SOURCES?.[sourceKey];
-  if (src) {
-    const countryDot = document.querySelector(
-      `.country-block[data-country="${src.country}"] .src-dot[data-source="${sourceKey}"]`
-    );
-    if (countryDot) countryDot.className = 'src-dot ' + status;
-  }
-
   applyFilter(activeFilter);
   updateSummary();
 }
@@ -322,17 +314,11 @@ function renderCountryBlock(country, layersBySource) {
   const countrySources = Object.keys(window.SOURCES || {})
     .filter(k => window.SOURCES[k].country === code);
 
-  const srcDots = countrySources
-    .map(k => `<span class="src-dot checking" data-source="${k}"></span>`)
-    .join('');
-
   return `
     <div class="country-block country-active" data-country="${code}">
       <div class="country-header" onclick="toggleCountry('${code}')">
         <span class="country-name">${label}</span>
         <span class="country-active-label">${badges.active}</span>
-        <div class="src-dots">${srcDots}</div>
-        <span class="country-src-count">${countrySources.length} ${countrySources.length === 1 ? 'servicio' : 'servicios'}</span>
         <span class="country-toggle"><span class="material-icons">expand_more</span></span>
       </div>
       <div class="services-list">
