@@ -39,7 +39,10 @@ function buscarCapasRelevantes(textoUsuario, layers, max = 5, userLang = 'es') {
   const palabras = norm.split(/\s+/).filter(p => p.length > 2 && !STOPWORDS.includes(p));
   // Excluir capas special y capas visible:false (gemelas, técnico-geodésicas)
   const capasValidas = Object.entries(layers).filter(([, capa]) => capa.special === false && capa.visible !== false);
-  if (!palabras.length) return capasValidas.slice(0, max).map(([k, v]) => ({ key: k, ...v }));
+  if (!palabras.length) {
+    console.warn(`[llm/scorer] Query sin palabras útiles: "${textoUsuario.slice(0, 80)}" — devolviendo primeras ${max} capas`);
+    return capasValidas.slice(0, max).map(([k, v]) => ({ key: k, ...v }));
+  }
 
   // Usar campos del idioma del usuario si existen
   const sufijo = userLang === 'en' ? 'En' : userLang === 'pt' ? 'Pt' : 'Es';
@@ -74,6 +77,9 @@ function buscarCapasRelevantes(textoUsuario, layers, max = 5, userLang = 'es') {
     ? [...topTied, ...scored.filter(r => r.score < topScore)].slice(0, max + countries.size - 1)
     : scored.slice(0, max);
 
+  if (!result.length) {
+    console.warn(`[llm/scorer] Sin capas relevantes para: "${textoUsuario.slice(0, 80)}" — palabras buscadas: [${palabras.join(', ')}]`);
+  }
   return result.map(r => ({ key: r.key, ...r.capa }));
 }
 
