@@ -11,7 +11,7 @@ const UI = {
     tabTitle:     'Casux — Estado de geoservicios',
     backLabel:    'Volver al chat',
     refreshBtn:   'Actualizar',
-    searchPlaceholder: 'Buscar capas…',
+    searchPlaceholder: 'Buscar capas disponibles…',
     themeToggleTitle:  'Cambiar tema',
     totalServices: 'servicios',
     soon:          'próximamente',
@@ -27,7 +27,7 @@ const UI = {
     tabTitle:     'Casux — Geoservice status',
     backLabel:    'Back to chat',
     refreshBtn:   'Refresh',
-    searchPlaceholder: 'Search layers…',
+    searchPlaceholder: 'Search available layers…',
     themeToggleTitle:  'Toggle theme',
     totalServices: 'services',
     soon:          'coming soon',
@@ -43,7 +43,7 @@ const UI = {
     tabTitle:     'Casux — Estado dos geoserviços',
     backLabel:    'Voltar ao chat',
     refreshBtn:   'Atualizar',
-    searchPlaceholder: 'Buscar camadas…',
+    searchPlaceholder: 'Buscar camadas disponíveis…',
     themeToggleTitle:  'Alternar tema',
     totalServices: 'serviços',
     soon:          'em breve',
@@ -107,6 +107,9 @@ function getLayersBySource() {
       typename:     layer.typename || '',
       geomType:     layer.geomType || 'polygon',
       featureCount: layer.featureCount ?? null,
+      keywordsEs:   layer.keywordsEs || [],
+      keywordsEn:   layer.keywordsEn || [],
+      keywordsPt:   layer.keywordsPt || [],
     });
   }
   for (const key of Object.keys(result)) {
@@ -329,7 +332,13 @@ function onGlobalSearch(value) {
     return;
   }
   const matches = searchIndex
-    .filter(l => l.titulo.toLowerCase().includes(q) || l.typename.toLowerCase().includes(q))
+    .filter(l => {
+      const lang = getLang();
+      const keywords = (lang === 'en' ? l.keywordsEn : lang === 'pt' ? l.keywordsPt : l.keywordsEs) || [];
+      return l.titulo.toLowerCase().includes(q)
+          || l.typename.toLowerCase().includes(q)
+          || keywords.some(k => k.toLowerCase().includes(q));
+    })
     .sort((a, b) => a.titulo.localeCompare(b.titulo, getLang()));
 
   resultsEl.innerHTML = matches.length
