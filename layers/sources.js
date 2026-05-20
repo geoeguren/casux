@@ -80,12 +80,21 @@ const SOURCES_DATA = {
     clipField:    'nam',
     attribution:  'Secretaría de Educación (Argentina)',
     url:          'https://www.argentina.gob.ar/educacion',
-    domain: ['educación', 'educacion', 'escuela', 'escuelas', 'colegio', 'colegios',
-             'instituto', 'institutos', 'establecimiento educativo', 'nivel educativo',
-             'modalidad educativa', 'mapa educativo',
-             'universidad', 'universidades', 'universitario', 'universitaria',
-             'facultad', 'facultades', 'educación superior', 'educacion superior',
-             'nivel superior', 'formación superior', 'formacion superior'],
+    domain: [
+      // Establecimientos preuniversitarios
+      'educación', 'educacion', 'escuela', 'escuelas', 'colegio', 'colegios',
+      'instituto', 'institutos', 'jardín', 'jardin', 'jardines',
+      'establecimiento educativo', 'establecimientos educativos',
+      'nivel educativo', 'modalidad educativa', 'mapa educativo',
+      // Educación superior y universitaria
+      'universidad', 'universidades', 'universitario', 'universitaria',
+      'facultad', 'facultades', 'unidad académica', 'unidad academica',
+      'educación superior', 'educacion superior', 'nivel superior',
+      'formación superior', 'formacion superior',
+      'sede universitaria', 'instituto universitario',
+      // Organismos
+      'ministerio de educación', 'ministerio de educacion',
+    ],
   },
 
   mop_cl: {
