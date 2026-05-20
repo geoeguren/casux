@@ -12,7 +12,6 @@ const UI = {
     backLabel:    'Volver al chat',
     refreshBtn:   'Actualizar',
     searchPlaceholder: 'Buscar capas disponibles…',
-    themeToggleTitle:  'Cambiar tema',
     totalServices: 'servicios',
     soon:          'próximamente',
     online:        'en línea',
@@ -28,7 +27,6 @@ const UI = {
     backLabel:    'Back to chat',
     refreshBtn:   'Refresh',
     searchPlaceholder: 'Search available layers…',
-    themeToggleTitle:  'Toggle theme',
     totalServices: 'services',
     soon:          'coming soon',
     online:        'online',
@@ -44,7 +42,6 @@ const UI = {
     backLabel:    'Voltar ao chat',
     refreshBtn:   'Atualizar',
     searchPlaceholder: 'Buscar camadas disponíveis…',
-    themeToggleTitle:  'Alternar tema',
     totalServices: 'serviços',
     soon:          'em breve',
     online:        'on-line',
@@ -119,18 +116,6 @@ function getLayersBySource() {
     result[key].sort((a, b) => a.titulo.localeCompare(b.titulo, getLang()));
   }
   return result;
-}
-
-function buildSearchIndex(layersBySource) {
-  const index = [];
-  for (const [sourceKey, layers] of Object.entries(layersBySource)) {
-    const src = window.SOURCES?.[sourceKey];
-    if (!src) continue;
-    for (const l of layers) {
-      index.push({ ...l, sourceKey, sourceLabel: src.label, countryCode: src.country });
-    }
-  }
-  return index;
 }
 
 // ── Estado de filtro ───────────────────────────────────────────────
@@ -330,44 +315,6 @@ function renderLayers(layers) {
   return layers.map(renderLayerRow).join('');
 }
 
-// ── Global search ──────────────────────────────────────────────────
-
-let searchIndex = [];
-
-function onGlobalSearch(value) {
-  const q         = value.trim().toLowerCase();
-  const resultsEl = document.getElementById('global-search-results');
-  if (!q) {
-    resultsEl.classList.remove('visible');
-    resultsEl.innerHTML = '';
-    return;
-  }
-  const matches = searchIndex
-    .filter(l => {
-      const lang = getLang();
-      const keywords = (lang === 'en' ? l.keywordsEn : lang === 'pt' ? l.keywordsPt : l.keywordsEs) || [];
-      return l.titulo.toLowerCase().includes(q)
-          || l.typename.toLowerCase().includes(q)
-          || keywords.some(k => k.toLowerCase().includes(q));
-    })
-    .sort((a, b) => a.titulo.localeCompare(b.titulo, getLang()));
-
-  resultsEl.innerHTML = matches.length
-    ? matches.map(l => `
-        <div class="search-result-row">
-          <div class="search-result-info">
-            <div class="search-result-name">${l.titulo}</div>
-            <div class="search-result-key">${l.typename}</div>
-          </div>
-          <div class="search-result-source">${l.sourceLabel}</div>
-          <div class="search-geom-icon">${geomIconHTML(l.geomType)}</div>
-        </div>
-      `).join('')
-    : `<p class="search-no-results">${ui('noResults')}</p>`;
-
-  resultsEl.classList.add('visible');
-}
-
 // ── Render cards ───────────────────────────────────────────────────
 
 function renderServiceCard(sourceKey, layersBySource) {
@@ -457,10 +404,6 @@ function toggleService(sourceKey) {
   document.querySelector(`.service-card[data-source="${sourceKey}"]`).classList.toggle('open');
 }
 
-function toggleTheme() {
-  document.body.classList.toggle('day');
-}
-
 // ── Runner ─────────────────────────────────────────────────────────
 
 function runHealthChecks() {
@@ -479,8 +422,6 @@ function applyStaticI18n() {
   document.title                                        = ui('tabTitle');
   document.getElementById('page-title').textContent    = ui('pageTitle');
   document.getElementById('back-label').textContent    = ui('backLabel');
-  document.getElementById('global-search').placeholder = ui('searchPlaceholder');
-  document.getElementById('theme-toggle-btn').title    = ui('themeToggleTitle');
   document.documentElement.lang = lang;
 }
 
@@ -491,24 +432,21 @@ function initStatus() {
 
   const layersBySource  = getLayersBySource();
   window._STATUS_LAYERS = layersBySource;
-  searchIndex           = buildSearchIndex(layersBySource);
 
   document.getElementById('country-list').innerHTML =
     getCountries().map(c => renderCountryBlock(c, layersBySource)).join('');
-
-  document.getElementById('global-search')
-    .addEventListener('input', e => onGlobalSearch(e.target.value));
 
   Object.keys(window.SOURCES || {}).forEach(k => { healthState[k] = 'checking'; });
   updateSummary();
 
   setTimeout(runHealthChecks, 100);
 
-  const theme = window.SETTINGS?.get?.('theme');
-  const h     = new Date().getHours();
-  if (theme === 'day' || (!theme && h >= 7 && h < 20)) {
-    document.body.classList.add('day');
-  }
+  // Tema: igual que app.js — lee sm_theme de localStorage, fallback por hora
+  const savedTheme = localStorage.getItem('sm_theme');
+  const isDayHour  = new Date().getHours() >= 7 && new Date().getHours() < 20;
+  const theme      = savedTheme || (isDayHour ? 'day' : 'night');
+  document.body.classList.toggle('day', theme === 'day');
+  document.documentElement.classList.toggle('day', theme === 'day');
 }
 
 if (window.LAYERS && Object.keys(window.LAYERS).length > 0) {
