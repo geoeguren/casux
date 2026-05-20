@@ -39,4 +39,55 @@ function normalizarMascara(maskFeature) {
   }
 }
 
-module.exports = { normalizarMascara };
+/**
+ * areaRing(coords) → number (m²)
+ *
+ * Área aproximada de un anillo de coordenadas [lng, lat] en m²,
+ * usando la fórmula de Gauss en proyección esférica (shoelace).
+ * Suficientemente precisa para comparación relativa de overlap.
+ *
+ * Fuente canónica: importar desde acá en clip.js, clip_exclude.js,
+ * intersect.js e intersect_exclude.js. No duplicar.
+ */
+function areaRing(coords) {
+  const R = 6371000;
+  let area = 0;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const [lng1, lat1] = coords[i];
+    const [lng2, lat2] = coords[i + 1];
+    area += (lng2 - lng1) * Math.PI / 180 *
+      (2 + Math.sin(lat1 * Math.PI / 180) + Math.sin(lat2 * Math.PI / 180));
+  }
+  return Math.abs(area) * R * R / 2;
+}
+
+/**
+ * areaFeature(feat) → number (m²)
+ *
+ * Área total de un Feature Polygon o MultiPolygon en m².
+ * Solo usa el anillo exterior de cada parte (suficiente para overlap relativo).
+ * Usado en clip.js y clip_exclude.js.
+ */
+function areaFeature(feat) {
+  const g = feat.geometry;
+  if (!g) return 0;
+  if (g.type === 'Polygon')      return areaRing(g.coordinates[0] || []);
+  if (g.type === 'MultiPolygon') return g.coordinates.reduce((s, p) => s + areaRing(p[0] || []), 0);
+  return 0;
+}
+
+/**
+ * areaGeometria(geom) → number (m²)
+ *
+ * Igual que areaFeature pero recibe una geometry directa (sin wrapper Feature).
+ * Usado en intersect.js e intersect_exclude.js, que trabajan con geometrías
+ * extraídas del resultado de turf/intersect.
+ */
+function areaGeometria(geom) {
+  if (!geom) return 0;
+  if (geom.type === 'Polygon')      return areaRing(geom.coordinates[0] || []);
+  if (geom.type === 'MultiPolygon') return geom.coordinates.reduce((s, p) => s + areaRing(p[0] || []), 0);
+  return 0;
+}
+
+module.exports = { normalizarMascara, areaRing, areaFeature, areaGeometria };
