@@ -1,0 +1,290 @@
+/**
+ * src/intent/intent-acciones.js — Detectores de acciones del mapa
+ *
+ * Cada función de este módulo detecta un tipo de intención que NO es
+ * "cargar una capa": limpiar el mapa, exportar, cambiar basemap, renombrar,
+ * cambiar estilo, agregar una capa al mapa activo, o quitar una capa.
+ *
+ * Diseño general:
+ *   - Cada detector recibe el texto del usuario (string) y devuelve
+ *     un objeto { tipo, subtipo?, parametros? } o null si no aplica.
+ *   - Los detectores son INDEPENDIENTES entre sí y del scorer de capas.
+ *   - Usan normalizarSimple (sin UTILS) para evitar dependencias de carga.
+ *   - El orden de evaluación lo decide el orquestador (intent/index.js).
+ *
+ * Dependencias: window.INTENT_UTILS (intent-utils.js)
+ */
+
+window.INTENT_ACCIONES = (() => {
+
+  // Alias locales para legibilidad
+  const { normalizarSimple, normalizar, tokenizar, buildPaisesMap } = window.INTENT_UTILS;
+
+  // ══════════════════════════════════════════════════════════════
+  // 1. LIMPIAR
+  // ══════════════════════════════════════════════════════════════
+  //
+  // Detecta pedidos de vaciar el mapa: borrar capas, resetear, etc.
+  // El patrón cubre expresiones en ES, EN y PT.
+
+  const PATRON_LIMPIAR = /\b(borra(r|lo)?|limpia(r|lo)?|limpia(r)?\s+el\s+mapa|vacia(r|lo)?|vacia\s+el\s+mapa|saca(r)?\s+(las?\s+)?capas?|borra(r)?\s+todo|elimina(r)?\s+todo|resetea(r)?|reinicia(r)?|clear(\s+the\s+map|\s+all|\s+everything)?|clean(\s+the\s+map)?|reset(\s+the\s+map)?|wipe(\s+the\s+map)?|erase(\s+the\s+map)?|start\s+over|remove\s+all(\s+layers?)?|limpa(r)?(\s+o\s+mapa)?|apaga(r)?(\s+o\s+mapa)?|apague(\s+o\s+mapa)?|reseta(r)?(\s+o\s+mapa)?|limpe(\s+o\s+mapa)?|remove(r)?\s+tudo)\b/i;
+
+  function detectarLimpiar(texto) {
+    return PATRON_LIMPIAR.test(normalizarSimple(texto)) ? { tipo: 'limpiar' } : null;
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // 2. EXPORTAR
+  // ══════════════════════════════════════════════════════════════
+  //
+  // Detecta pedidos de descarga/exportación del mapa o sus datos.
+  // Primero verifica que haya un verbo de exportación, luego
+  // intenta identificar el formato solicitado.
+  // Si no se detecta formato → subtipo 'vago' (abre el selector de formato).
+
+  const PATRON_EXPORT = /\b(export(a|ar)?|descarg(a|ar)?|guard(a|ar)?|baj(a|ar)?|guardar\s+como|descargar\s+como|download|save(\s+as)?|get\s+the\s+map|baixa(r)?|salva(r)?|descarrega(r)?|exporta(r)?|gravar|guardar)\b/i;
+
+  const FORMATOS_EXPORT = [
+    { subtipo: 'jpeg',    patron: /\b(jpeg|jpg|imagen|foto|captura|image|picture|imagem)\b/i },
+    { subtipo: 'pdf',     patron: /\b(pdf|portable|documento|document)\b/i },
+    { subtipo: 'geojson', patron: /\b(geojson|geo\s*json|vectorial|vector|datos?|capa|data|layer|vetorial|camada)\b/i },
+    { subtipo: 'html',    patron: /\b(html|embebido|embed|web|codigo|code|interativo|interactivo)\b/i },
+  ];
+
+  function detectarExport(texto) {
+    const norm = normalizarSimple(texto);
+    if (!PATRON_EXPORT.test(norm)) return null;
+    for (const { subtipo, patron } of FORMATOS_EXPORT) {
+      if (patron.test(norm)) return { tipo: 'export', subtipo };
+    }
+    return { tipo: 'export', subtipo: 'vago' };
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // 3. BASEMAP
+  // ══════════════════════════════════════════════════════════════
+  //
+  // Detecta pedidos de cambio del mapa base (fondo).
+  // REQUIERE una palabra de contexto (mapa base, fondo, basemap, etc.)
+  // para evitar falsos positivos con palabras como "oscuro" o "claro"
+  // que aparecen en pedidos de estilo de capas.
+  //
+  // Si no se identifica la variante → subtipo 'vago' (abre el selector).
+
+  const PATRON_BASEMAP_CONTEXTO = /\b(mapa\s+base|mapa\s+de\s+fondo|mapa\s+fondo|fondo|basemap|base\s+map|background\s+map|background|mapa\s+base|mapa\s+de\s+fundo|fundo)\b/i;
+
+  const OPCIONES_BASEMAP = [
+    { subtipo: 'dark',    patron: /\b(oscuro|dark|negro|noche|night|dark\s+matter|escuro|noite|preto)\b/i },
+    { subtipo: 'gray',    patron: /\b(claro|gris|gray|grey|blanco|positron|neutro|limpio|light|clean|white|cinza|branco|limpo)\b/i },
+    { subtipo: 'voyager', patron: /\b(voyager|color(es)?|con\s+color(es)?|colorful|com\s+cor(es)?)\b/i },
+  ];
+
+  function detectarBasemap(texto) {
+    const norm = normalizarSimple(texto);
+    if (!PATRON_BASEMAP_CONTEXTO.test(norm)) return null;
+    for (const { subtipo, patron } of OPCIONES_BASEMAP) {
+      if (patron.test(norm)) return { tipo: 'basemap', subtipo };
+    }
+    return { tipo: 'basemap', subtipo: 'vago' };
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // 4. RENOMBRAR
+  // ══════════════════════════════════════════════════════════════
+  //
+  // Detecta pedidos de cambio de nombre del chat o mapa.
+  // Si el usuario especifica el nombre en el mismo mensaje → subtipo 'especifico'.
+  // Si solo indica que quiere renombrar → subtipo 'vago' (pide el nombre).
+  //
+  // La extracción del nombre usa regex sobre el texto ORIGINAL (no normalizado)
+  // para preservar mayúsculas y tildes en el nombre deseado.
+
+  const PATRON_RENOMBRAR = /\b(renombra(r|lo)?|llama(r|lo|le)?(\s+(al\s+)?(mapa|chat))?|cambia(\s+el\s+)?(nombre|titulo)|nombra(r|lo)?|titula(r|lo)?|el\s+nombre\s+(es|sera|va\s+a\s+ser)|rename(\s+(the\s+)?(map|chat))?|call(\s+it|\s+the\s+map)?|name(\s+it|\s+the\s+map)?|title(\s+it)?|the\s+name\s+(is|will\s+be)|renomear|renomeie|chama(r)?(\s+o\s+(mapa|chat))?|nomear|nomeie|o\s+nome\s+(é|sera|vai\s+ser))\b/i;
+
+  function detectarRenombrar(texto) {
+    const norm = normalizarSimple(texto);
+    if (!PATRON_RENOMBRAR.test(norm)) return null;
+
+    // Intentar extraer el nombre deseado del texto original
+    const matchNombre =
+      texto.match(/(?:llamalo?|renombralo?\s+(?:como\s+)?|titulalo?\s*|el\s+nombre\s+(?:es|sera|va\s+a\s+ser)\s+|llam[aa]\s+(?:al\s+)?(?:mapa|chat)\s+)["]?([^"'\n]{2,40})["]?/i) ||
+      texto.match(/(?:como\s+)["]([^"'\n]{2,40})["]/i) ||
+      texto.match(/(?:call\s+(?:it|the\s+map)\s+|rename\s+(?:it\s+)?(?:to\s+)?|name\s+it\s+|the\s+name\s+is\s+)["]?([^"'\n]{2,40})["]?/i) ||
+      texto.match(/(?:chama(?:r)?\s+(?:o\s+mapa\s+)?(?:de\s+)?|renomeia(?:r)?\s+(?:para\s+)?|o\s+nome\s+(?:e|vai\s+ser)\s+)["]?([^"'\n]{2,40})["]?/i);
+
+    const nombre = matchNombre?.[1]?.trim();
+    return {
+      tipo:       'renombrar',
+      subtipo:    nombre ? 'especifico' : 'vago',
+      parametros: nombre ? { nombre } : {},
+    };
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // 5. ESTILO
+  // ══════════════════════════════════════════════════════════════
+  //
+  // Detecta pedidos de cambio visual en capas cargadas: color, tamaño,
+  // grosor, ícono, geometría de símbolo, opacidad.
+  //
+  // Dos subtipos:
+  //   'especifico' → el usuario ya indicó el cambio concreto (color rojo, más grande, etc.)
+  //                  o hizo click en uno de los botones rápidos del panel de estilo.
+  //   'vago'       → quiere cambiar algo visual pero no especificó qué.
+  //                  Se abre el selector de propiedades.
+
+  const PATRON_ESTILO = /\b(estilo|color(es)?|relleno|borde|grosor|tamano|icono|simbolo|apariencia|aspecto|hacelo\s+mas|ponelo|ponerlo|forma|geometria|style|fill|stroke|outline|thickness|weight|icon|symbol|appearance|make\s+it|shape|circle|square|size|radius|cor|cores|preenchimento|borda|espessura|ícone|símbolo|aparência|forma|geometria|circulo|quadrado|tamanho)\b/i;
+
+  // Valores concretos que confirman que el usuario ya sabe qué quiere cambiar
+  const PATRON_ESTILO_ESPECIFICO = /\b(rojo|azul|verde|amarillo|naranja|violeta|rosa|negro|blanco|gris|celeste|marron|mas\s+(grande|chico|grueso|fino|oscuro|claro|transparente)|tambien|lo\s+mismo|idem|opacidad|transparencia|red|blue|green|yellow|orange|purple|pink|black|white|gray|grey|cyan|brown|bigger|smaller|larger|thicker|thinner|darker|lighter|transparent|opacity|same|vermelho|azul|verde|amarelo|laranja|violeta|rosa|preto|branco|cinza|ciano|marrom|maior|menor|mais\s+(grosso|fino|escuro|claro|transparente)|transparencia|opacidade|#[0-9a-fA-F]{3,6}|\d+(\.\d+)?\s*(px|pt|puntos?))\b/i;
+
+  // Función auxiliar: obtiene los textos de los botones rápidos de estilo
+  // para detectar clicks directos en ellos (llegan como texto exacto al chat)
+  function getMensajesBotonesEstilo() {
+    try {
+      const t = window.I18N?.t || (() => '');
+      return new Set([
+        t('style_change_size'), t('style_change_color_point'), t('style_change_icon'),
+        t('style_change_weight'), t('style_change_color_line'),
+        t('style_change_fill'), t('style_change_border'),
+      ]);
+    } catch { return new Set(); }
+  }
+
+  // Patrones para identificar qué propiedad de estilo quiere cambiar el usuario.
+  // Usado cuando subtipo='vago' para pre-seleccionar la propiedad en el selector.
+  const PATRON_PARAM_COLOR  = /\b(color(es)?|colou?r|relleno|tono|tinte|fill|cor|cores|preenchimento)\b/i;
+  const PATRON_PARAM_SIZE   = /\b(tamano|tamaño|radio|size|grande|chico|chica|radius|bigger|smaller|tamanho)\b/i;
+  const PATRON_PARAM_WEIGHT = /\b(grosor|grueso|fino|weight|linea|línea|thickness|thicker|thinner|espessura)\b/i;
+  const PATRON_PARAM_ICON   = /\b(icono|ícono|simbolo|símbolo|icon|marker)\b/i;
+  const PATRON_PARAM_GEOM   = /\b(geometria|geometría|forma|shape|circulo|círculo|cuadrado|square|circle)\b/i;
+
+  function _extractParam(norm) {
+    if (PATRON_PARAM_GEOM.test(norm))   return 'geom';
+    if (PATRON_PARAM_ICON.test(norm))   return 'icon';
+    if (PATRON_PARAM_SIZE.test(norm))   return 'radius';
+    if (PATRON_PARAM_WEIGHT.test(norm)) return 'weight';
+    if (PATRON_PARAM_COLOR.test(norm))  return 'color';
+    return null;
+  }
+
+  function detectarEstilo(texto) {
+    // Click directo en botón de estilo → siempre específico
+    if (getMensajesBotonesEstilo().has(texto)) return { tipo: 'estilo', subtipo: 'especifico' };
+    const norm = normalizarSimple(texto);
+    if (!PATRON_ESTILO.test(norm)) return null;
+    if (PATRON_ESTILO_ESPECIFICO.test(norm)) return { tipo: 'estilo', subtipo: 'especifico' };
+    const param = _extractParam(norm);
+    return { tipo: 'estilo', subtipo: 'vago', parametros: { param } };
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // 6. AGREGAR CAPA
+  // ══════════════════════════════════════════════════════════════
+  //
+  // Detecta pedidos del tipo "también mostrá X" o "agregame Y"
+  // cuando ya hay capas cargadas en el mapa.
+  //
+  // A diferencia de detectarCapa, se evalúa SIN guardia de historial —
+  // el usuario puede pedir agregar una capa incluso si hubo conversación
+  // previa con el LLM.
+  //
+  // Quita el verbo de adición del texto antes de pasarlo al scorer
+  // para que buscarCapa solo vea el nombre de la capa pedida.
+
+  const PATRON_AGREGAR = /^(agrega[r]?me?|añadi[r]?me?|suma[r]?me?|incorpora[r]?me?|agregale|tambien\s+(quiero\s+ver|mostra[r]?me?|carga[r]?me?)|ademas\s+(quiero\s+ver|mostra[r]?me?|carga[r]?me?)|add|include|also\s+show|show\s+also|also\s+add|add\s+also|and\s+also\s+show|adiciona[r]?(me)?|inclui[r]?(me)?|tambem\s+(quero\s+ver|mostra[r]?|carrega[r]?)|alem\s+disso\s+mostra[r]?)\s+/i;
+
+  function detectarAgregar(textoUsuario) {
+    const norm = normalizarSimple(textoUsuario);
+    if (!PATRON_AGREGAR.test(norm)) return null;
+
+    // Solo aplica si ya hay capas cargadas en el mapa
+    const activeLayers = window.MAP?.getActiveLayers?.() || {};
+    if (!Object.keys(activeLayers).length) return null;
+
+    // Quitar el verbo de adición para dejar solo el nombre de la capa
+    const textoSinVerbo = textoUsuario.replace(PATRON_AGREGAR, '').trim();
+    if (!textoSinVerbo) return null;
+
+    // Usar detectarCapaDirecta (sin guardia de historial) del módulo de capas
+    const resultado = window.INTENT_CAPA?.detectarCapaDirecta?.(textoSinVerbo);
+    if (!resultado) return null;
+
+    return { tipo: 'agregar', parametros: resultado.parametros };
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // 7. QUITAR CAPA
+  // ══════════════════════════════════════════════════════════════
+  //
+  // Detecta pedidos de eliminar una capa del mapa activo.
+  // Resuelve el nombre pedido contra las capas actualmente visibles.
+  //
+  // Caso especial: si solo hay una capa activa y el pedido es vago
+  // ("sacala", "quitala"), asume esa capa sin necesidad de matching.
+
+  const PATRON_QUITAR = /^(saca[r]?me?|quita[r]?me?|elimina[r]?me?|borra[r]?me?|remueve|remove|delete|hide|take\s+off|get\s+rid\s+of|drop|remove[r]?|deleta[r]?|elimina[r]?|tira[r]?|esconde[r]?)\s+/i;
+
+  // Busca la mejor coincidencia entre el texto pedido y las capas activas.
+  // Usa scoring simple (coincidencia de tokens) sobre título y layerKey.
+  function _matchCapaActiva(query) {
+    const activeLayers = window.MAP?.getActiveLayers?.() || {};
+    const queryNorm    = normalizar(query);
+    const tokens       = tokenizar(queryNorm);
+    if (!tokens.length) return null;
+
+    let mejorKey   = null;
+    let mejorScore = 0;
+
+    for (const [mapKey, entry] of Object.entries(activeLayers)) {
+      const tituloNorm   = normalizar(entry.titulo || '');
+      const layerKeyNorm = normalizar(entry.layerKey || '');
+      const texto        = tituloNorm + ' ' + layerKeyNorm;
+
+      let score = 0;
+      for (const token of tokens) {
+        const sv = [];
+        if (token.endsWith('es') && token.length > 4) sv.push(token.slice(0, -2));
+        if (token.endsWith('s')  && token.length > 3) sv.push(token.slice(0, -1));
+        if (tituloNorm.includes(token) || sv.some(s => tituloNorm.includes(s))) score += 4;
+        else if (texto.includes(token) || sv.some(s => texto.includes(s)))      score += 2;
+      }
+      if (score > mejorScore) { mejorScore = score; mejorKey = mapKey; }
+    }
+
+    return mejorScore >= 2 ? mejorKey : null;
+  }
+
+  function detectarQuitar(textoUsuario) {
+    const norm = normalizarSimple(textoUsuario);
+    if (!PATRON_QUITAR.test(norm)) return null;
+
+    const activeLayers = window.MAP?.getActiveLayers?.() || {};
+    if (!Object.keys(activeLayers).length) return null;
+
+    const textoSinVerbo = textoUsuario.replace(PATRON_QUITAR, '').trim();
+
+    // Si hay una sola capa activa y el pedido es vago → asume esa capa
+    const keys = Object.keys(activeLayers);
+    if (keys.length === 1) return { tipo: 'quitar', parametros: { mapKey: keys[0] } };
+
+    if (!textoSinVerbo) return null;
+
+    const mapKey = _matchCapaActiva(textoSinVerbo);
+    if (!mapKey) return null;
+
+    return { tipo: 'quitar', parametros: { mapKey } };
+  }
+
+  // ── API pública ───────────────────────────────────────────────
+  return {
+    detectarLimpiar,
+    detectarExport,
+    detectarBasemap,
+    detectarRenombrar,
+    detectarEstilo,
+    detectarAgregar,
+    detectarQuitar,
+  };
+
+})();
