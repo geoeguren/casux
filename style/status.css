@@ -421,14 +421,10 @@ body.day .summary-chip.err.active { color: #8b1520; }
 
 .badge {
   font-family: var(--font-mono);
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  letter-spacing: .03em;
-  color: var(--accent);
-  background: rgba(61,82,160,.15);
-  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--cream2);
   font-weight: 400;
+  letter-spacing: 0;
 }
 
 /* Soon-block con servicios: borde amarillo al abrir */
