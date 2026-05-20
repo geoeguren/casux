@@ -1,7 +1,7 @@
 export const SE_AR = {
 
   establecimiento_educativo_ar: {
-    source:        'pnme_ar',
+    source:        'se_ar',
     srs:           'EPSG:4326',
     idioma:     'es',
     typename:      'publico:establecimiento_educativo',
@@ -54,7 +54,7 @@ export const SE_AR = {
   },
 
   institucion_universitaria_ar: {
-    source:        'pnme_ar',
+    source:        'se_ar',
     srs:           'EPSG:4326',
     idioma:     'es',
     typename:      'publico:institucion_universitaria',
@@ -107,7 +107,7 @@ export const SE_AR = {
   },
 
   ministerio_educacion_ar: {
-    source:        'pnme_ar',
+    source:        'se_ar',
     srs:           'EPSG:4326',
     idioma:     'es',
     typename:      'publico:ministerios_educacion',
