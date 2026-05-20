@@ -305,10 +305,22 @@ body.day .summary-chip.err.active { color: #8b1520; }
   border-top: none;
 }
 
-/* Soon — amarillo */
-.country-header-soon {
+/* Soon — amarillo (con o sin servicios) */
+.country-block.country-soon-block > .country-header {
   border-color: rgba(200,160,40,0.30);
   background: rgba(200,160,40,0.04);
+}
+.country-block.country-soon-block > .country-header:hover {
+  border-color: rgba(200,160,40,0.50);
+}
+.country-block.country-soon-block.open > .country-header { border-bottom-color: transparent; }
+.country-block.country-soon-block.open .services-list {
+  border-color: rgba(200,160,40,0.30);
+  border-top: none;
+}
+
+/* country-header-soon: sin servicios, no clickeable */
+.country-header-soon {
   cursor: default;
   pointer-events: none;
 }
@@ -322,7 +334,7 @@ body.day .summary-chip.err.active { color: #8b1520; }
 
 .country-name { font-size: 15px; font-weight: 500; flex: 1; }
 
-/* Badge de estado — igual que .connected-label en landing: solo texto, sin fondo */
+/* Badges de estado — igual que .connected-label en landing */
 .country-active-label {
   font-size: 11px;
   font-weight: 500;
@@ -337,12 +349,19 @@ body.day .summary-chip.err.active { color: #8b1520; }
   color: #a07800;
 }
 
-/* Línea separadora verde entre header y servicios */
+/* Línea separadora entre header y servicios */
 .country-block.country-active.open .services-list::before {
   content: '';
   display: block;
   height: 1.5px;
   background: rgba(76,175,125,0.35);
+  flex-shrink: 0;
+}
+.country-block.country-soon-block.open .services-list::before {
+  content: '';
+  display: block;
+  height: 1.5px;
+  background: rgba(200,160,40,0.30);
   flex-shrink: 0;
 }
 
@@ -434,6 +453,29 @@ body.day .summary-chip.err.active { color: #8b1520; }
 }
 .service-status-label.ok    { color: #52b788; background: rgba(82,183,136,.12); }
 .service-status-label.error { color: #e63946; background: rgba(230,57,70,.12); }
+
+/* Dot y label amarillos para servicios de países 'soon' */
+.service-status-dot.soon  { background: #c8a028 !important; animation: none !important; }
+.service-status-label.soon {
+  color: #a07800;
+  background: rgba(200,160,40,0.12);
+}
+
+/* Pill 'próximamente' */
+.summary-chip.soon-chip      { color: var(--cream); }
+.summary-chip.soon-chip .dot { background: #c8a028; }
+.summary-chip.soon-chip.active {
+  background: rgba(200,160,40,0.12);
+  border-color: rgba(200,160,40,0.45);
+  color: #a07800;
+}
+body.day .summary-chip.soon-chip.active { color: #7a5c00; }
+
+/* Pill 'todos' activo */
+.summary-chip.info.active {
+  background: var(--cream3);
+  border-color: var(--border-md);
+}
 
 .service-toggle { color: var(--cream2); transition: transform .2s; flex-shrink: 0; }
 .service-toggle .material-icons { font-size: 18px; }
