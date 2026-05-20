@@ -97,6 +97,48 @@ const SOURCES_DATA = {
     ],
   },
 
+
+  ssa_ar: {
+    label:        'Subsecretaría de Ambiente',
+    country:      'ar',
+    countryLabel: 'Argentina',
+    wfsBase:      'https://geo.ambiente.gob.ar/geoserver/ows',
+    wfsVersion:   '1.1.0',
+    geomField:    'the_geom',
+    clipLayer:    'ign:provincia',
+    clipField:    'nam',
+    attribution:  'Subsecretaría de Ambiente (Argentina)',
+    url:          'https://www.argentina.gob.ar/ambiente',
+    domain: [
+      // Biodiversidad y áreas protegidas
+      'ambiente', 'medio ambiente', 'biodiversidad',
+      'área protegida', 'areas protegidas', 'area protegida',
+      'parque nacional', 'parques nacionales',
+      'reserva natural', 'reservas naturales', 'reserva de biosfera',
+      'ecorregion', 'ecorregiones', 'corredor biológico', 'corredor biologico',
+      'yaguareté', 'yaguarete', 'fauna', 'flora',
+      // Bosques
+      'bosque', 'bosques', 'bosque nativo', 'bosques nativos',
+      'deforestacion', 'deforestación', 'otbn',
+      'ordenamiento territorial bosques',
+      'región forestal', 'regiones forestales',
+      'forestación', 'forestacion', 'plantación forestal', 'cortina forestal',
+      'monitoreo forestal', 'pérdida forestal', 'perdida forestal',
+      // Recursos hídricos y glaciares
+      'glaciar', 'glaciares', 'inventario de glaciares',
+      'humedal', 'humedales', 'cuenca', 'cuencas',
+      'río', 'rios', 'embalse', 'embalses', 'lago', 'laguna',
+      // Fuego
+      'incendio', 'incendios', 'focos de calor', 'manejo del fuego',
+      // Cambio climático y ambiente
+      'cambio climático', 'cambio climatico',
+      'calidad de aire', 'calidad del aire',
+      'residuos', 'residuos sólidos', 'reciclado',
+      'contaminación', 'contaminacion', 'impacto ambiental',
+      'montaña', 'montañas', 'aridez',
+    ],
+  },
+
   mop_cl: {
     label:        'Ministerio de Obras Públicas',
     country:      'cl',
