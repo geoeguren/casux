@@ -498,12 +498,23 @@ body.day .summary-chip.soon-chip.active { color: #7a5c00; }
 .layer-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 8px;
+  gap: 8px;
+  padding: 6px 8px;
   border-radius: 6px;
-  transition: background .1s;
 }
-.layer-row:hover { background: var(--cream3); }
+
+.layer-geom {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  overflow: visible;
+  position: relative;
+}
+.layer-geom .material-icons { color: var(--cream2); line-height: 1; font-size: 18px; }
+.search-geom-icon { overflow: visible; position: relative; }
 
 .layer-text { flex: 1; min-width: 0; }
 .layer-name {
@@ -525,19 +536,15 @@ body.day .summary-chip.soon-chip.active { color: #7a5c00; }
   margin-top: 1px;
 }
 
-.layer-geom {
+.layer-count {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--cream2);
+  opacity: 0.7;
+  white-space: nowrap;
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  /* Necesario para que el tooltip no quede tapado */
-  overflow: visible;
-  position: relative;
 }
-.layer-geom .material-icons { color: var(--cream2); line-height: 1; font-size: 18px; }
-.search-geom-icon { overflow: visible; position: relative; }
+body.day .layer-count { color: #9a9590; }
 
 .layers-empty { font-size: 13px; color: var(--cream2); padding: 10px 0; text-align: center; }
 
