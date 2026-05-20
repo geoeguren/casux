@@ -9,10 +9,12 @@
  */
 
 import { IGN_AR }  from './ign.js';
-import { SE_AR } from './se.js';
+import { SE_AR }  from './se.js';
+import { SSA_AR } from './ssa.js';
 
 export const AR_LAYERS = {
   ...IGN_AR,
   ...SE_AR,
+  ...SSA_AR,
   // Futuro: ...INDEC_AR, ...INTA_AR
 };
