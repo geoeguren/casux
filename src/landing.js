@@ -1,19 +1,10 @@
 /* ═══════ DATA ═══════ */
-  // status: 'active' | 'soon' | null
-  const COUNTRIES = [
-    { key:'country_ar', status:'active' },
-    { key:'country_bo', status: null   },
-    { key:'country_br', status: null   },
-    { key:'country_cl', status:'soon'   },
-    { key:'country_co', status: null  },
-    { key:'country_ec', status: null   },
-    { key:'country_gy', status: null   },
-    { key:'country_pe', status: null   },
-    { key:'country_py', status: null   },
-    { key:'country_sr', status: null   },
-    { key:'country_uy', status:'active' },
-    { key:'country_ve', status: null   },
-  ];
+  // Leído de window.COUNTRIES (layers/countries.js — fuente de verdad única).
+  // Adaptar al formato { key, status } que usa renderCountries().
+  const COUNTRIES = (window.COUNTRIES || []).map(c => ({
+    key:    'country_' + c.code,
+    status: c.status || null,
+  }));
 
   /* ═══════ i18n ═══════ */
   const S = {
