@@ -72,51 +72,14 @@ body {
 .back-link:hover { color: var(--cream); }
 .back-link .material-icons { font-size: 16px; }
 
-.page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 44px;
-}
-
-/* Título igual que .section-heading de la landing */
 .page-title {
   font-family: var(--font-serif);
   font-size: clamp(28px, 3.2vw, 38px);
   font-weight: 500;
   line-height: 1.2;
+  text-align: center;
+  margin-bottom: 44px;
 }
-
-.page-subtitle {
-  font-size: 14px;
-  color: var(--cream2);
-  margin-top: 6px;
-  line-height: 1.5;
-}
-
-.refresh-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: var(--radius-sm);
-  background: var(--cream3);
-  color: var(--cream2);
-  font-size: 13px;
-  font-family: var(--font-sans);
-  cursor: pointer;
-  border: none;
-  transition: background .15s, color .15s;
-  white-space: nowrap;
-  flex-shrink: 0;
-  align-self: flex-start;
-  margin-top: 4px;
-}
-.refresh-btn:hover { background: var(--border-md); color: var(--cream); }
-.refresh-btn .material-icons { font-size: 16px; }
-.refresh-btn.spinning .material-icons { animation: spin .8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Global layer search ──────────────────────── */
 
@@ -233,6 +196,28 @@ body.day .global-search-box:focus-within { border-color: var(--border-md); }
   flex-wrap: wrap;
   align-items: center;
 }
+
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 6px;
+  background: var(--cream3);
+  color: var(--cream2);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  border: 0.5px solid var(--border);
+  transition: background .15s, color .15s, border-color .15s;
+  white-space: nowrap;
+  margin-left: auto;
+}
+.refresh-btn:hover { background: var(--border-md); color: var(--cream); border-color: var(--border-md); }
+.refresh-btn .material-icons { font-size: 14px; }
+.refresh-btn.spinning .material-icons { animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .summary-chip {
   display: flex;
