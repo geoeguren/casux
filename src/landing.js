@@ -1,9 +1,10 @@
 /* ═══════ DATA ═══════ */
   // Leído de window.COUNTRIES (layers/countries.js — fuente de verdad única).
-  // Adaptar al formato { key, status } que usa renderCountries().
+  // Adaptar al formato { key, status, name } que usa renderCountries().
   const COUNTRIES = (window.COUNTRIES || []).map(c => ({
     key:    'country_' + c.code,
     status: c.status || null,
+    name:   l => c[l] || c.es || c.code.toUpperCase(),
   }));
 
   /* ═══════ i18n ═══════ */
@@ -156,7 +157,7 @@
     const grid = document.getElementById('coverage-grid');
 
     function cardHTML(c) {
-      const name = s[c.key];
+      const name = c.name(l);
       if (c.status === 'active') {
         return `
           <div class="country-card active">
