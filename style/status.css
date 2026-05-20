@@ -296,11 +296,21 @@ body.day .global-search-box:focus-within { border-color: var(--border-md); }
 
 .country-name { font-size: 15px; font-weight: 500; flex: 1; }
 
+/* Badge de estado — igual que .connected-label en landing */
+.country-active-label {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: #3a9e6a;
+  background: rgba(76,175,125,0.10);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
 .country-soon {
   font-size: 11px;
   font-family: var(--font-mono);
-  color: var(--cream2);
-  background: var(--cream3);
+  color: #a07800;
+  background: rgba(200,160,40,0.10);
   padding: 2px 8px;
   border-radius: 4px;
 }
