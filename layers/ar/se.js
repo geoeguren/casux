@@ -1,4 +1,4 @@
-export const PNME_AR = {
+export const SE_AR = {
 
   establecimiento_educativo_ar: {
     source:        'pnme_ar',
