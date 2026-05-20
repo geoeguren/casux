@@ -243,8 +243,8 @@ function updateSummary() {
 
   document.getElementById('summary-bar').innerHTML = `
     ${mkChip('ok',        'ok',    okCount,   ui('online'))}
-    ${mkChip('err',       'error', errCount,  ui('offline'))}
     ${soonCount ? mkChip('soon-chip', 'soon', soonCount, ui('soon')) : ''}
+    ${mkChip('err',       'error', errCount,  ui('offline'))}
     ${checkCount ? `<div class="summary-chip pend"><span class="dot"></span>${checkCount} …</div>` : ''}
     <button class="refresh-btn" id="btn-refresh">
       <span class="material-icons">refresh</span>
