@@ -30,18 +30,30 @@ No hace falta saber programar para contribuir. Hay varias formas de ayudar:
 
 ### Agregar cobertura de un nuevo país
 
-Esta es una de las contribuciones más valiosas. El proceso está documentado en:
+Esta es una de las contribuciones más valiosas. El proceso completo involucra varios archivos — seguí todos los pasos para que el país quede funcionando correctamente en todos los aspectos de la app.
+
+**1. Datos geográficos**
 
 - [`geo_maps/TEMPLATE.js`](geo_maps/TEMPLATE.js) — formato esperado para los datos geográficos
 - [`geo_maps/FORMATO.md`](geo_maps/FORMATO.md) — especificación detallada
-- [`layers/sources.js`](layers/sources.js) — cómo registrar una nueva fuente WFS
+- Crear `geo_maps/[pais]/` con los archivos de regiones/departamentos/municipios
+- Agregar el índice en `geo_maps/index.js`
 
-En líneas generales:
+**2. Capas WFS/REST**
 
-1. Identificá el organismo cartográfico oficial del país (equivalente al IGN en Argentina)
-2. Verificá que tenga un servidor WFS público
-3. Seguí el template para crear los archivos de capas
-4. Abrí un Pull Request con tu contribución
+- [`layers/sources.js`](layers/sources.js) — registrar la nueva fuente (URL del servidor, tipo, atribución)
+- Crear `layers/[pais]/` con los archivos de capas siguiendo el schema existente
+- Agregar el índice en `layers/[pais]/index.js` e importarlo en `layers/index.js`
+
+**3. Reglas del LLM** — este paso se omite con frecuencia y es crítico
+
+- `api/prompts/_shared.js` → `buildReglasRegiones()`: agregar las regiones/provincias/departamentos del nuevo país para que el LLM pueda usar `clipArea` correctamente
+- `api/prompts/_shared.js` → `buildReglasCQL()`: agregar los campos de filtro geográfico específicos de las capas del nuevo país (equivalente a las reglas de Argentina, Uruguay y Chile ya documentadas)
+- `api/prompts/_es.js`, `_en.js`, `_pt.js` → `reglasCobertura`: el LLM necesita saber qué países tiene disponibles para no inventar datos de países sin cobertura
+
+**4. Documentación**
+
+- `README.md` y `README.es.md`: mover el país de "Coming soon" a "Available" en la tabla de cobertura, agregarlo en la descripción de capas geográficas y en la sección de fuentes de datos
 
 ### Proponer una mejora
 
@@ -106,13 +118,30 @@ You don't need to know how to code to contribute:
 
 ### Adding coverage for a new country
 
-This is one of the most valuable contributions. The process is documented in:
+This is one of the most valuable contributions. The process spans several files — follow all steps to ensure the country works correctly across every part of the app.
+
+**1. Geographic data**
 
 - [`geo_maps/TEMPLATE.js`](geo_maps/TEMPLATE.js) — expected format for geographic data
 - [`geo_maps/FORMATO.md`](geo_maps/FORMATO.md) — detailed specification
-- [`layers/sources.js`](layers/sources.js) — how to register a new WFS source
+- Create `geo_maps/[country]/` with region/department/municipality files
+- Register it in `geo_maps/index.js`
 
-In broad strokes: identify the official cartographic agency for the country, verify it has a public WFS server, follow the template to create the layer files, and open a Pull Request.
+**2. WFS/REST layers**
+
+- [`layers/sources.js`](layers/sources.js) — register the new source (server URL, type, attribution)
+- Create `layers/[country]/` with layer files following the existing schema
+- Add the index in `layers/[country]/index.js` and import it in `layers/index.js`
+
+**3. LLM rules** — this step is frequently missed and is critical
+
+- `api/prompts/_shared.js` → `buildReglasRegiones()`: add the regions/provinces/departments of the new country so the LLM can use `clipArea` correctly
+- `api/prompts/_shared.js` → `buildReglasCQL()`: add the geographic filter fields specific to the new country's layers (equivalent to the existing Argentina, Uruguay and Chile rules)
+- `api/prompts/_es.js`, `_en.js`, `_pt.js` → coverage rules: the LLM needs to know which countries are available so it doesn't fabricate data for uncovered countries
+
+**4. Documentation**
+
+- `README.md` and `README.es.md`: move the country from "Coming soon" to "Available" in the coverage table, add it to the geographic layers description and the data sources section
 
 ### Contributing code
 
