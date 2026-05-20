@@ -14,32 +14,12 @@
  * Response: GeoJSON FeatureCollection con features fuera del área
  */
 
-const { fetchWFS }          = require('./_wfs');
-const { checkOrigin }       = require('./_cors');
-const { normalizarMascara } = require('./_geo');
+const { fetchWFS }                                 = require('./_wfs');
+const { checkOrigin }                              = require('./_cors');
+const { normalizarMascara, areaFeature }           = require('./_geo');
 const { booleanPointInPolygon, intersect, lineSplit } = require('./_turf');
 
 const OVERLAP_POLYGON_MIN = 0.05;
-
-function areaRing(coords) {
-  const R = 6371000;
-  let area = 0;
-  for (let i = 0; i < coords.length - 1; i++) {
-    const [lng1, lat1] = coords[i];
-    const [lng2, lat2] = coords[i + 1];
-    area += (lng2 - lng1) * Math.PI / 180 *
-      (2 + Math.sin(lat1 * Math.PI / 180) + Math.sin(lat2 * Math.PI / 180));
-  }
-  return Math.abs(area) * R * R / 2;
-}
-
-function areaFeature(feat) {
-  const g = feat.geometry;
-  if (!g) return 0;
-  if (g.type === 'Polygon')      return areaRing(g.coordinates[0] || []);
-  if (g.type === 'MultiPolygon') return g.coordinates.reduce((s, p) => s + areaRing(p[0] || []), 0);
-  return 0;
-}
 
 // Conserva segmentos FUERA del polígono máscara.
 function clipLineasExclude(feat, maskPolygon) {
