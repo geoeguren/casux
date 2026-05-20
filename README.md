@@ -47,7 +47,9 @@ Official data from public sources, queried in real time via WFS/REST:
 
 **Uruguay (IGM):** departments, municipalities, and administrative boundary layers.
 
-**Coming soon:** Bolivia, Brazil, Chile, Colombia, Ecuador, Paraguay, Peru, Venezuela.
+**Chile (MOP):** road network, airports, ports, water infrastructure, health centers, protected areas, and more via ArcGIS REST services.
+
+**Coming soon:** Bolivia, Brazil, Colombia, Ecuador, Paraguay, Peru, Venezuela.
 
 ### Spatial analysis
 - **Buffer:** area of influence around one or more features
@@ -72,7 +74,7 @@ Official data from public sources, queried in real time via WFS/REST:
 
 ## Tech stack
 
-- **Frontend:** vanilla JavaScript, MapLibre GL JS
+- **Frontend:** vanilla JavaScript, Leaflet
 - **Backend:** Vercel Serverless Functions (Node.js)
 - **Data:** WFS (OGC Web Feature Service) and REST/ArcGIS
 - **AI:** Cerebras → Groq → Gemini pipeline with automatic fallback (token streaming)
@@ -87,9 +89,9 @@ Official data from public sources, queried in real time via WFS/REST:
 |---|---|
 | 🇦🇷 Argentina | ✅ Available |
 | 🇺🇾 Uruguay | ✅ Available |
+| 🇨🇱 Chile | ✅ Available |
 | 🇧🇴 Bolivia | 🔜 Coming soon |
 | 🇧🇷 Brazil | 🔜 Coming soon |
-| 🇨🇱 Chile | 🔜 Coming soon |
 | 🇨🇴 Colombia | 🔜 Coming soon |
 | 🇪🇨 Ecuador | 🔜 Coming soon |
 | 🇵🇾 Paraguay | 🔜 Coming soon |
@@ -104,8 +106,9 @@ Casux exclusively uses data from official public agencies:
 
 - **Instituto Geográfico Nacional (IGN)** — Argentina — [ign.gob.ar](https://www.ign.gob.ar)
 - **Instituto Geográfico Militar (IGM)** — Uruguay — [igm.gub.uy](https://www.igm.gub.uy)
+- **Ministerio de Obras Públicas (MOP)** — Chile — [mop.gob.cl](https://www.mop.gob.cl)
 
-Data is fetched in real time via OGC standards (WFS 1.1.0) and cached locally in IndexedDB for 24 hours to improve performance.
+Data is fetched in real time via OGC standards (WFS 1.1.0 / ArcGIS REST) and cached locally in IndexedDB for 24 hours to improve performance.
 
 ---
 
