@@ -1,33 +1,28 @@
 /**
- * sources.js — Registro de fuentes de datos geoespaciales
+ * layers/sources.js — Registro de fuentes de datos geoespaciales
  *
- * Cada fuente define un organismo o servicio WFS.
- * Las capas en layers/[pais]/[organismo].js referencian su fuente
- * por clave (ej: 'ign_ar') para que wfs.js y clip.js sepan
- * a qué servidor ir y cómo hacer recortes espaciales.
+ * Compatible con browser (window.SOURCES) y Node (module.exports).
+ * Un solo archivo — al agregar una fuente nueva, solo tocar acá.
  *
- * Para agregar una fuente nueva:
- *   1. Agregar su entrada acá
+ * Para agregar una fuente:
+ *   1. Agregar su entrada en SOURCES_DATA
  *   2. Crear layers/[pais]/[organismo].js con las capas
  *   3. Importarlo en layers/[pais]/index.js
- *   4. No tocar nada más
  */
 
-window.SOURCES = {
+const SOURCES_DATA = {
 
   ign_ar: {
-    label:       'Instituto Geográfico Nacional',
-    country:     'ar',
-    countryLabel:'Argentina',
-    wfsBase:     'https://wms.ign.gob.ar/geoserver/ows',
-    wfsVersion:  '1.1.0',
-    geomField:   'the_geom',       // campo de geometría para BBOX() en CQL
-    // Capa usada para recortes espaciales (clip.js la busca cuando
-    // clipStrategy === 'spatial' y hay una provincia en el pedido)
-    clipLayer:   'ign:provincia',
-    clipField:   'nam',            // campo de nombre normalizado (lowercase)
-    attribution: 'Instituto Geográfico Nacional (Argentina)',
-    url:         'https://www.ign.gob.ar',
+    label:        'Instituto Geográfico Nacional',
+    country:      'ar',
+    countryLabel: 'Argentina',
+    wfsBase:      'https://wms.ign.gob.ar/geoserver/ows',
+    wfsVersion:   '1.1.0',
+    geomField:    'the_geom',
+    clipLayer:    'ign:provincia',
+    clipField:    'nam',
+    attribution:  'Instituto Geográfico Nacional (Argentina)',
+    url:          'https://www.ign.gob.ar',
   },
 
   igm_uy: {
@@ -36,9 +31,9 @@ window.SOURCES = {
     countryLabel: 'Uruguay',
     wfsBase:      'https://sig.igm.gub.uy/geoserver/wfs',
     wfsVersion:   '1.1.0',
-    geomField:    'the_geom',      // campo de geometría para BBOX() en CQL
+    geomField:    'the_geom',
     clipLayer:    'LimitesDepartamentalesA:LimitesDepartamentalesA',
-    clipField:    'depto',         // valores en MAYÚSCULAS — normalizar al consultar
+    clipField:    'depto',
     attribution:  'Instituto Geográfico Militar (Uruguay)',
     url:          'https://www.igm.gub.uy',
   },
@@ -62,10 +57,16 @@ window.SOURCES = {
     countryLabel: 'Chile',
     restBase:     'https://rest-sit.mop.gob.cl/arcgis/rest/services',
     tipo:         'arcgis',
-    // clipLayer y clipField pendientes hasta implementar rest.js
-    // y verificar campos de región en los datos reales
     attribution:  'Ministerio de Obras Públicas (Chile)',
     url:          'https://www.mop.gob.cl',
   },
 
 };
+
+// Browser: exponer como window.SOURCES (igual que antes)
+// Node:    exponer via module.exports para api/health.js
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { SOURCES_DATA };
+} else {
+  window.SOURCES = SOURCES_DATA;
+}
