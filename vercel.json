@@ -11,6 +11,14 @@
     {
       "source": "/chat/:path*",
       "destination": "/chat/index.html"
+    },
+    {
+      "source": "/status",
+      "destination": "/status/index.html"
+    },
+    {
+      "source": "/status/:path*",
+      "destination": "/status/index.html"
     }
   ],
   "headers": [
