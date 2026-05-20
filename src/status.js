@@ -137,23 +137,21 @@ function isSoonCountry(sourceKey) {
 }
 
 function buildCheckUrl(sourceKey) {
-  const src = window.SOURCES?.[sourceKey];
-  if (!src) return null;
-  if (src.wfsBase)  return `${src.wfsBase}?service=WFS&request=GetCapabilities&version=1.1.0`;
-  if (src.restBase) return `${src.restBase}?f=json`;
-  return null;
+  return `/api/health?source=${encodeURIComponent(sourceKey)}`;
 }
 
 async function checkSource(sourceKey) {
-  const url = buildCheckUrl(sourceKey);
-  if (!url) { setStatus(sourceKey, 'error'); return; }
   setStatus(sourceKey, 'checking');
   try {
     const ctrl    = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 8000);
-    await fetch(url, { method: 'HEAD', signal: ctrl.signal, mode: 'no-cors' });
+    const timeout = setTimeout(() => ctrl.abort(), 12000);
+    const resp    = await fetch(buildCheckUrl(sourceKey), { signal: ctrl.signal });
     clearTimeout(timeout);
-    setStatus(sourceKey, 'ok');
+
+    if (!resp.ok) { setStatus(sourceKey, 'error'); return; }
+
+    const data = await resp.json();
+    setStatus(sourceKey, data.status === 'ok' ? 'ok' : 'error');
   } catch {
     setStatus(sourceKey, 'error');
   }
