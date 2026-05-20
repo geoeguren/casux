@@ -6130,7 +6130,7 @@ export const SSA_AR = {
     tituloEs:      'Humedales de la República Argentina, nivel I subregiones',
     tituloEn:      'Wetlands',
     tituloPt:      'Humedais',
-    tituloUI:      'Humedales de Argentina — subregiones',
+    tituloUI:      'Subregiones de humedales de Argentina',
     tituloUIEs:    'Humedales de la República Argentina, nivel I subregiones',
     tituloUIEn:    'Wetlands of Argentina, Level I Subregions',
     tituloUIPt:    'Humedais da Argentina, Nível I Subregiões',
