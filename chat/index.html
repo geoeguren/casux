@@ -263,7 +263,12 @@
   <script src="../src/export.js"></script>          <!-- window.EXPORT — punto de entrada                -->
 
   <!-- ── Módulos de UI ────────────────────────────────────────────── -->
-  <script src="../src/intent.js"></script>    <!-- window.INTENT — motor híbrido sin LLM  -->
+  <!-- ── Motor de intenciones (modular) ───────────────────────────── -->
+  <script src="../src/intent/intent-utils.js"></script>    <!-- window.INTENT_UTILS   — normalización, tokenización, stopwords -->
+  <script src="../src/intent/intent-scorer.js"></script>   <!-- window.INTENT_SCORER  — TF-IDF, IDF, detectarArea, desempate  -->
+  <script src="../src/intent/intent-capa.js"></script>     <!-- window.INTENT_CAPA    — detectarCapa, construirInstruccion     -->
+  <script src="../src/intent/intent-acciones.js"></script> <!-- window.INTENT_ACCIONES — limpiar, export, estilo, agregar...  -->
+  <script src="../src/intent/index.js"></script>           <!-- window.INTENT         — orquestador, API pública              -->
   <script src="../src/chat.js"></script>      <!-- window.CHAT, window.UI                 -->
   <script src="../src/settings.js"></script>  <!-- window.SETTINGS                        -->
   <script src="../src/auth.js"></script>      <!-- window.AUTH                            -->
