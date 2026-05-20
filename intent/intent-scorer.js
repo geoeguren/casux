@@ -15,11 +15,12 @@
  *   4. Si el score del ganador < MIN_SCORE → LLM.
  *
  * Autoridad de dominio (campo `domain` en sources.js):
- *   Cada fuente declara en qué temáticas es autoridad primaria.
- *   Cada capa declara a qué temática pertenece con el campo `topic`.
- *   Si el `topic` de la capa está en el `domain` de su fuente → 'primary'.
- *   Esto resuelve ambigüedades entre fuentes: "universidades" en IGN es
- *   'secondary' (catálogo general), pero en Mapa Educativo es 'primary'.
+ *   Cada fuente declara en qué temáticas es autoridad primaria (ej: MTOP → vialidad).
+ *   La autoridad de una capa se infiere automáticamente comparando sus keywords
+ *   contra el `domain` de su fuente — sin necesidad de campo `topic` en cada capa.
+ *   IGN/IGM no declaran `domain` → todas sus capas son 'secondary' por defecto.
+ *   Un servicio temático que declare `domain` gana el desempate sobre IGN/IGM
+ *   para cualquier capa cuyas keywords coincidan con ese dominio.
  *
  * Dependencias: window.INTENT_UTILS (intent-utils.js)
  */
@@ -165,24 +166,40 @@ window.INTENT_SCORER = (() => {
 
   // ── _dominioAuthority ─────────────────────────────────────────
   //
-  // Determina si una capa es 'primary' o 'secondary' para su temática.
+  // Determina si una capa es 'primary' o 'secondary' para su fuente.
   //
-  // 'primary':   el topic de la capa está en el domain de su fuente.
-  //              Indica que este organismo es la autoridad para ese dato.
-  //              Ej: "universidades" en Mapa Educativo → primary.
+  // En lugar de requerir un campo `topic` en cada capa (que implicaría
+  // editar cientos de entradas), infiere la autoridad comparando las
+  // keywords de la capa contra el `domain` declarado en su fuente.
   //
-  // 'secondary': el topic no está en el domain de la fuente (o no están definidos).
-  //              Indica que la capa existe pero no es el núcleo del servicio.
-  //              Ej: "universidades" en IGN → secondary.
+  // Si alguna keyword normalizada de la capa coincide con algún término
+  // normalizado del `domain` de la fuente → 'primary'.
+  // Si la fuente no declara `domain`, o ninguna keyword coincide → 'secondary'.
   //
-  // Si la capa no tiene `topic` o la fuente no tiene `domain`, devuelve
-  // 'secondary' como fallback conservador (no asumir autoridad no declarada).
+  // Esto permite agregar una fuente nueva simplemente declarando su `domain`
+  // en sources.js, sin tocar ningún archivo de capas.
+  //
+  // Ejemplo:
+  //   mtop_uy.domain = ['vialidad', 'rutas', 'ferroviario', 'puentes']
+  //   capa rutas_uy tiene keywords: ['ruta', 'vialidad', 'camino', ...]
+  //   → 'vialidad' matchea → 'primary'
+  //
+  //   ign_ar no declara domain → todas sus capas son 'secondary'
+  //   → si empata con mtop_uy en una capa de transporte, mtop_uy gana
 
   function _dominioAuthority(capa) {
-    const topic  = capa.topic;
     const source = window.SOURCES?.[capa.source];
-    if (!topic || !source?.domain) return 'secondary';
-    return source.domain.includes(topic) ? 'primary' : 'secondary';
+    if (!source?.domain?.length) return 'secondary';
+
+    // Usar keywords del idioma activo con fallback a ES
+    const lang     = window.I18N?.getLang?.() || 'es';
+    const sufijo   = lang === 'en' ? 'En' : lang === 'pt' ? 'Pt' : 'Es';
+    const keywords = (capa[`keywords${sufijo}`] || capa.keywords || [])
+      .map(k => normalizar(k));
+
+    const domainNorm = source.domain.map(d => normalizar(d));
+
+    return domainNorm.some(d => keywords.includes(d)) ? 'primary' : 'secondary';
   }
 
   // ── buscarCapa ────────────────────────────────────────────────
