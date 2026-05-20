@@ -4,8 +4,20 @@
  * Compatible con browser (window.SOURCES) y Node (module.exports).
  * Un solo archivo — al agregar una fuente nueva, solo tocar acá.
  *
+ * Campos por fuente:
+ *   label, country, countryLabel  → metadatos de display
+ *   wfsBase | restBase            → URL del servicio (determina el tipo)
+ *   wfsVersion, geomField         → parámetros WFS
+ *   clipLayer, clipField          → capa y campo para clip espacial
+ *   attribution, url              → créditos y enlace institucional
+ *   domain (opcional)             → array de términos que definen las temáticas
+ *                                   sobre las que esta fuente es autoridad primaria.
+ *                                   Se compara (normalizado) contra las keywords de
+ *                                   cada capa para resolver empates en el scorer.
+ *                                   IGN/IGM no lo declaran → son 'secondary' por defecto.
+ *
  * Para agregar una fuente:
- *   1. Agregar su entrada en SOURCES_DATA
+ *   1. Agregar su entrada acá (con domain si aplica)
  *   2. Crear layers/[pais]/[organismo].js con las capas
  *   3. Importarlo en layers/[pais]/index.js
  */
@@ -49,6 +61,12 @@ const SOURCES_DATA = {
     clipField:    'nombre',
     attribution:  'Ministerio de Transporte y Obras Públicas (Uruguay)',
     url:          'https://www.mtop.gub.uy',
+    // Temáticas sobre las que MTOP es autoridad primaria.
+    // Cualquier capa de esta fuente cuyas keywords incluyan alguno de estos
+    // términos (normalizados) será considerada 'primary' en el desempate.
+    domain: ['vialidad', 'rutas', 'ruta', 'camino', 'camineria', 'ferroviario',
+             'ferrocarril', 'puente', 'puentes', 'transporte', 'peaje',
+             'aeropuerto', 'puerto', 'zona franca'],
   },
 
   mop_cl: {
@@ -59,6 +77,10 @@ const SOURCES_DATA = {
     tipo:         'arcgis',
     attribution:  'Ministerio de Obras Públicas (Chile)',
     url:          'https://www.mop.gob.cl',
+    // MOP Chile es autoridad en infraestructura vial, hídrica, aeroportuaria y portuaria.
+    domain: ['vialidad', 'rutas', 'ruta', 'camino', 'puente', 'puentes',
+             'aeropuerto', 'puerto', 'hidrico', 'embalse', 'agua potable',
+             'concesion', 'transporte'],
   },
 
 };
