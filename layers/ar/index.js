@@ -8,9 +8,11 @@
  * Los diccionarios de normalización geográfica viven en geo_maps/ar/
  */
 
-import { IGN_AR } from './ign.js';
+import { IGN_AR }  from './ign.js';
+import { PNME_AR } from './pnme.js';
 
 export const AR_LAYERS = {
   ...IGN_AR,
+  ...PNME_AR,
   // Futuro: ...INDEC_AR, ...INTA_AR
 };
