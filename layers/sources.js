@@ -69,6 +69,25 @@ const SOURCES_DATA = {
              'aeropuerto', 'puerto', 'zona franca'],
   },
 
+  pnme_ar: {
+    label:        'Secretaría de Educación',
+    country:      'ar',
+    countryLabel: 'Argentina',
+    wfsBase:      'https://mapa.educacion.gob.ar/geoserver/ows',
+    wfsVersion:   '1.1.0',
+    geomField:    'the_geom',
+    clipLayer:    'ign:provincia',
+    clipField:    'nam',
+    attribution:  'Secretaría de Educación (Argentina)',
+    url:          'https://www.argentina.gob.ar/educacion',
+    domain: ['educación', 'educacion', 'escuela', 'escuelas', 'colegio', 'colegios',
+             'instituto', 'institutos', 'establecimiento educativo', 'nivel educativo',
+             'modalidad educativa', 'mapa educativo',
+             'universidad', 'universidades', 'universitario', 'universitaria',
+             'facultad', 'facultades', 'educación superior', 'educacion superior',
+             'nivel superior', 'formación superior', 'formacion superior'],
+  },
+
   mop_cl: {
     label:        'Ministerio de Obras Públicas',
     country:      'cl',
