@@ -281,7 +281,12 @@ function updateSummary() {
     ${mkChip('err',  'error', errCount,  ui('offline'))}
     ${soonCount ? mkChip('soon-chip', 'soon', soonCount, ui('soon')) : ''}
     ${checkCount ? `<div class="summary-chip pend"><span class="dot"></span>${checkCount} …</div>` : ''}
+    <button class="refresh-btn" id="btn-refresh">
+      <span class="material-icons">refresh</span>
+      ${ui('refreshBtn')}
+    </button>
   `;
+  document.getElementById('btn-refresh')?.addEventListener('click', runHealthChecks);
 }
 
 function toggleFilter(filter) {
@@ -465,13 +470,11 @@ function runHealthChecks() {
 
 function applyStaticI18n() {
   const lang = getLang();
-  document.title                                         = ui('tabTitle');
-  document.getElementById('page-title').textContent     = ui('pageTitle');
-  document.getElementById('page-subtitle').textContent  = ui('pageSubtitle');
-  document.getElementById('back-label').textContent     = ui('backLabel');
-  document.getElementById('btn-refresh-label').textContent = ui('refreshBtn');
-  document.getElementById('global-search').placeholder  = ui('searchPlaceholder');
-  document.getElementById('theme-toggle-btn').title     = ui('themeToggleTitle');
+  document.title                                        = ui('tabTitle');
+  document.getElementById('page-title').textContent    = ui('pageTitle');
+  document.getElementById('back-label').textContent    = ui('backLabel');
+  document.getElementById('global-search').placeholder = ui('searchPlaceholder');
+  document.getElementById('theme-toggle-btn').title    = ui('themeToggleTitle');
   document.documentElement.lang = lang;
 }
 
@@ -489,9 +492,6 @@ function initStatus() {
 
   document.getElementById('global-search')
     .addEventListener('input', e => onGlobalSearch(e.target.value));
-
-  document.getElementById('btn-refresh')
-    .addEventListener('click', runHealthChecks);
 
   Object.keys(window.SOURCES || {}).forEach(k => { healthState[k] = 'checking'; });
   updateSummary();
