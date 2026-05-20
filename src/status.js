@@ -302,13 +302,13 @@ function renderLayerRow(l) {
   if (l.restricted) {
     return `
       <div class="layer-row layer-row-restricted" data-typename="${l.typename}">
-        <div class="layer-geom">${geomIconHTML(l.geomType)}</div>
+        <div class="layer-geom layer-geom-restricted">${geomIconHTML(l.geomType)}</div>
         <div class="layer-text">
           <span class="layer-name layer-name-restricted">${l.titulo}</span>
-          <span class="layer-key">${l.typename}</span>
+          <span class="layer-key layer-key-restricted">${l.typename}</span>
         </div>
         ${count}
-        <span class="material-icons layer-restricted-icon">error_outline</span>
+        <span class="material-icons layer-restricted-icon">block</span>
       </div>
     `;
   }
