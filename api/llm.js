@@ -19,6 +19,13 @@ const GEMINI_URL      = 'https://generativelanguage.googleapis.com/v1beta/models
 // Tiempo máximo por proveedor antes de hacer fallback (ms)
 const PROVIDER_TIMEOUT_MS = 8000;
 
+// Tiempo máximo total de la función antes de cerrar el SSE limpiamente.
+// Vercel Hobby corta las funciones a los 10s — este deadline actúa 1s antes
+// para evitar que el stream quede truncado sin evento de cierre, lo que deja
+// al cliente con un mensaje parcial sin error visible ni { done: true }.
+// Solo aplica entre intentos de proveedores (no interrumpe un stream en curso).
+const FUNCTION_DEADLINE_MS = 9000;
+
 // ── Búsqueda semántica local ──────────────────────────────────────
 
 const { normalizar, STOPWORDS } = require('./_utils');
@@ -187,6 +194,11 @@ const ERR = {
 };
 function t(key, lang) { return ERR[key]?.[lang] || ERR[key]?.es || key; }
 
+// ── Helper: cerrar SSE con error de deadline ──────────────────────
+function sendDeadlineError(res, userLang) {
+  res.write(`data: ${JSON.stringify({ error: t('timeout', userLang) })}\n\n`);
+  res.end();
+}
 
 // ── Handler ───────────────────────────────────────────────────────
 
@@ -221,11 +233,14 @@ module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
 
+  // Registrar inicio para el deadline global de función
+  const functionStart = Date.now();
+
   // ── Selección de proveedores ──────────────────────────────────
   //
   // Gemini no tiene streaming nativo compatible con SSE, así que se
   // maneja separado: primero intentamos los proveedores streaming
-  // (Cerebras/Groq/Mistral/DeepSeek) y Gemini queda como fallback final
+  // (Cerebras/Groq/Mistral) y Gemini queda como fallback final
   // — o como proveedor único si el usuario lo seleccionó explícitamente.
   //
   // useGeminiOnly: el usuario eligió Gemini → saltar los demás
@@ -260,6 +275,14 @@ module.exports = async function handler(req, res) {
 
   // Intentar proveedores streaming
   for (const p of proveedores) {
+    // Verificar deadline antes de cada intento.
+    // Si ya no queda tiempo suficiente para intentar un proveedor nuevo,
+    // cerrar el SSE limpiamente en lugar de dejar que Vercel corte el stream.
+    if (Date.now() - functionStart > FUNCTION_DEADLINE_MS) {
+      console.warn(`[llm] Deadline alcanzado antes de intentar ${p.nombre}`);
+      sendDeadlineError(res, userLang);
+      return;
+    }
     try {
       fullText  = await p.fn();
       success   = true;
@@ -284,6 +307,12 @@ module.exports = async function handler(req, res) {
 
   // Gemini: usarlo si fue seleccionado explícitamente o si todos los anteriores fallaron
   if (!success && (useGeminiOnly || useGeminiFallback) && geminiKey) {
+    // Verificar deadline también antes de Gemini
+    if (Date.now() - functionStart > FUNCTION_DEADLINE_MS) {
+      console.warn('[llm] Deadline alcanzado antes de intentar Gemini');
+      sendDeadlineError(res, userLang);
+      return;
+    }
     try {
       fullText = await callGemini(geminiKey, systemPrompt, messages);
       // Simular streaming para Gemini enviando chunks de 256 chars.
