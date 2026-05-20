@@ -80,12 +80,14 @@ body {
   margin-bottom: 44px;
 }
 
+/* Título igual que .section-heading de la landing */
 .page-title {
   font-family: var(--font-serif);
-  font-size: 28px;
+  font-size: clamp(28px, 3.2vw, 38px);
   font-weight: 500;
   line-height: 1.2;
 }
+
 .page-subtitle {
   font-size: 14px;
   color: var(--cream2);
@@ -118,9 +120,7 @@ body {
 
 /* ── Global layer search ──────────────────────── */
 
-.global-search-wrap {
-  margin-bottom: 44px;
-}
+.global-search-wrap { margin-bottom: 44px; }
 
 .global-search-box {
   display: flex;
@@ -134,19 +134,10 @@ body {
   box-shadow: 0 2px 12px rgba(0,0,0,.10);
   transition: border-color .15s;
 }
-.global-search-box:focus-within {
-  border-color: rgba(226,221,212,0.30);
-}
-body.day .global-search-box:focus-within {
-  border-color: var(--border-md);
-}
+.global-search-box:focus-within { border-color: rgba(226,221,212,0.30); }
+body.day .global-search-box:focus-within { border-color: var(--border-md); }
 
-.global-search-icon {
-  font-size: 18px;
-  color: var(--cream2);
-  flex-shrink: 0;
-  pointer-events: none;
-}
+.global-search-icon { font-size: 18px; color: var(--cream2); flex-shrink: 0; pointer-events: none; }
 
 .global-search {
   flex: 1;
@@ -192,20 +183,13 @@ body.day .global-search-box:focus-within {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .search-result-key {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--cream2);
   margin-top: 1px;
 }
-
-.search-result-source {
-  font-size: 12px;
-  color: var(--cream2);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
+.search-result-source { font-size: 12px; color: var(--cream2); white-space: nowrap; flex-shrink: 0; }
 
 .search-geom-icon {
   flex-shrink: 0;
@@ -216,12 +200,7 @@ body.day .global-search-box:focus-within {
 }
 .search-geom-icon .material-icons { color: var(--cream2); font-size: 18px; }
 
-.search-no-results {
-  padding: 14px;
-  font-size: 13px;
-  color: var(--cream2);
-  text-align: center;
-}
+.search-no-results { padding: 14px; font-size: 13px; color: var(--cream2); text-align: center; }
 
 /* ── Summary bar ──────────────────────────────── */
 
@@ -230,6 +209,7 @@ body.day .global-search-box:focus-within {
   gap: 8px;
   margin-bottom: 14px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .summary-chip {
@@ -242,17 +222,28 @@ body.day .global-search-box:focus-within {
   font-weight: 500;
   background: var(--bg2);
   border: 0.5px solid var(--border);
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  font-family: var(--font-sans);
 }
+.summary-chip:hover { border-color: var(--border-md); }
+.summary-chip[style*="cursor:default"] { cursor: default !important; }
+
 .summary-chip .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .summary-chip.ok   .dot { background: var(--ok); }
 .summary-chip.err  .dot { background: var(--error); }
 .summary-chip.pend .dot { background: var(--cream2); animation: pulse 1.2s ease-in-out infinite; }
+.summary-chip.info .dot { background: var(--accent); }
+
+/* Pill activo (filtro aplicado) */
+.summary-chip.ok.active  { background: rgba(82,183,136,.12);  border-color: rgba(82,183,136,.4);  color: var(--ok); }
+.summary-chip.err.active { background: rgba(230,57,70,.10);   border-color: rgba(230,57,70,.4);   color: var(--error); }
+
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
 /* ── Country block ────────────────────────────── */
 
 .country-list { display: flex; flex-direction: column; gap: 10px; }
-
 .country-block { display: flex; flex-direction: column; }
 
 .country-header {
@@ -273,7 +264,7 @@ body.day .global-search-box:focus-within {
   border-bottom-right-radius: 0;
 }
 
-/* Activo — verde, igual que landing */
+/* Activo — verde */
 .country-block.country-active > .country-header {
   border-color: rgba(76,175,125,0.35);
   background: rgba(76,175,125,0.05);
@@ -282,15 +273,13 @@ body.day .global-search-box:focus-within {
   border-color: rgba(76,175,125,0.55);
   box-shadow: 0 2px 16px rgba(76,175,125,0.10);
 }
-.country-block.country-active.open > .country-header {
-  border-bottom-color: transparent;
-}
+.country-block.country-active.open > .country-header { border-bottom-color: transparent; }
 .country-block.country-active.open .services-list {
   border-color: rgba(76,175,125,0.35);
   border-top: none;
 }
 
-/* Soon — amarillo, igual que landing, sin contenido desplegable */
+/* Soon — amarillo */
 .country-header-soon {
   border-color: rgba(200,160,40,0.30);
   background: rgba(200,160,40,0.04);
@@ -298,18 +287,14 @@ body.day .global-search-box:focus-within {
   pointer-events: none;
 }
 
-/* Inactivo — gris neutro, no clickeable */
+/* Inactivo */
 .country-header.inactive {
   opacity: 0.40;
   cursor: default;
   pointer-events: none;
 }
 
-.country-name {
-  font-size: 15px;
-  font-weight: 500;
-  flex: 1;
-}
+.country-name { font-size: 15px; font-weight: 500; flex: 1; }
 
 .country-soon {
   font-size: 11px;
@@ -331,7 +316,6 @@ body.day .global-search-box:focus-within {
 .src-dot.checking { background: var(--cream2); animation: pulse 1.2s ease-in-out infinite; }
 
 .country-src-count { font-size: 12px; color: var(--cream2); }
-
 .country-toggle { color: var(--cream2); transition: transform .2s; flex-shrink: 0; }
 .country-toggle .material-icons { font-size: 20px; }
 .country-block.open .country-toggle { transform: rotate(180deg); }
@@ -373,7 +357,6 @@ body.day .global-search-box:focus-within {
 .service-status-dot.checking { background: var(--cream2); animation: pulse 1.2s ease-in-out infinite; }
 
 .service-info { flex: 1; min-width: 0; }
-
 .service-name {
   font-size: 14px;
   font-weight: 500;
@@ -381,13 +364,7 @@ body.day .global-search-box:focus-within {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.service-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 2px;
-}
+.service-meta { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
 
 .badge {
   font-family: var(--font-mono);
@@ -446,7 +423,6 @@ body.day .global-search-box:focus-within {
 .layer-row:hover { background: var(--cream3); }
 
 .layer-text { flex: 1; min-width: 0; }
-
 .layer-name {
   font-size: 13px;
   color: var(--cream);
@@ -455,7 +431,6 @@ body.day .global-search-box:focus-within {
   text-overflow: ellipsis;
   display: block;
 }
-
 .layer-key {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -474,16 +449,17 @@ body.day .global-search-box:focus-within {
   justify-content: center;
   width: 22px;
   height: 22px;
+  /* Necesario para que el tooltip no quede tapado */
+  overflow: visible;
+  position: relative;
 }
-.layer-geom .material-icons {
-  color: var(--cream2);
-  line-height: 1;
-  font-size: 18px;
-}
+.layer-geom .material-icons { color: var(--cream2); line-height: 1; font-size: 18px; }
+.search-geom-icon { overflow: visible; position: relative; }
 
 .layers-empty { font-size: 13px; color: var(--cream2); padding: 10px 0; text-align: center; }
 
-/* ── Geom icon tooltips ───────────────────────── */
+/* ── Tooltips ─────────────────────────────────── */
+/* z-index alto para que queden por encima de todo */
 
 [data-tooltip] { position: relative; }
 [data-tooltip]::after {
@@ -502,7 +478,7 @@ body.day .global-search-box:focus-within {
   pointer-events: none;
   opacity: 0;
   transition: opacity .12s ease;
-  z-index: 10;
+  z-index: 9999;
 }
 [data-tooltip]:hover::after { opacity: 1; }
 
