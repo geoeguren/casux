@@ -296,36 +296,30 @@ body.day .global-search-box:focus-within { border-color: var(--border-md); }
 
 .country-name { font-size: 15px; font-weight: 500; flex: 1; }
 
-/* Badge de estado — igual que .connected-label en landing */
+/* Badge de estado — igual que .connected-label en landing: solo texto, sin fondo */
 .country-active-label {
   font-size: 11px;
-  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.02em;
   color: #3a9e6a;
-  background: rgba(76,175,125,0.10);
-  padding: 2px 8px;
-  border-radius: 4px;
 }
 
 .country-soon {
   font-size: 11px;
-  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.02em;
   color: #a07800;
-  background: rgba(200,160,40,0.10);
-  padding: 2px 8px;
-  border-radius: 4px;
 }
 
-.src-dots { display: flex; gap: 4px; align-items: center; margin-right: 4px; }
-.src-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--cream2);
-  transition: background .3s;
+/* Línea separadora verde entre header y servicios */
+.country-block.country-active.open .services-list::before {
+  content: '';
+  display: block;
+  height: 1.5px;
+  background: rgba(76,175,125,0.35);
+  flex-shrink: 0;
 }
-.src-dot.ok       { background: var(--ok); }
-.src-dot.error    { background: var(--error); }
-.src-dot.checking { background: var(--cream2); animation: pulse 1.2s ease-in-out infinite; }
 
-.country-src-count { font-size: 12px; color: var(--cream2); }
 .country-toggle { color: var(--cream2); transition: transform .2s; flex-shrink: 0; }
 .country-toggle .material-icons { font-size: 20px; }
 .country-block.open .country-toggle { transform: rotate(180deg); }
