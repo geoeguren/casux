@@ -163,23 +163,7 @@ function setStatus(sourceKey, status) {
   healthState[sourceKey] = status;
 
   const dot = document.querySelector(`.service-card[data-source="${sourceKey}"] .service-status-dot`);
-  const lbl = document.querySelector(`.service-card[data-source="${sourceKey}"] .service-status-label`);
-
-  // Servicios de países 'soon': siempre muestran amarillo, independientemente del estado real
-  const soon = isSoonCountry(sourceKey);
-
-  if (dot) {
-    dot.className = soon ? 'service-status-dot soon' : 'service-status-dot ' + status;
-  }
-  if (lbl) {
-    const text = {
-      checking: ui('checking'),
-      ok:       ui('online'),
-      error:    ui('offline'),
-    }[status] || status;
-    lbl.className   = soon ? 'service-status-label soon' : 'service-status-label ' + status;
-    lbl.textContent = text;
-  }
+  if (dot) dot.className = 'service-status-dot ' + status;
 
   applyFilters();
   updateSummary();
@@ -327,12 +311,11 @@ function renderServiceCard(sourceKey, layersBySource) {
   return `
     <div class="service-card" data-source="${sourceKey}">
       <div class="service-header" onclick="toggleService('${sourceKey}')">
-        <span class="service-status-dot ${soon ? 'soon' : 'checking'}"></span>
+        <span class="service-status-dot checking"></span>
         <div class="service-info">
           <div class="service-name">${src.label} <span class="badge">${tipo}</span></div>
-          <div class="service-layer-count">${layers.length} ${ui('layers')}</div>
         </div>
-        <span class="service-status-label ${soon ? 'soon' : 'checking'}">${ui('checking')}</span>
+        <span class="service-layer-count-right">${layers.length} ${ui('layers')}</span>
         <span class="service-toggle"><span class="material-icons">expand_more</span></span>
       </div>
       <div class="layers-panel">
