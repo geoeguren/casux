@@ -1,14 +1,16 @@
 /**
  * src/status.js — Página de estado de servicios
  *
- * Renderiza los países, servicios y capas disponibles en Casux.
- * Ejecuta health checks en paralelo al cargar la página.
- *
- * En producción, SOURCES y LAYERS_BY_SOURCE pueden reemplazarse por
- * window.SOURCES y un filtro sobre window.LAYERS (special:false, visible:true).
+ * Lee window.SOURCES y window.LAYERS (cargados por sources.js y layers/index.js).
+ * Espera el evento 'layers:ready' antes de renderizar.
+ * Ejecuta health checks en paralelo sin bloquear el paint inicial.
  */
 
-// ── Datos ──────────────────────────────────────────────────────────
+// ── Lista de países ────────────────────────────────────────────────
+// state: 'active' | 'soon' | 'inactive'
+// 'active'   → verde, tiene servicios funcionando
+// 'soon'     → amarillo, tiene servicios pero con errores/parciales
+// 'inactive' → gris, sin datos todavía
 
 const COUNTRIES = [
   { code: 'ar', label: 'Argentina', state: 'active'   },
@@ -25,81 +27,40 @@ const COUNTRIES = [
   { code: 've', label: 'Venezuela', state: 'inactive'  },
 ];
 
-const SOURCES = {
-  ign_ar: {
-    label:   'Instituto Geográfico Nacional',
-    country: 'ar',
-    wfsBase: 'https://wms.ign.gob.ar/geoserver/ows',
-    tipo:    'wfs',
-  },
-  igm_uy: {
-    label:   'Instituto Geográfico Militar',
-    country: 'uy',
-    wfsBase: 'https://sig.igm.gub.uy/geoserver/wfs',
-    tipo:    'wfs',
-  },
-  mtop_uy: {
-    label:   'Ministerio de Transporte y Obras Públicas',
-    country: 'uy',
-    wfsBase: 'https://geoservicios.mtop.gub.uy/geoserver/ows',
-    tipo:    'wfs',
-  },
-  mop_cl: {
-    label:    'Ministerio de Obras Públicas',
-    country:  'cl',
-    restBase: 'https://rest-sit.mop.gob.cl/arcgis/rest/services',
-    tipo:     'rest',
-  },
-};
+// ── Derivar datos desde window.SOURCES y window.LAYERS ────────────
 
-// Solo capas con visible: true y special: false
-const LAYERS_BY_SOURCE = {
-  ign_ar: [
-    { key: 'area_protegida_ar',  titulo: 'Áreas naturales protegidas',    geomType: 'polygon' },
-    { key: 'aeropuerto_ar',      titulo: 'Aeropuertos y aeródromos',       geomType: 'point'   },
-    { key: 'costa_ar',           titulo: 'Línea de costa',                 geomType: 'line'    },
-    { key: 'departamento_ar',    titulo: 'Departamentos de Argentina',     geomType: 'polygon' },
-    { key: 'embalse_ar',         titulo: 'Embalses y represas',            geomType: 'polygon' },
-    { key: 'ferrocarril_ar',     titulo: 'Ferrocarriles',                  geomType: 'line'    },
-    { key: 'lago_ar',            titulo: 'Lagos y lagunas',                geomType: 'polygon' },
-    { key: 'limite_maritimo_ar', titulo: 'Límites marítimos',              geomType: 'line'    },
-    { key: 'localidad_ar',       titulo: 'Localidades urbanas',            geomType: 'point'   },
-    { key: 'municipio_ar',       titulo: 'Municipios de Argentina',        geomType: 'polygon' },
-    { key: 'paraje_ar',          titulo: 'Parajes y localidades rurales',  geomType: 'point'   },
-    { key: 'provincia_ar',       titulo: 'Provincias de Argentina',        geomType: 'polygon' },
-    { key: 'puerto_ar',          titulo: 'Puertos',                        geomType: 'point'   },
-    { key: 'rio_ar',             titulo: 'Ríos',                           geomType: 'line'    },
-    { key: 'vial_nacional_ar',   titulo: 'Red vial nacional',              geomType: 'line'    },
-    { key: 'vial_provincial_ar', titulo: 'Red vial provincial',            geomType: 'line'    },
-  ],
-  igm_uy: [
-    { key: 'departamento_uy',    titulo: 'Departamentos de Uruguay',       geomType: 'polygon' },
-    { key: 'localidad_uy',       titulo: 'Localidades de Uruguay',         geomType: 'point'   },
-    { key: 'municipio_uy',       titulo: 'Municipios de Uruguay',          geomType: 'polygon' },
-  ],
-  mtop_uy: [
-    { key: 'aeropuerto_uy',      titulo: 'Aeropuertos',                    geomType: 'point'   },
-    { key: 'ferrocarril_uy',     titulo: 'Ferrocarriles',                  geomType: 'line'    },
-    { key: 'puente_uy',          titulo: 'Puentes',                        geomType: 'point'   },
-    { key: 'puerto_uy',          titulo: 'Puertos',                        geomType: 'point'   },
-    { key: 'vial_dpto_uy',       titulo: 'Red vial departamental',         geomType: 'line'    },
-    { key: 'vial_nacional_uy',   titulo: 'Red vial nacional',              geomType: 'line'    },
-  ],
-  mop_cl: [
-    { key: 'aeropuerto_cl',      titulo: 'Aeropuertos',                    geomType: 'point'   },
-    { key: 'puente_cl',          titulo: 'Puentes',                        geomType: 'point'   },
-    { key: 'puerto_cl',          titulo: 'Puertos',                        geomType: 'point'   },
-    { key: 'vial_nacional_cl',   titulo: 'Red vial nacional',              geomType: 'line'    },
-    { key: 'vial_regional_cl',   titulo: 'Red vial regional',              geomType: 'line'    },
-  ],
-};
+function getLayersBySource() {
+  const result = {};
+  if (!window.LAYERS) return result;
+
+  for (const [, layer] of Object.entries(window.LAYERS)) {
+    if (layer.special !== false) continue;       // solo capas públicas
+    if (layer.visible === false) continue;       // solo visibles por defecto
+    if (!layer.source) continue;
+
+    if (!result[layer.source]) result[layer.source] = [];
+    result[layer.source].push({
+      key:      layer.layerKey || layer.source,  // clave única de la capa
+      titulo:   layer.tituloUI || layer.titulo,
+      geomType: layer.geomType || 'polygon',
+    });
+  }
+
+  // Ordenar cada lista alfabéticamente
+  for (const key of Object.keys(result)) {
+    result[key].sort((a, b) => a.titulo.localeCompare(b.titulo, 'es'));
+  }
+
+  return result;
+}
 
 // ── Índice de búsqueda ─────────────────────────────────────────────
 
-function buildSearchIndex() {
+function buildSearchIndex(layersBySource) {
   const index = [];
-  for (const [sourceKey, layers] of Object.entries(LAYERS_BY_SOURCE)) {
-    const src = SOURCES[sourceKey];
+  for (const [sourceKey, layers] of Object.entries(layersBySource)) {
+    const src = window.SOURCES?.[sourceKey];
+    if (!src) continue;
     for (const l of layers) {
       index.push({ ...l, sourceKey, sourceLabel: src.label, countryCode: src.country });
     }
@@ -112,9 +73,10 @@ function buildSearchIndex() {
 const healthState = {};
 
 function buildCheckUrl(sourceKey) {
-  const src = SOURCES[sourceKey];
-  if (src.tipo === 'wfs')  return `${src.wfsBase}?service=WFS&request=GetCapabilities&version=1.1.0`;
-  if (src.tipo === 'rest') return `${src.restBase}?f=json`;
+  const src = window.SOURCES?.[sourceKey];
+  if (!src) return null;
+  if (src.wfsBase)  return `${src.wfsBase}?service=WFS&request=GetCapabilities&version=1.1.0`;
+  if (src.restBase) return `${src.restBase}?f=json`;
   return null;
 }
 
@@ -146,11 +108,13 @@ function setStatus(sourceKey, status) {
     lbl.textContent = labels[status];
   }
 
-  const countryCode = SOURCES[sourceKey].country;
-  const countryDot  = document.querySelector(
-    `.country-block[data-country="${countryCode}"] .src-dot[data-source="${sourceKey}"]`
-  );
-  if (countryDot) countryDot.className = 'src-dot ' + status;
+  const src = window.SOURCES?.[sourceKey];
+  if (src) {
+    const countryDot = document.querySelector(
+      `.country-block[data-country="${src.country}"] .src-dot[data-source="${sourceKey}"]`
+    );
+    if (countryDot) countryDot.className = 'src-dot ' + status;
+  }
 
   updateSummary();
 }
@@ -158,8 +122,9 @@ function setStatus(sourceKey, status) {
 function updateSummary() {
   const counts = { ok: 0, error: 0, checking: 0 };
   for (const v of Object.values(healthState)) counts[v] = (counts[v] || 0) + 1;
-  const totalSources = Object.keys(SOURCES).length;
-  const totalLayers  = Object.values(LAYERS_BY_SOURCE).flat().length;
+
+  const totalSources = Object.keys(window.SOURCES || {}).length;
+  const totalLayers  = Object.values(window._STATUS_LAYERS_BY_SOURCE || {}).flat().length;
 
   document.getElementById('summary-bar').innerHTML = `
     <div class="summary-chip ok"><span class="dot"></span>${counts.ok || 0} en línea</div>
@@ -194,9 +159,8 @@ function renderLayerRow(l) {
 }
 
 function renderLayers(layers) {
-  if (!layers.length) return `<p class="layers-empty">Sin capas</p>`;
-  const sorted = [...layers].sort((a, b) => a.titulo.localeCompare(b.titulo, 'es'));
-  return sorted.map(renderLayerRow).join('');
+  if (!layers || !layers.length) return `<p class="layers-empty">Sin capas</p>`;
+  return layers.map(renderLayerRow).join('');
 }
 
 // ── Global search ──────────────────────────────────────────────────
@@ -235,9 +199,11 @@ function onGlobalSearch(value) {
 
 // ── Render cards ───────────────────────────────────────────────────
 
-function renderServiceCard(sourceKey) {
-  const src    = SOURCES[sourceKey];
-  const layers = LAYERS_BY_SOURCE[sourceKey] || [];
+function renderServiceCard(sourceKey, layersBySource) {
+  const src    = window.SOURCES?.[sourceKey];
+  if (!src) return '';
+  const layers = layersBySource[sourceKey] || [];
+  const tipo   = src.wfsBase ? 'wfs' : 'rest';
 
   return `
     <div class="service-card" data-source="${sourceKey}">
@@ -246,7 +212,7 @@ function renderServiceCard(sourceKey) {
         <div class="service-info">
           <div class="service-name">${src.label}</div>
           <div class="service-meta">
-            <span class="badge">${src.tipo}</span>
+            <span class="badge">${tipo}</span>
             <span class="service-layer-count">${layers.length} capas</span>
           </div>
         </div>
@@ -262,7 +228,7 @@ function renderServiceCard(sourceKey) {
   `;
 }
 
-function renderCountryBlock(country) {
+function renderCountryBlock(country, layersBySource) {
   const { code, label, state } = country;
 
   if (state === 'inactive') {
@@ -288,9 +254,8 @@ function renderCountryBlock(country) {
   }
 
   // state === 'active'
-  const countrySources = Object.entries(SOURCES)
-    .filter(([, s]) => s.country === code)
-    .map(([k]) => k);
+  const countrySources = Object.keys(window.SOURCES || {})
+    .filter(k => window.SOURCES[k].country === code);
 
   const srcDots = countrySources
     .map(k => `<span class="src-dot checking" data-source="${k}"></span>`)
@@ -305,7 +270,7 @@ function renderCountryBlock(country) {
         <span class="country-toggle"><span class="material-icons">expand_more</span></span>
       </div>
       <div class="services-list">
-        ${countrySources.map(renderServiceCard).join('')}
+        ${countrySources.map(k => renderServiceCard(k, layersBySource)).join('')}
       </div>
     </div>
   `;
@@ -326,17 +291,24 @@ function toggleService(sourceKey) {
 function runHealthChecks() {
   const btn = document.getElementById('btn-refresh');
   btn.classList.add('spinning');
-  const checks = Object.keys(SOURCES).map(k => checkSource(k));
+  const sources = Object.keys(window.SOURCES || {});
+  sources.forEach(k => { healthState[k] = 'checking'; });
+  const checks = sources.map(k => checkSource(k));
   Promise.allSettled(checks).then(() => btn.classList.remove('spinning'));
 }
 
 // ── Init ───────────────────────────────────────────────────────────
 
-function init() {
-  searchIndex = buildSearchIndex();
+function initStatus() {
+  const layersBySource = getLayersBySource();
+
+  // Guardar referencia global para updateSummary
+  window._STATUS_LAYERS_BY_SOURCE = layersBySource;
+
+  searchIndex = buildSearchIndex(layersBySource);
 
   document.getElementById('country-list').innerHTML =
-    COUNTRIES.map(renderCountryBlock).join('');
+    COUNTRIES.map(c => renderCountryBlock(c, layersBySource)).join('');
 
   document.getElementById('global-search').addEventListener('input', e => {
     onGlobalSearch(e.target.value);
@@ -344,15 +316,23 @@ function init() {
 
   document.getElementById('btn-refresh').addEventListener('click', runHealthChecks);
 
-  Object.keys(SOURCES).forEach(k => { healthState[k] = 'checking'; });
+  Object.keys(window.SOURCES || {}).forEach(k => { healthState[k] = 'checking'; });
   updateSummary();
 
   // Health checks en paralelo, sin bloquear el paint inicial
   setTimeout(runHealthChecks, 100);
 
-  // Tema según hora del día, igual que settings.js
-  const h = new Date().getHours();
-  if (h >= 7 && h < 20) document.body.classList.add('day');
+  // Tema: leer de window.SETTINGS si está disponible (chat cargado),
+  // si no, usar la hora como fallback
+  const theme = window.SETTINGS?.get?.('theme');
+  if (theme === 'day' || (!theme && new Date().getHours() >= 7 && new Date().getHours() < 20)) {
+    document.body.classList.add('day');
+  }
 }
 
-document.addEventListener('DOMContentLoaded', init);
+// Esperar layers:ready (igual que app.js), con fallback por si ya cargó
+if (window.LAYERS && Object.keys(window.LAYERS).length > 0) {
+  document.addEventListener('DOMContentLoaded', initStatus);
+} else {
+  window.addEventListener('layers:ready', initStatus);
+}
