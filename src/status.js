@@ -137,7 +137,7 @@ function isSoonCountry(sourceKey) {
 }
 
 function buildCheckUrl(sourceKey) {
-  return `/api/health?source=${encodeURIComponent(sourceKey)}`;
+  return `/api/config?health=${encodeURIComponent(sourceKey)}`;
 }
 
 async function checkSource(sourceKey) {
