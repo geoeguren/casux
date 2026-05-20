@@ -11,9 +11,10 @@
 // Los labels se resuelven desde i18n (keys: country_ar, country_uy, etc.)
 
 function getCountries() {
+  const lang = getLang();
   return (window.COUNTRIES || []).map(c => ({
     code:  c.code,
-    label: window.I18N?.t?.('country_' + c.code) || c.code.toUpperCase(),
+    label: c[lang] || c.es || c.code.toUpperCase(),
     state: c.status || 'inactive',
   }));
 }
@@ -300,23 +301,24 @@ function renderCountryBlock(country, layersBySource) {
       <div class="country-block country-inactive" data-country="${code}">
         <div class="country-header inactive">
           <span class="country-name">${label}</span>
-          <span class="country-soon">próximamente</span>
         </div>
       </div>
     `;
   }
 
   if (state === 'soon') {
+    const badges = window.COUNTRIES_LABELS?.[getLang()] || window.COUNTRIES_LABELS?.es;
     return `
       <div class="country-block country-soon-block" data-country="${code}">
         <div class="country-header country-header-soon">
           <span class="country-name">${label}</span>
-          <span class="country-soon">con errores</span>
+          <span class="country-soon">${badges.soon}</span>
         </div>
       </div>
     `;
   }
 
+  const badges = window.COUNTRIES_LABELS?.[getLang()] || window.COUNTRIES_LABELS?.es;
   const countrySources = Object.keys(window.SOURCES || {})
     .filter(k => window.SOURCES[k].country === code);
 
@@ -328,6 +330,7 @@ function renderCountryBlock(country, layersBySource) {
     <div class="country-block country-active" data-country="${code}">
       <div class="country-header" onclick="toggleCountry('${code}')">
         <span class="country-name">${label}</span>
+        <span class="country-active-label">${badges.active}</span>
         <div class="src-dots">${srcDots}</div>
         <span class="country-src-count">${countrySources.length} ${countrySources.length === 1 ? 'servicio' : 'servicios'}</span>
         <span class="country-toggle"><span class="material-icons">expand_more</span></span>
