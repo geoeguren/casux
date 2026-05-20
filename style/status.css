@@ -534,7 +534,9 @@ body.day .layer-count { color: #9a9590; }
 .layer-row-restricted {
   opacity: 0.75;
 }
-.layer-name-restricted { color: #e57373; }
+.layer-name-restricted  { color: #e57373; }
+.layer-key-restricted   { color: #e57373; opacity: 0.7; }
+.layer-geom-restricted .material-icons { color: #e57373; }
 .layer-count-restricted { color: #e57373; opacity: 1; }
 .layer-restricted-icon {
   font-size: 14px;
