@@ -303,52 +303,34 @@ function renderDistLang(byLang) {
     { code: 'en', label: 'English' },
     { code: 'pt', label: 'Português' },
   ];
-  return langs.map(({ code, label }) => {
+  const cards = langs.map(({ code, label }) => {
     const count = data[code] || 0;
     const pct   = total > 0 ? Math.round((count / total) * 100) : 0;
-    return `
-      <div class="dist-pill">
-        <span class="dist-pill-label">${label}</span>
-        <span class="dist-pill-value">${pct}%</span>
-      </div>
-    `;
+    return `<div class="kpi-card"><div class="kpi-value">${pct}%</div><div class="kpi-label">${label}</div></div>`;
   }).join('');
+  return `<div class="kpi-grid">${cards}</div>`;
 }
 
 function renderDistDevice(byDevice) {
-  if (!byDevice) return '—';
-  const total = (byDevice.mobile || 0) + (byDevice.desktop || 0);
-  if (!total) return '—';
-  const mobilePct  = Math.round((byDevice.mobile  / total) * 100);
-  const desktopPct = Math.round((byDevice.desktop / total) * 100);
-  return `
-    <div class="dist-pill">
-      <span class="dist-pill-label">Mobile</span>
-      <span class="dist-pill-value">${mobilePct}%</span>
-    </div>
-    <div class="dist-pill">
-      <span class="dist-pill-label">Desktop</span>
-      <span class="dist-pill-value">${desktopPct}%</span>
-    </div>
-  `;
+  if (!byDevice) return '';
+  const total      = (byDevice.mobile || 0) + (byDevice.desktop || 0);
+  const mobilePct  = total > 0 ? Math.round((byDevice.mobile  / total) * 100) : 0;
+  const desktopPct = total > 0 ? Math.round((byDevice.desktop / total) * 100) : 0;
+  return `<div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-value">${mobilePct}%</div><div class="kpi-label">Mobile</div></div>
+    <div class="kpi-card"><div class="kpi-value">${desktopPct}%</div><div class="kpi-label">Desktop</div></div>
+  </div>`;
 }
 
 function renderDistUserType(byUserType) {
-  if (!byUserType) return '—';
-  const total = (byUserType.anon || 0) + (byUserType.registered || 0);
-  if (!total) return '—';
-  const anonPct = Math.round(((byUserType.anon || 0) / total) * 100);
-  const regPct  = Math.round(((byUserType.registered || 0) / total) * 100);
-  return `
-    <div class="dist-pill">
-      <span class="dist-pill-label">Anónimos</span>
-      <span class="dist-pill-value">${anonPct}%</span>
-    </div>
-    <div class="dist-pill">
-      <span class="dist-pill-label">Registrados</span>
-      <span class="dist-pill-value">${regPct}%</span>
-    </div>
-  `;
+  if (!byUserType) return '';
+  const total   = (byUserType.anon || 0) + (byUserType.registered || 0);
+  const anonPct = total > 0 ? Math.round(((byUserType.anon || 0) / total) * 100) : 0;
+  const regPct  = total > 0 ? Math.round(((byUserType.registered || 0) / total) * 100) : 0;
+  return `<div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-value">${anonPct}%</div><div class="kpi-label">${t('distAnon')}</div></div>
+    <div class="kpi-card"><div class="kpi-value">${regPct}%</div><div class="kpi-label">${t('distRegistered')}</div></div>
+  </div>`;
 }
 
 const OP_LABELS = {
@@ -361,37 +343,29 @@ const OP_LABELS = {
 };
 
 function renderDistQueryType(byQueryType) {
-  if (!byQueryType || !Object.keys(byQueryType).length) return '—';
+  if (!byQueryType || !Object.keys(byQueryType).length) return '';
   const total = Object.values(byQueryType).reduce((a, b) => a + b, 0);
-  return Object.entries(byQueryType)
+  const cards = Object.entries(byQueryType)
     .sort((a, b) => b[1] - a[1])
     .map(([op, count]) => {
       const pct = Math.round((count / total) * 100);
-      return `
-        <div class="dist-pill">
-          <span class="dist-pill-label">${OP_LABELS[op] || op}</span>
-          <span class="dist-pill-value">${pct}%</span>
-        </div>
-      `;
+      return `<div class="kpi-card"><div class="kpi-value">${pct}%</div><div class="kpi-label">${OP_LABELS[op] || op}</div></div>`;
     }).join('');
+  return `<div class="kpi-grid">${cards}</div>`;
 }
 
 const SOURCE_LABELS = { ar: '🇦🇷 Argentina', uy: '🇺🇾 Uruguay', cl: '🇨🇱 Chile' };
 
 function renderDistSource(bySource) {
-  if (!bySource || !Object.keys(bySource).length) return '—';
+  if (!bySource || !Object.keys(bySource).length) return '';
   const total = Object.values(bySource).reduce((a, b) => a + b, 0);
-  return Object.entries(bySource)
+  const cards = Object.entries(bySource)
     .sort((a, b) => b[1] - a[1])
     .map(([src, count]) => {
       const pct = Math.round((count / total) * 100);
-      return `
-        <div class="dist-pill">
-          <span class="dist-pill-label">${SOURCE_LABELS[src] || src.toUpperCase()}</span>
-          <span class="dist-pill-value">${pct}%</span>
-        </div>
-      `;
+      return `<div class="kpi-card"><div class="kpi-value">${pct}%</div><div class="kpi-label">${SOURCE_LABELS[src] || src.toUpperCase()}</div></div>`;
     }).join('');
+  return `<div class="kpi-grid">${cards}</div>`;
 }
 
 function renderMetrics(d) {
@@ -476,17 +450,17 @@ function renderMetrics(d) {
 
     ${S}
     <!-- Distribución -->
-    <div class="dist-row">${renderDistLang(d.byLanguage)}</div>
-    <div class="dist-row" style="margin-top:8px">${renderDistDevice(d.byDevice)}</div>
-    <div class="dist-row" style="margin-top:8px">${renderDistUserType(d.byUserType)}</div>
+    ${renderDistLang(d.byLanguage)}
+    ${renderDistDevice(d.byDevice)}
+    ${renderDistUserType(d.byUserType)}
 
     ${S}
     <!-- Operaciones espaciales -->
-    <div class="dist-row">${renderDistQueryType(d.byQueryType)}</div>
+    ${renderDistQueryType(d.byQueryType)}
 
     ${S}
     <!-- Países de datos -->
-    <div class="dist-row">${renderDistSource(d.bySource)}</div>
+    ${renderDistSource(d.bySource)}
 
     ${S}
     <div class="computed-at">${t('computedAt')}: ${new Date(d.computedAt).toLocaleString()}</div>
