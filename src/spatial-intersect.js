@@ -253,6 +253,15 @@ window._SPATIAL_INTERSECT = (() => {
     try {
       return await intersectWithWorker(layerGeoJSON, maskFeature, op);
     } catch (workerErr) {
+      // Para operaciones _exclude no caer al Turf síncrono:
+      // necesitan procesar toda la capa y bloquearían el hilo principal.
+      // TODO (largo plazo): simplificar el polígono máscara (turf.simplify con
+      // tolerance ~0.01) antes de mandarlo al Worker para reducir la carga
+      // geométrica en capas grandes con máscaras complejas (ej: Santa Cruz MultiPolygon).
+      if (isExclude) {
+        console.error('[SPATIAL:intersect] Worker falló en intersect_exclude:', workerErr.message);
+        throw new Error('La operación es demasiado pesada para procesar en este dispositivo. Intentá con un área más pequeña.');
+      }
       console.warn('[SPATIAL:intersect] Worker falló, usando Turf.js síncrono:', workerErr.message);
       return intersectWithTurf(layerGeoJSON, maskFeature, isExclude);
     }
