@@ -183,6 +183,15 @@ window._SPATIAL_BUFFER = (() => {
     try {
       return await bufferWithWorker(layerGeoJSON, bufferFeature, op);
     } catch (workerErr) {
+      // Para operaciones _exclude no caer al Turf síncrono:
+      // necesitan procesar toda la capa y bloquearían el hilo principal.
+      // TODO (largo plazo): simplificar el polígono del buffer (ya es círculo,
+      // pero si es muy grande y la capa tiene geometrías complejas, considerar
+      // reducir la resolución del buffer con steps menores en turf.buffer).
+      if (isExclude) {
+        console.error('[SPATIAL:buffer] Worker falló en buffer_exclude:', workerErr.message);
+        throw new Error('La operación es demasiado pesada para procesar en este dispositivo. Intentá con un radio menor.');
+      }
       console.warn('[SPATIAL:buffer] Worker falló, usando Turf.js síncrono:', workerErr.message);
       return bufferWithTurf(layerGeoJSON, bufferFeature, isExclude);
     }
