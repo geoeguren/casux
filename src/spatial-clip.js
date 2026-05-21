@@ -1,12 +1,19 @@
 /**
- * src/spatial-clip.js — Recorte geométrico (clip)
+ * src/spatial-clip.js — Recorte geométrico (clip / clip_exclude)
  *
- * Extraído de src/clip.js. Contiene toda la lógica de recorte espacial:
- * fetch de la máscara, unión de features, bbox pre-filtro, llamada a la
- * edge function con fallback a Worker y Turf síncrono.
+ * Maneja ambas operaciones en un único módulo:
+ *   - op 'clip':         conserva features DENTRO del área
+ *   - op 'clip_exclude': conserva features FUERA del área
+ *
+ * Para clip: intenta via edge function /api/clip (capas grandes WFS).
+ * Para clip_exclude: siempre procesa en cliente (necesita todos los features).
+ *
+ * Flujo:
+ *   1. Edge function /api/clip (con exclude: true/false en el body)
+ *   2. Fallback: Worker (clip-worker.js con op 'clip' o 'clip_exclude')
+ *   3. Fallback: Turf síncrono
  *
  * Consumido exclusivamente por src/spatial.js.
- * No se expone como global — es un módulo interno del sistema espacial.
  */
 
 window._SPATIAL_CLIP = (() => {
@@ -36,7 +43,6 @@ window._SPATIAL_CLIP = (() => {
     };
   }
 
-  // Delegado a window.UTILS.normalizar (src/utils.js) — fuente única de verdad.
   const normalizar = (texto) => window.UTILS.normalizar(texto);
 
   // ── Unión de múltiples features (máscara con varios polígonos) ─
@@ -60,7 +66,6 @@ window._SPATIAL_CLIP = (() => {
   function unionFeaturesSync(features) {
     if (typeof turf === 'undefined') return features[0];
 
-    // Si hay un unico feature MultiPolygon, descomponerlo antes de union
     if (features.length === 1) {
       const feat = features[0];
       if (feat.geometry?.type !== 'MultiPolygon') return feat;
@@ -87,17 +92,15 @@ window._SPATIAL_CLIP = (() => {
   // ── Edge Function ─────────────────────────────────────────────
 
   async function clipViaEdgeFunction(layerDef, wfsOpts, cql, bbox, maskFeature, instruccion) {
-    // Construir instrucciones WFS para la máscara si están disponibles.
-    // En lugar de mandar el polígono completo en el body (puede superar 4.5MB en
-    // provincias grandes como Buenos Aires), le decimos al servidor cómo buscarlo.
+    const isExclude = instruccion.op === 'clip_exclude';
+
     let maskPayload;
     const clipArea = instruccion?.clipArea;
     if (clipArea?.layerKey && clipArea?.field && clipArea?.value) {
       const maskDef    = window.LAYERS?.[clipArea.layerKey];
       const maskSource = maskDef && window.SOURCES?.[maskDef.source];
       if (maskDef && maskSource?.wfsBase) {
-        // Si value es array, usar IN(...) en lugar de ='valor'
-        const values   = Array.isArray(clipArea.value) ? clipArea.value : [clipArea.value];
+        const values    = Array.isArray(clipArea.value) ? clipArea.value : [clipArea.value];
         const cqlFilter = values.length === 1
           ? `${clipArea.field}='${values[0]}'`
           : `${clipArea.field} IN (${values.map(v => `'${v}'`).join(',')})`;
@@ -111,7 +114,6 @@ window._SPATIAL_CLIP = (() => {
         };
       }
     }
-    // Fallback: mandar el GeoJSON directamente (compatibilidad con casos sin clipArea)
     if (!maskPayload) {
       maskPayload = { mask: { type: 'FeatureCollection', features: [maskFeature] } };
     }
@@ -120,12 +122,13 @@ window._SPATIAL_CLIP = (() => {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
-        op:         instruccion.op || 'clip',
+        exclude:    isExclude,
         typename:   layerDef.typename,
         wfsBase:    wfsOpts.wfsBase,
         wfsVersion: wfsOpts.wfsVersion,
         cqlFilter:  cql || undefined,
-        bbox,
+        // clip_exclude necesita todos los features — no mandar bbox
+        bbox:       isExclude ? undefined : bbox,
         ...maskPayload,
       }),
       signal: AbortSignal.timeout(25000),
@@ -166,17 +169,11 @@ window._SPATIAL_CLIP = (() => {
     });
   }
 
-  // Clip rápido para capas de puntos — sin Worker ni Turf.
-  // booleanPointInPolygon sobre una geometría compleja (ej: costa de Aisén)
-  // puede tardar o colgarse en el Worker. Para puntos, un ray-casting manual
-  // sobre el Polygon/MultiPolygon normalizado es O(n×v) y termina siempre.
-  function _clipPuntosDirecto(features, maskFeature) {
+  // Ray-casting directo para capas de puntos (sin Worker ni Turf).
+  function _clipPuntosDirecto(features, maskFeature, exclude = false) {
     const geom = maskFeature.geometry;
     if (!geom) return [];
 
-    // Extraer solo los rings exteriores (index 0 de cada polígono).
-    // Los rings interiores (agujeros) invertirían el resultado del ray-casting.
-    // MultiPolygon: [ [ [exteriorRing, ...holeRings] ], [ [exteriorRing] ] ]
     let exteriores;
     if (geom.type === 'Polygon') {
       exteriores = [geom.coordinates[0]];
@@ -203,27 +200,25 @@ window._SPATIAL_CLIP = (() => {
       return inside;
     }
 
-    const clipped = [];
+    const result = [];
     for (const feat of features) {
       try {
         const g = feat.geometry;
         if (!g) continue;
         const coords = g.type === 'Point'
           ? [g.coordinates]
-          : g.coordinates;  // MultiPoint
-        if (coords.some(([lon, lat]) => puntoDentro(lon, lat))) {
-          clipped.push(feat);
-        }
+          : g.coordinates; // MultiPoint
+        const inside = coords.some(([lon, lat]) => puntoDentro(lon, lat));
+        if (exclude ? !inside : inside) result.push(feat);
       } catch { /* ignorar feature rota */ }
     }
-    console.log(`[SPATIAL:clip] _clipPuntosDirecto: ${features.length} → ${clipped.length} puntos dentro de ${geom.type}`);
-    return clipped;
+    const op = exclude ? 'clip_exclude' : 'clip';
+    console.log(`[SPATIAL:clip] _clipPuntosDirecto (${op}): ${features.length} → ${result.length}`);
+    return result;
   }
 
   // ── Fallback Turf síncrono ────────────────────────────────────
 
-  // Descarta sub-polígonos satelitales del resultado del clip.
-  // Mismo criterio que api/clip.js: sub-polígonos < 10% del mayor se eliminan.
   function limpiarFragmentos(feat) {
     if (feat.geometry?.type !== 'MultiPolygon') return feat;
     const partes = feat.geometry.coordinates;
@@ -236,9 +231,10 @@ window._SPATIAL_CLIP = (() => {
     return { ...feat, geometry: { type: 'MultiPolygon', coordinates: filtradas } };
   }
 
-  function clipWithTurf(layerGeoJSON, maskFeature) {
+  function clipWithTurf(layerGeoJSON, maskFeature, exclude = false) {
     if (typeof turf === 'undefined') throw new Error('Turf.js no disponible');
-    const clipped = [];
+    const OVERLAP_MIN = 0.05;
+    const result = [];
 
     layerGeoJSON.features.forEach(feat => {
       try {
@@ -246,11 +242,10 @@ window._SPATIAL_CLIP = (() => {
         if (!geom) return;
 
         if (geom === 'Point' || geom === 'MultiPoint') {
-          if (turf.booleanPointInPolygon(feat, maskFeature)) clipped.push(feat);
+          const inside = turf.booleanPointInPolygon(feat, maskFeature);
+          if (exclude ? !inside : inside) result.push(feat);
 
         } else if (geom === 'LineString' || geom === 'MultiLineString') {
-          // bboxClip recortaba por el rectángulo envolvente — reemplazado por
-          // lineSplit + booleanPointInPolygon para recorte real contra el polígono.
           const lines = geom === 'LineString'
             ? [feat.geometry.coordinates]
             : feat.geometry.coordinates;
@@ -259,12 +254,10 @@ window._SPATIAL_CLIP = (() => {
             try {
               const split = turf.lineSplit(line, maskFeature);
               if (!split.features?.length) {
-                // 0 segmentos = no cruza el borde = puede estar completamente adentro
                 const midCoord = coords[Math.floor(coords.length / 2)];
                 const midPt = { type: 'Feature', geometry: { type: 'Point', coordinates: midCoord }, properties: {} };
-                if (turf.booleanPointInPolygon(midPt, maskFeature)) {
-                  clipped.push({ ...line, properties: feat.properties });
-                }
+                const inside = turf.booleanPointInPolygon(midPt, maskFeature);
+                if (exclude ? !inside : inside) result.push({ ...line, properties: feat.properties });
               } else {
                 for (const seg of split.features) {
                   const sc = seg.geometry.coordinates;
@@ -273,72 +266,68 @@ window._SPATIAL_CLIP = (() => {
                     (sc[0][1] + sc[sc.length - 1][1]) / 2,
                   ];
                   const midPt = { type: 'Feature', geometry: { type: 'Point', coordinates: mid }, properties: {} };
-                  if (turf.booleanPointInPolygon(midPt, maskFeature)) {
-                    clipped.push({ ...seg, properties: feat.properties });
-                  }
+                  const inside = turf.booleanPointInPolygon(midPt, maskFeature);
+                  if (exclude ? !inside : inside) result.push({ ...seg, properties: feat.properties });
                 }
               }
             } catch {
               const midIdx = Math.floor(coords.length / 2);
               const midPt = { type: 'Feature', geometry: { type: 'Point', coordinates: coords[midIdx] }, properties: {} };
-              if (turf.booleanPointInPolygon(midPt, maskFeature)) clipped.push(feat);
+              const inside = turf.booleanPointInPolygon(midPt, maskFeature);
+              if (exclude ? !inside : inside) result.push(feat);
             }
           }
 
         } else if (geom === 'Polygon' || geom === 'MultiPolygon') {
           const inter = turf.intersect(feat, maskFeature);
-          if (inter) {
-            // Descartar si el overlap es < 5% del área original
-            const areaOrig  = turf.area(feat);
-            const areaInter = turf.area(inter);
-            const ratio     = areaOrig > 0 ? areaInter / areaOrig : 1;
-            if (ratio >= 0.05) {
-              inter.properties = feat.properties;
-              clipped.push(limpiarFragmentos(inter));
+          if (exclude) {
+            if (!inter) {
+              result.push(feat);
+            } else {
+              const ratio = turf.area(feat) > 0 ? turf.area(inter) / turf.area(feat) : 1;
+              if (ratio < OVERLAP_MIN) result.push(feat);
+            }
+          } else {
+            if (inter) {
+              const ratio = turf.area(feat) > 0 ? turf.area(inter) / turf.area(feat) : 1;
+              if (ratio >= OVERLAP_MIN) {
+                inter.properties = feat.properties;
+                result.push(limpiarFragmentos(inter));
+              }
             }
           }
         }
       } catch { /* feature individual rota — ignorar */ }
     });
 
-    return { type: 'FeatureCollection', features: clipped };
+    return { type: 'FeatureCollection', features: result };
+  }
+
+  // ── Decisión: edge function vs cliente directo ────────────────
+  //
+  // clip_exclude siempre procesa en cliente: necesita todos los features.
+  // ArcGIS REST: edge function solo soporta WFS.
+  // Capas pequeñas: el overhead del roundtrip supera al ahorro.
+
+  const EDGE_FN_UMBRAL = 500;
+
+  function deberiaUsarEdgeFunction(layerDef, op, isArcgis) {
+    if (isArcgis)                return false;
+    if (op === 'clip_exclude')   return false;
+    const fc = layerDef?.featureCount;
+    if (fc !== undefined && fc <= EDGE_FN_UMBRAL) return false;
+    return true;
   }
 
   // ── Punto de entrada del módulo ───────────────────────────────
 
-  // ── Decisión: edge function vs cliente directo ────────────────
-  //
-  // La edge function vale cuando puede devolver MENOS datos que la capa completa:
-  // fetchea + recorta en el servidor y manda solo el resultado al cliente.
-  // No vale cuando el cliente va a bajar la capa completa de todas formas:
-  //   - Exclusiones (clip_exclude, intersect_exclude): necesitan todos los features
-  //   - Capas pequeñas (featureCount <= UMBRAL): el overhead del roundtrip supera al ahorro
-  //   - ArcGIS REST: el edge function no lo soporta (solo WFS)
-  //
-  // Umbral empírico: 500 features. Una capa de 500 puntos viaja en ~100KB,
-  // el Worker la procesa en <1s. Por encima, el recorte servidor empieza a ahorrar.
-  const EDGE_FN_UMBRAL = 500;
-
-  function deberiaUsarEdgeFunction(layerDef, op, isArcgis) {
-    if (isArcgis)                  return false; // edge function solo soporta WFS
-    if (op?.includes('exclude'))   return false; // exclusiones necesitan todos los features
-    const fc = layerDef?.featureCount;
-    if (fc !== undefined && fc <= EDGE_FN_UMBRAL) return false; // capa pequeña
-    return true; // capa grande WFS → vale la pena el edge function
-  }
-
-  /**
-   * ejecutar(instruccion, layerDef, wfsOpts, cql, maskFeature)
-   *
-   * Recibe el feature de máscara ya resuelto desde spatial.js.
-   * Decide si usar edge function o cliente directo según featureCount y op.
-   */
   async function ejecutar(instruccion, layerDef, wfsOpts, cql, maskFeature) {
-    const bbox     = calcularBbox(maskFeature);
-    const isArcgis = !!wfsOpts.restBase;
-    const op       = instruccion.op || 'clip';
+    const bbox      = calcularBbox(maskFeature);
+    const isArcgis  = !!wfsOpts.restBase;
+    const op        = instruccion.op || 'clip';
+    const isExclude = op === 'clip_exclude';
 
-    // ── Camino principal: edge function (capas grandes WFS) ───
+    // ── Camino principal: edge function (clip inclusivo, WFS grande) ───
     if (deberiaUsarEdgeFunction(layerDef, op, isArcgis)) {
       try {
         return await clipViaEdgeFunction(layerDef, wfsOpts, cql, bbox, maskFeature, instruccion);
@@ -349,21 +338,29 @@ window._SPATIAL_CLIP = (() => {
     } else {
       if (isArcgis) {
         console.log('[SPATIAL:clip] Fuente ArcGIS REST — procesando en cliente directamente.');
+      } else if (isExclude) {
+        console.log(`[SPATIAL:clip] clip_exclude — fetch directo sin bbox (${layerDef.featureCount ?? '?'} features esperados).`);
       } else {
         console.log(`[SPATIAL:clip] Capa pequeña (${layerDef.featureCount ?? '?'} features) — procesando en cliente directamente.`);
       }
       toastFallbackOnce();
     }
 
-    // ── Fallback cliente (WFS y ArcGIS REST) ─────────────────
+    // ── Fallback cliente ─────────────────────────────────────────
+
+    // Normalizar máscara MultiPolygon para el Worker/Turf
     let maskParaFallback = maskFeature;
     if (maskFeature.geometry?.type === 'MultiPolygon') {
-      maskParaFallback = await unionFeatures([maskFeature]);
+      const polys = maskFeature.geometry.coordinates;
+      if (polys.length > 1 || isExclude) {
+        maskParaFallback = await unionFeatures([maskFeature]);
+      }
     }
 
+    // clip_exclude necesita todos los features — sin bbox
     const fetchOpts = isArcgis
       ? { ...wfsOpts, whereClause: cql || undefined }
-      : { ...wfsOpts, cqlFilter: cql || undefined, bbox };
+      : { ...wfsOpts, cqlFilter: cql || undefined, ...(isExclude ? {} : { bbox }) };
 
     const clientFetcher = isArcgis ? window.REST : window.WFS;
     const layerGeoJSON  = await clientFetcher.fetch(layerDef.typename, fetchOpts);
@@ -372,34 +369,32 @@ window._SPATIAL_CLIP = (() => {
       return { type: 'FeatureCollection', features: [] };
     }
 
-    // Para ArcGIS: filtrar por bbox manualmente (REST no soporta bbox espacial directo)
-    const featuresEnArea = isArcgis
+    // Para ArcGIS clip inclusivo: pre-filtrar por bbox
+    const featuresParaProcesar = (isArcgis && !isExclude)
       ? layerGeoJSON.features.filter(f => _intersectaBbox(f, bbox))
       : layerGeoJSON.features;
 
-    const geoParaClip = { type: 'FeatureCollection', features: featuresEnArea };
+    const geoParaClip = { type: 'FeatureCollection', features: featuresParaProcesar };
 
-    // Puntos: path rápido directo en hilo principal — evita Worker y Turf CDN.
-    // booleanPointInPolygon sobre geometrías costeras complejas (ej: Aisén)
-    // puede colgarse en el Worker; el ray-casting manual termina siempre.
-    const solosPuntos = featuresEnArea.every(f => {
+    // Puntos: ray-casting directo
+    const solosPuntos = featuresParaProcesar.every(f => {
       const t = f.geometry?.type;
       return t === 'Point' || t === 'MultiPoint';
     });
     if (solosPuntos) {
-      const clipped = _clipPuntosDirecto(featuresEnArea, maskParaFallback);
+      const clipped = _clipPuntosDirecto(featuresParaProcesar, maskParaFallback, isExclude);
       return { type: 'FeatureCollection', features: clipped };
     }
 
     try {
-      return await clipWithWorker(geoParaClip, maskParaFallback, instruccion.op || 'clip');
+      return await clipWithWorker(geoParaClip, maskParaFallback, op);
     } catch (workerErr) {
       console.warn('[SPATIAL:clip] Worker falló, usando Turf.js síncrono:', workerErr.message);
-      return clipWithTurf(geoParaClip, maskParaFallback);
+      return clipWithTurf(geoParaClip, maskParaFallback, isExclude);
     }
   }
 
-  // Filtro rápido bbox para pre-seleccionar features ArcGIS antes del clip geométrico.
+  // Filtro rápido bbox para pre-seleccionar features ArcGIS
   function _intersectaBbox(feature, bbox) {
     try {
       const coords = [];
@@ -412,13 +407,10 @@ window._SPATIAL_CLIP = (() => {
       return coords.some(([lon, lat]) =>
         lon >= bbox.minX && lon <= bbox.maxX && lat >= bbox.minY && lat <= bbox.maxY
       );
-    } catch { return true; } // en caso de error, incluir
+    } catch { return true; }
   }
 
   // ── Toast de fallback — una sola vez por renderizado ─────────
-  // Si hay múltiples capas en un mapa y todas caen al fallback cliente,
-  // el toast se mostraría N veces seguidas. Este guard lo dispara solo
-  // si pasaron más de 2 segundos desde la última vez.
   let _lastFallbackToast = 0;
   function toastFallbackOnce() {
     const now = Date.now();
