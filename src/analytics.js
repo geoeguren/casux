@@ -31,7 +31,7 @@ window.ANALYTICS = (() => {
 
   // ── Función principal ─────────────────────────────────────────
   async function track(event, props = {}) {
-    const userId = window.AUTH?.getUser?.()?.uid || 'anonymous';
+    const userId = window.AUTH?.currentUser?.()?.uid || 'anonymous';
 
     try {
       await fetch('/api/analytics', {
