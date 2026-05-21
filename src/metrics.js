@@ -34,14 +34,9 @@ const UI = {
     kpiMapsGenerated:   'Mapas generados',
     kpiMapsExported:    'Mapas exportados',
     kpiAvgLayers:       'Promedio capas / mapa',
-    kpiAvgLayers2:      'capas simultáneas',
     kpiTimeToMap:       'Tiempo a primer mapa',
-    kpiTimeToMap2:      'desde inicio de sesión',
     kpiRefinements:     'Refinamientos / sesión',
-    kpiRefinements2:    'mensajes post-mapa',
     kpiMessages:        'Mensajes totales',
-    kpiRestAnon:        'resto anónimos',
-    kpiExportOf:        'de los generados',
     mapsGenerated:      'mapas generados',
     sessions:           'sesiones',
     registeredUsers:    'usuarios registrados',
@@ -92,14 +87,9 @@ const UI = {
     kpiMapsGenerated:   'Maps generated',
     kpiMapsExported:    'Maps exported',
     kpiAvgLayers:       'Avg layers / map',
-    kpiAvgLayers2:      'simultaneous layers',
     kpiTimeToMap:       'Time to first map',
-    kpiTimeToMap2:      'from session start',
     kpiRefinements:     'Refinements / session',
-    kpiRefinements2:    'messages after first map',
     kpiMessages:        'Total messages',
-    kpiRestAnon:        'rest anonymous',
-    kpiExportOf:        'of generated',
     mapsGenerated:      'maps generated',
     sessions:           'sessions',
     registeredUsers:    'registered users',
@@ -150,14 +140,9 @@ const UI = {
     kpiMapsGenerated:   'Mapas gerados',
     kpiMapsExported:    'Mapas exportados',
     kpiAvgLayers:       'Média camadas / mapa',
-    kpiAvgLayers2:      'camadas simultâneas',
     kpiTimeToMap:       'Tempo até primeiro mapa',
-    kpiTimeToMap2:      'desde início da sessão',
     kpiRefinements:     'Refinamentos / sessão',
-    kpiRefinements2:    'mensagens pós-mapa',
     kpiMessages:        'Mensagens totais',
-    kpiRestAnon:        'resto anônimos',
-    kpiExportOf:        'dos gerados',
     mapsGenerated:      'mapas gerados',
     sessions:           'sessões',
     registeredUsers:    'usuários registrados',
@@ -457,7 +442,6 @@ function renderMetrics(d) {
       <div class="kpi-card">
         <div class="kpi-label">Usuarios registrados</div>
         <div class="kpi-value">${fmt(d.users)}</div>
-        <div class="kpi-sub">resto anónimos</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Mapas generados</div>
@@ -466,7 +450,6 @@ function renderMetrics(d) {
       <div class="kpi-card">
         <div class="kpi-label">Mapas exportados</div>
         <div class="kpi-value">${fmt(d.mapsExported)}</div>
-        <div class="kpi-sub">${exportRate}% de los generados</div>
       </div>
     </div>
 
@@ -485,17 +468,14 @@ function renderMetrics(d) {
       <div class="kpi-card">
         <div class="kpi-label">Promedio capas / mapa</div>
         <div class="kpi-value">${d.avgLayersPerMap ?? '—'}</div>
-        <div class="kpi-sub">capas simultáneas</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Tiempo a primer mapa</div>
         <div class="kpi-value">${fmtMs(d.avgMsToFirstMap)}</div>
-        <div class="kpi-sub">desde inicio de sesión</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Refinamientos / sesión</div>
         <div class="kpi-value">${d.avgRefinements ?? '—'}</div>
-        <div class="kpi-sub">mensajes post-mapa</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Mensajes totales</div>
