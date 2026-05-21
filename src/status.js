@@ -119,8 +119,6 @@ function getLayersBySource() {
 }
 
 // ── Estado de filtro ───────────────────────────────────────────────
-// Set de filtros activos: 'ok' | 'error' | 'soon'
-// Set vacío = sin filtro (mostrar todo)
 
 const activeFilters = new Set();
 
@@ -128,7 +126,6 @@ const activeFilters = new Set();
 
 const healthState = {};
 
-// Países con state='soon' — sus servicios se muestran en amarillo independientemente del estado real
 function isSoonCountry(sourceKey) {
   const src = window.SOURCES?.[sourceKey];
   if (!src) return false;
@@ -136,8 +133,9 @@ function isSoonCountry(sourceKey) {
   return country?.status === 'soon';
 }
 
+// Ahora apunta a /api/status en lugar de /api/config
 function buildCheckUrl(sourceKey) {
-  return `/api/config?health=${encodeURIComponent(sourceKey)}`;
+  return `/api/status?health=${encodeURIComponent(sourceKey)}`;
 }
 
 async function checkSource(sourceKey) {
@@ -185,17 +183,14 @@ function applyFilters() {
       return;
     }
 
-    // Bloque soon: visible solo si 'soon' está en el set de filtros
     if (isSoon) {
       block.style.display = activeFilters.has('soon') ? '' : 'none';
       cards.forEach(c => { c.style.display = ''; });
       return;
     }
 
-    // Bloques normales: 'soon' en filtros no los afecta
     const statusFilters = [...activeFilters].filter(f => f !== 'soon');
     if (!statusFilters.length) {
-      // Solo filtro soon activo, bloques normales se muestran todos
       block.style.display = '';
       cards.forEach(c => { c.style.display = ''; });
       return;
@@ -329,7 +324,6 @@ function renderCountryBlock(country, layersBySource) {
   const sources   = Object.keys(window.SOURCES || {}).filter(k => window.SOURCES[k].country === code);
   const hasSources = sources.length > 0;
 
-  // Determinar clases CSS y badge
   let blockClass, headerClass, badgeHTML, clickable;
 
   if (state === 'active') {
@@ -343,7 +337,6 @@ function renderCountryBlock(country, layersBySource) {
     badgeHTML   = `<span class="country-soon">${badges.soon}</span>`;
     clickable   = hasSources;
   } else {
-    // inactive
     blockClass  = 'country-inactive';
     headerClass = hasSources ? '' : 'inactive';
     badgeHTML   = '';
@@ -422,7 +415,6 @@ function initStatus() {
 
   setTimeout(runHealthChecks, 100);
 
-  // Tema: igual que app.js — lee sm_theme de localStorage, fallback por hora
   const savedTheme = localStorage.getItem('sm_theme');
   const isDayHour  = new Date().getHours() >= 7 && new Date().getHours() < 20;
   const theme      = savedTheme || (isDayHour ? 'day' : 'night');
