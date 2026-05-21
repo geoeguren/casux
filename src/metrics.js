@@ -474,12 +474,6 @@ function renderMetrics(d) {
     <!-- Países de datos -->
     ${renderDistSource(d.bySource)}
 
-    ${S}
-    <div class="computed-at">${t('computedAt')}: ${new Date(d.computedAt).toLocaleString()}</div>
-
-    <div class="metrics-footer">
-      <a href="/status" class="btn-status">ESTADO DE GEOSERVICIOS</a>
-    </div>
   `;
 }
 
