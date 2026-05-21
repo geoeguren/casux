@@ -54,6 +54,13 @@ const UI = {
     refreshBtn:         'Actualizar',
     errorMsg:           'Las métricas no están disponibles en este momento. Volvé a intentarlo más tarde.',
     updatedAt:          'Última actualización',
+    sectionAdoption:    'Adopción',
+    sectionTrends:      'Evolución',
+    sectionExperience:  'Experiencia',
+    sectionTopLayers:   'Capas más usadas',
+    sectionAudience:    'Audiencia',
+    sectionOperations:  'Operaciones',
+    sectionSources:     'Datos por país',
 
     periodLabels: {
       '7d':  'últimos 7 días',
@@ -103,6 +110,13 @@ const UI = {
     refreshBtn:         'Refresh',
     errorMsg:           'Metrics are not available right now. Please try again later.',
     updatedAt:          'Last updated',
+    sectionAdoption:    'Adoption',
+    sectionTrends:      'Trends',
+    sectionExperience:  'Experience',
+    sectionTopLayers:   'Top layers',
+    sectionAudience:    'Audience',
+    sectionOperations:  'Operations',
+    sectionSources:     'Data by country',
 
     periodLabels: {
       '7d':  'last 7 days',
@@ -152,6 +166,13 @@ const UI = {
     refreshBtn:         'Atualizar',
     errorMsg:           'As métricas não estão disponíveis no momento. Tente novamente mais tarde.',
     updatedAt:          'Última atualização',
+    sectionAdoption:    'Adoção',
+    sectionTrends:      'Evolução',
+    sectionExperience:  'Experiência',
+    sectionTopLayers:   'Camadas mais usadas',
+    sectionAudience:    'Audiência',
+    sectionOperations:  'Operações',
+    sectionSources:     'Dados por país',
 
     periodLabels: {
       '7d':  'últimos 7 dias',
@@ -224,6 +245,11 @@ function fmt(n) {
 function fmtMs(ms) {
   if (ms == null) return '—';
   if (ms < 1000) return ms + 'ms';
+  return (ms / 1000).toFixed(1) + 's';
+}
+
+function fmtSec(ms) {
+  if (ms == null) return '—';
   return (ms / 1000).toFixed(1) + 's';
 }
 
@@ -390,16 +416,16 @@ function renderDistSource(bySource) {
 }
 
 function renderMetrics(d) {
-  const exportRate = d.mapsGenerated > 0
-    ? Math.round((d.mapsExported / d.mapsGenerated) * 100)
-    : 0;
-
+  const exportRate  = d.mapsGenerated > 0
+    ? Math.round((d.mapsExported / d.mapsGenerated) * 100) : 0;
   const periodLabel = t('periodLabels');
-
-  const S = '<div class="metrics-sep"></div>';
+  const S = (title) => `<div class="section-header"><span class="section-title">${title}</span></div>`;
 
   return `
-    <!-- Highlight principal -->
+
+    <!-- ── Adopción ──────────────────────────────────────────── -->
+    ${S(t('sectionAdoption'))}
+
     <div class="highlight-card">
       <span class="material-icons">map</span>
       <div class="highlight-text">
@@ -412,9 +438,7 @@ function renderMetrics(d) {
       </div>
     </div>
 
-    ${S}
-    <!-- KPIs de adopción -->
-    <div class="kpi-grid">
+    <div class="kpi-grid kpi-grid--3">
       <div class="kpi-card">
         <div class="kpi-label">${t('kpiSessions')}</div>
         <div class="kpi-value">${fmt(d.sessions)}</div>
@@ -424,57 +448,47 @@ function renderMetrics(d) {
         <div class="kpi-value">${fmt(d.users)}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">${t('kpiMapsGenerated')}</div>
-        <div class="kpi-value accent">${fmt(d.mapsGenerated)}</div>
-      </div>
-      <div class="kpi-card">
         <div class="kpi-label">${t('kpiMapsExported')}</div>
-        <div class="kpi-value">${fmt(d.mapsExported)}</div>
+        <div class="kpi-value">${fmt(d.mapsExported)}
+          ${exportRate > 0 ? `<span class="kpi-sub">${exportRate}%</span>` : ''}
+        </div>
       </div>
     </div>
 
-    ${S}
-    <!-- KPIs de calidad -->
-    <div class="kpi-grid">
-      <div class="kpi-card">
+    <!-- ── Evolución ─────────────────────────────────────────── -->
+    ${S(t('sectionTrends'))}
+
+    ${renderChart(d.mapsPerDay,     t('chartMapsByDay'),     'var(--accent)', d.period)}
+    ${renderChart(d.sessionsPerDay, t('chartSessionsByDay'), 'var(--ok)',     d.period)}
+
+    <!-- ── Experiencia ───────────────────────────────────────── -->
+    ${S(t('sectionExperience'))}
+
+    <div class="kpi-grid kpi-grid--2">
+      <div class="kpi-card kpi-card--large">
         <div class="kpi-label">${t('kpiAvgLayers')}</div>
         <div class="kpi-value">${d.avgLayersPerMap ?? '—'}</div>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card kpi-card--large">
         <div class="kpi-label">${t('kpiTimeToMap')}</div>
-        <div class="kpi-value">${fmtMs(d.avgMsToFirstMap)}</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">${t('kpiRefinements')}</div>
-        <div class="kpi-value">${d.avgRefinements ?? '—'}</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">${t('kpiMessages')}</div>
-        <div class="kpi-value">${fmt(d.messages)}</div>
+        <div class="kpi-value">${fmtSec(d.avgMsToFirstMap)}</div>
       </div>
     </div>
 
-    ${S}
-    <!-- Gráfico mapas por día -->
-    ${renderChart(d.mapsPerDay, t('chartMapsByDay'), 'var(--accent)', d.period)}
-    ${renderChart(d.sessionsPerDay, t('chartSessionsByDay'), 'var(--ok)', d.period)}
-
-    ${S}
-    <!-- Top capas -->
+    <!-- ── Capas más usadas ───────────────────────────────────── -->
+    ${S(t('sectionTopLayers'))}
     ${renderTopLayers(d.topLayers)}
 
-    ${S}
-    <!-- Distribución -->
+    <!-- ── Audiencia ─────────────────────────────────────────── -->
+    ${S(t('sectionAudience'))}
     ${renderDistLang(d.byLanguage)}
-    ${renderDistDevice(d.byDevice)}
-    ${renderDistUserType(d.byUserType)}
 
-    ${S}
-    <!-- Operaciones espaciales -->
+    <!-- ── Operaciones ───────────────────────────────────────── -->
+    ${S(t('sectionOperations'))}
     ${renderDistQueryType(d.byQueryType)}
 
-    ${S}
-    <!-- Países de datos -->
+    <!-- ── Datos ─────────────────────────────────────────────── -->
+    ${S(t('sectionSources'))}
     ${renderDistSource(d.bySource)}
 
   `;
