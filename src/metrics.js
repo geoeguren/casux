@@ -618,3 +618,10 @@ window.loadPeriod = loadPeriod;
 // Arrancar
 renderPeriodBar();
 loadPeriod(_currentPeriod);
+
+// Aplicar i18n a elementos estáticos del HTML
+document.getElementById('back-label').textContent   = t('backLabel');
+document.getElementById('page-title').textContent   = t('pageTitle');
+document.getElementById('loading-text').textContent = t('loading');
+document.title = t('tabTitle');
+document.documentElement.lang = detectLang();
