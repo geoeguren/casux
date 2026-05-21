@@ -1,24 +1,17 @@
 /**
  * src/workers/buffer-worker.js — Web Worker para filtro de área de influencia
  *
- * Corre en un hilo separado para no bloquear la UI.
- * Actúa como fallback de api/buffer.js.
+ * Operaciones soportadas:
+ *   - buffer:         features DENTRO del área de influencia
+ *   - buffer_exclude: features FUERA del área de influencia
  *
- * Operación: buffer
- *   El polígono de buffer ya viene generado desde src/spatial-buffer.js.
- *   Este worker solo filtra las features que caen dentro de él,
- *   devolviendo cada feature completa (sin recortar).
- *
- * Recibe: { op: 'buffer', layerFeatures, bufferFeature }
+ * Recibe: { op: 'buffer' | 'buffer_exclude', layerFeatures, bufferFeature }
  * Envía:  { result } o { error }
  */
 
-// NOTA: turf.min.js debe descargarse manualmente y colocarse en esta carpeta.
-// Ver src/workers/README.md para instrucciones.
-// URL origen: https://unpkg.com/@turf/turf@6.5.0/turf.min.js
 importScripts('/src/workers/turf.min.js');
 
-function filterByBuffer(layerFeatures, bufferFeature) {
+function filterByBuffer(layerFeatures, bufferFeature, exclude) {
   const result = [];
 
   for (const feat of layerFeatures) {
@@ -26,35 +19,37 @@ function filterByBuffer(layerFeatures, bufferFeature) {
       const geomType = feat.geometry?.type;
       if (!geomType) continue;
 
+      let dentro = false;
+
       if (geomType === 'Point') {
-        if (turf.booleanPointInPolygon(feat, bufferFeature)) result.push(feat);
+        dentro = turf.booleanPointInPolygon(feat, bufferFeature);
 
       } else if (geomType === 'MultiPoint') {
-        const tocaAlguno = feat.geometry.coordinates.some(coord =>
+        dentro = feat.geometry.coordinates.some(coord =>
           turf.booleanPointInPolygon(
             { type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: {} },
             bufferFeature
           )
         );
-        if (tocaAlguno) result.push(feat);
 
       } else if (geomType === 'LineString' || geomType === 'MultiLineString') {
-        // Al menos un punto de la línea dentro del buffer
         const coordsList = geomType === 'LineString'
           ? feat.geometry.coordinates
           : feat.geometry.coordinates.flat();
-        const tocaAlguno = coordsList.some(coord =>
+        dentro = coordsList.some(coord =>
           turf.booleanPointInPolygon(
             { type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: {} },
             bufferFeature
           )
         );
-        if (tocaAlguno) result.push(feat);
 
       } else if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
         const inter = turf.intersect(feat, bufferFeature);
-        if (inter) result.push(feat); // feat completo, no recortado
+        dentro = inter !== null && inter !== undefined;
       }
+
+      if (exclude ? !dentro : dentro) result.push(feat);
+
     } catch { /* feature individual rota — omitir */ }
   }
 
@@ -65,8 +60,8 @@ onmessage = function(e) {
   try {
     const { op } = e.data;
 
-    if (op === 'buffer') {
-      const result = filterByBuffer(e.data.layerFeatures, e.data.bufferFeature);
+    if (op === 'buffer' || op === 'buffer_exclude') {
+      const result = filterByBuffer(e.data.layerFeatures, e.data.bufferFeature, op === 'buffer_exclude');
       postMessage({ result });
 
     } else {
