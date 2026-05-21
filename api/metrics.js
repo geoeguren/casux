@@ -24,20 +24,10 @@
  *   - sessionsPerDay: serie temporal de sesiones por día (últimos 30d)
  *   - sessionToMapRate: % de sesiones que generaron al menos un mapa
  *
- * ── Métricas pendientes para versiones futuras ─────────────────
- * Las siguientes métricas requieren agregar props a los eventos en
- * analytics.js. NO modificar analytics.js todavía para no romper
- * series históricas existentes.
- *
+ * Métricas implementadas en esta versión:
  *   - byQueryType:  distribución por tipo de operación (clip, intersect, buffer...)
- *     → agregar prop `queryTypes: ['clip', 'buffer']` en map_generated
- *
  *   - byUserType:   anónimo vs registrado
- *     → agregar prop `userType: 'anon' | 'registered'` en session_start
- *
- *   - byLayerSource: distribución por país de fuente (AR, UY, CL...)
- *     → derivar del layerKey en map_generated (ej: '_ar' suffix)
- *       o agregar prop `sources: ['ign_ar', 'igm_uy']`
+ *   - bySource:     distribución por país de fuente (ar, uy, cl...)
  */
 
 const { getDb } = require('./_firebase');
@@ -94,6 +84,9 @@ async function computeMetrics(period) {
 
   const layerCounts   = {}; // layerKey → count
   const langCounts    = {}; // language → count
+  const queryTypeCounts = {}; // op → count
+  const sourceCounts  = {}; // country → count
+  const userTypeCounts = { anon: 0, registered: 0 };
   let   mobileCount   = 0;
   let   desktopCount  = 0;
 
@@ -123,6 +116,13 @@ async function computeMetrics(period) {
     if (props.mobile === true)  mobileCount++;
     if (props.mobile === false) desktopCount++;
 
+    if (event === 'session_start') {
+      if (props.userType) {
+        const ut = props.userType === 'registered' ? 'registered' : 'anon';
+        userTypeCounts[ut]++;
+      }
+    }
+
     if (event === 'map_generated') {
       mapsGenerated++;
       if (sessionId) sessionHasMap.add(sessionId);
@@ -143,6 +143,18 @@ async function computeMetrics(period) {
       if (Array.isArray(props.layers)) {
         for (const lk of props.layers) {
           layerCounts[lk] = (layerCounts[lk] || 0) + 1;
+        }
+      }
+
+      if (Array.isArray(props.queryTypes)) {
+        for (const qt of props.queryTypes) {
+          queryTypeCounts[qt] = (queryTypeCounts[qt] || 0) + 1;
+        }
+      }
+
+      if (Array.isArray(props.sources)) {
+        for (const src of props.sources) {
+          sourceCounts[src] = (sourceCounts[src] || 0) + 1;
         }
       }
     }
@@ -205,6 +217,9 @@ async function computeMetrics(period) {
     topLayers,
     byLanguage:      langCounts,
     byDevice:        { mobile: mobileCount, desktop: desktopCount },
+    byQueryType:     queryTypeCounts,
+    bySource:        sourceCounts,
+    byUserType:      userTypeCounts,
     mapsPerDay,
     sessionsPerDay:  sessionsPerDaySerialized,
   };
