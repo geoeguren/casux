@@ -238,6 +238,67 @@ function renderDistDevice(byDevice) {
   `;
 }
 
+function renderDistUserType(byUserType) {
+  if (!byUserType) return '—';
+  const total = (byUserType.anon || 0) + (byUserType.registered || 0);
+  if (!total) return '—';
+  const anonPct = Math.round(((byUserType.anon || 0) / total) * 100);
+  const regPct  = Math.round(((byUserType.registered || 0) / total) * 100);
+  return `
+    <div class="dist-pill">
+      <span class="dist-pill-label">Anónimos</span>
+      <span class="dist-pill-value">${anonPct}%</span>
+    </div>
+    <div class="dist-pill">
+      <span class="dist-pill-label">Registrados</span>
+      <span class="dist-pill-value">${regPct}%</span>
+    </div>
+  `;
+}
+
+const OP_LABELS = {
+  clip:              'Recorte',
+  clip_exclude:      'Recorte inverso',
+  intersect:         'Intersección',
+  intersect_exclude: 'Intersección inversa',
+  buffer:            'Área de influencia',
+  buffer_exclude:    'Área de influencia inversa',
+};
+
+function renderDistQueryType(byQueryType) {
+  if (!byQueryType || !Object.keys(byQueryType).length) return '—';
+  const total = Object.values(byQueryType).reduce((a, b) => a + b, 0);
+  return Object.entries(byQueryType)
+    .sort((a, b) => b[1] - a[1])
+    .map(([op, count]) => {
+      const pct = Math.round((count / total) * 100);
+      return `
+        <div class="dist-pill">
+          <span class="dist-pill-label">${OP_LABELS[op] || op}</span>
+          <span class="dist-pill-value">${pct}%</span>
+        </div>
+      `;
+    }).join('');
+}
+
+const SOURCE_LABELS = { ar: '🇦🇷 Argentina', uy: '🇺🇾 Uruguay', cl: '🇨🇱 Chile' };
+
+function renderDistSource(bySource) {
+  if (!bySource || !Object.keys(bySource).length) return '—';
+  const total = Object.values(bySource).reduce((a, b) => a + b, 0);
+  return Object.entries(bySource)
+    .sort((a, b) => b[1] - a[1])
+    .map(([src, count]) => {
+      const pct = Math.round((count / total) * 100);
+      return `
+        <div class="dist-pill">
+          <span class="dist-pill-label">${SOURCE_LABELS[src] || src.toUpperCase()}</span>
+          <span class="dist-pill-value">${pct}%</span>
+        </div>
+      `;
+    }).join('');
+}
+
 function renderMetrics(d) {
   const exportRate = d.mapsGenerated > 0
     ? Math.round((d.mapsExported / d.mapsGenerated) * 100)
@@ -324,6 +385,15 @@ function renderMetrics(d) {
     <div class="section-title">Audiencia</div>
     <div class="dist-row">${renderDistLang(d.byLanguage)}</div>
     <div class="dist-row" style="margin-top:8px">${renderDistDevice(d.byDevice)}</div>
+    <div class="dist-row" style="margin-top:8px">${renderDistUserType(d.byUserType)}</div>
+
+    <!-- Operaciones espaciales -->
+    <div class="section-title">Operaciones espaciales</div>
+    <div class="dist-row">${renderDistQueryType(d.byQueryType)}</div>
+
+    <!-- Países de datos -->
+    <div class="section-title">Datos por país de fuente</div>
+    <div class="dist-row">${renderDistSource(d.bySource)}</div>
 
     <!-- Nota al pie -->
     <div class="footer-note">
