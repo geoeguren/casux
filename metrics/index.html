@@ -38,7 +38,362 @@
 
 </div>
 
-<script src="../src/metrics.js"></script>
+<script>
+/**
+ * src/metrics.js — Página de métricas de uso de Casux
+ *
+ * Consume /api/metrics y renderiza las estadísticas.
+ * Protegida con la ANALYTICS_KEY guardada en localStorage
+ * (se pide la primera vez, se guarda para la sesión).
+ *
+ * Diseñada para mostrar el impacto de Casux como iniciativa
+ * de acceso abierto a datos geoespaciales, orientada a
+ * presentaciones de financiamiento.
+ */
 
+// ── Nombres de capas legibles ────────────────────────────────────
+// Derivados del layerKey. Para mostrar en la tabla de top layers
+// sin necesidad de cargar el catálogo completo de capas.
+
+const LAYER_LABELS = {
+  // Argentina IGN
+  localidad_ar:        'Localidades',
+  provincia_ar:        'Provincias',
+  departamento_ar:     'Departamentos',
+  municipio_ar:        'Municipios',
+  vial_nacional_ar:    'Red vial nacional',
+  vial_provincial_ar:  'Red vial provincial',
+  aeropuerto_ar:       'Aeropuertos',
+  // Argentina otros
+  escuela_ar:          'Establecimientos educativos',
+  area_protegida_ar:   'Áreas protegidas',
+  // Uruguay
+  departamento_uy:     'Departamentos UY',
+  localidad_uy:        'Localidades UY',
+  // Chile
+  region_cl:           'Regiones CL',
+  comuna_cl:           'Comunas CL',
+};
+
+function layerLabel(key) {
+  if (LAYER_LABELS[key]) return LAYER_LABELS[key];
+  // Fallback: limpiar el key
+  return key.replace(/_ar$|_uy$|_cl$/, '').replace(/_/g, ' ');
+}
+
+function layerSource(key) {
+  if (key.endsWith('_ar')) return 'AR';
+  if (key.endsWith('_uy')) return 'UY';
+  if (key.endsWith('_cl')) return 'CL';
+  return '';
+}
+
+// ── Formateo ─────────────────────────────────────────────────────
+
+function fmt(n) {
+  if (n == null) return '—';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  return String(n);
+}
+
+function fmtMs(ms) {
+  if (ms == null) return '—';
+  if (ms < 1000) return ms + 'ms';
+  return (ms / 1000).toFixed(1) + 's';
+}
+
+function fmtPct(n) {
+  return n != null ? n + '%' : '—';
+}
+
+// ── Auth ─────────────────────────────────────────────────────────
+
+const KEY_STORAGE = 'casux_analytics_key';
+
+function getKey() {
+  return sessionStorage.getItem(KEY_STORAGE) || '';
+}
+
+function promptKey() {
+  const k = prompt('Clave de acceso a métricas:');
+  if (k) sessionStorage.setItem(KEY_STORAGE, k);
+  return k || '';
+}
+
+// ── Fetch de métricas ─────────────────────────────────────────────
+
+async function fetchMetrics(period) {
+  let key = getKey();
+  if (!key) key = promptKey();
+  if (!key) throw new Error('Se requiere clave de acceso');
+
+  const resp = await fetch(`/api/metrics?period=${period}`, {
+    headers: { 'X-Analytics-Key': key },
+  });
+
+  if (resp.status === 403) {
+    sessionStorage.removeItem(KEY_STORAGE);
+    throw new Error('Clave incorrecta');
+  }
+
+  if (!resp.ok) throw new Error(`Error ${resp.status}`);
+  return resp.json();
+}
+
+// ── Renderizado ───────────────────────────────────────────────────
+
+function renderChart(data, label, color = 'var(--accent)') {
+  // data: { 'YYYY-MM-DD': count }
+  // Últimos 30 días ordenados
+  const today = new Date();
+  const days  = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+
+  const values = days.map(d => data[d] || 0);
+  const max    = Math.max(...values, 1);
+
+  const bars = days.map((d, i) => {
+    const v      = values[i];
+    const height = Math.round((v / max) * 100);
+    const label  = d.slice(5); // MM-DD
+    // Mostrar solo algunos labels para no saturar
+    const showLabel = i === 0 || i === 14 || i === 29;
+    return `
+      <div class="chart-bar-wrap">
+        <div class="chart-bar"
+             style="height:${height}%; background:${color}"
+             data-tooltip="${d}: ${v}"></div>
+        <div class="chart-label">${showLabel ? label : ''}</div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="chart-card">
+      <div class="chart-title">${label}</div>
+      <div class="chart-bars">${bars}</div>
+    </div>
+  `;
+}
+
+function renderTopLayers(layers) {
+  if (!layers?.length) return '<p style="color:var(--cream2);font-size:13px;padding:16px">Sin datos</p>';
+
+  const max = layers[0].count;
+  const rows = layers.map((l, i) => {
+    const pct  = Math.round((l.count / max) * 100);
+    const src  = layerSource(l.key);
+    return `
+      <div class="layer-row">
+        <span class="layer-rank">${i + 1}</span>
+        <span class="layer-name">${layerLabel(l.key)}</span>
+        ${src ? `<span class="layer-source">${src}</span>` : ''}
+        <div class="layer-bar-wrap">
+          <div class="layer-bar" style="width:${pct}%"></div>
+        </div>
+        <span class="layer-count">${l.count}</span>
+      </div>
+    `;
+  }).join('');
+
+  return `<div class="layers-table">${rows}</div>`;
+}
+
+function renderDistLang(byLang) {
+  if (!byLang || !Object.keys(byLang).length) return '—';
+  const total = Object.values(byLang).reduce((a, b) => a + b, 0);
+  const labels = { es: 'Español', en: 'English', pt: 'Português' };
+  return Object.entries(byLang)
+    .sort((a, b) => b[1] - a[1])
+    .map(([lang, count]) => {
+      const pct = Math.round((count / total) * 100);
+      return `
+        <div class="dist-pill">
+          <span class="dist-pill-label">${labels[lang] || lang}</span>
+          <span class="dist-pill-value">${pct}%</span>
+        </div>
+      `;
+    }).join('');
+}
+
+function renderDistDevice(byDevice) {
+  if (!byDevice) return '—';
+  const total = (byDevice.mobile || 0) + (byDevice.desktop || 0);
+  if (!total) return '—';
+  const mobilePct  = Math.round((byDevice.mobile  / total) * 100);
+  const desktopPct = Math.round((byDevice.desktop / total) * 100);
+  return `
+    <div class="dist-pill">
+      <span class="dist-pill-label">Mobile</span>
+      <span class="dist-pill-value">${mobilePct}%</span>
+    </div>
+    <div class="dist-pill">
+      <span class="dist-pill-label">Desktop</span>
+      <span class="dist-pill-value">${desktopPct}%</span>
+    </div>
+  `;
+}
+
+function renderMetrics(d) {
+  const exportRate = d.mapsGenerated > 0
+    ? Math.round((d.mapsExported / d.mapsGenerated) * 100)
+    : 0;
+
+  const periodLabel = { '7d': 'últimos 7 días', '30d': 'últimos 30 días', '90d': 'últimos 90 días', 'all': 'histórico total' };
+
+  return `
+    <!-- Highlight principal -->
+    <div class="highlight-card">
+      <span class="material-icons">map</span>
+      <div class="highlight-text">
+        <strong>${fmt(d.mapsGenerated)} mapas generados</strong>
+        <span>${fmt(d.sessions)} sesiones · ${fmt(d.users)} usuarios registrados · ${periodLabel[d.period] || d.period}</span>
+      </div>
+    </div>
+
+    <!-- KPIs de adopción -->
+    <div class="section-title">Adopción</div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Sesiones únicas</div>
+        <div class="kpi-value">${fmt(d.sessions)}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Usuarios registrados</div>
+        <div class="kpi-value">${fmt(d.users)}</div>
+        <div class="kpi-sub">resto anónimos</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Mapas generados</div>
+        <div class="kpi-value accent">${fmt(d.mapsGenerated)}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Mapas exportados</div>
+        <div class="kpi-value">${fmt(d.mapsExported)}</div>
+        <div class="kpi-sub">${exportRate}% de los generados</div>
+      </div>
+    </div>
+
+    <!-- Tasa de conversión sesión → mapa -->
+    <div class="rate-card" style="margin-top:10px">
+      <span class="material-icons">trending_up</span>
+      <div class="rate-text">
+        <strong>${fmtPct(d.sessionToMapRate)}</strong>
+        <span> de las sesiones generó al menos un mapa</span>
+      </div>
+    </div>
+
+    <!-- KPIs de calidad -->
+    <div class="section-title">Profundidad de uso</div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Promedio capas / mapa</div>
+        <div class="kpi-value">${d.avgLayersPerMap ?? '—'}</div>
+        <div class="kpi-sub">capas simultáneas</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Tiempo a primer mapa</div>
+        <div class="kpi-value">${fmtMs(d.avgMsToFirstMap)}</div>
+        <div class="kpi-sub">desde inicio de sesión</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Refinamientos / sesión</div>
+        <div class="kpi-value">${d.avgRefinements ?? '—'}</div>
+        <div class="kpi-sub">mensajes post-mapa</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Mensajes totales</div>
+        <div class="kpi-value">${fmt(d.messages)}</div>
+      </div>
+    </div>
+
+    <!-- Gráfico mapas por día -->
+    <div class="section-title">Actividad diaria</div>
+    ${renderChart(d.mapsPerDay, 'Mapas generados por día')}
+    ${renderChart(d.sessionsPerDay, 'Sesiones por día', 'var(--ok)')}
+
+    <!-- Top capas -->
+    <div class="section-title">Capas más consultadas</div>
+    ${renderTopLayers(d.topLayers)}
+
+    <!-- Distribución -->
+    <div class="section-title">Audiencia</div>
+    <div class="dist-row">${renderDistLang(d.byLanguage)}</div>
+    <div class="dist-row" style="margin-top:8px">${renderDistDevice(d.byDevice)}</div>
+
+    <!-- Nota al pie -->
+    <div class="footer-note">
+      Casux conecta lenguaje natural con datos geoespaciales públicos del IGN Argentina,
+      IGM Uruguay y otros organismos oficiales. Sin instalar software, sin conocimientos GIS.
+      <br><br>
+      <a href="/status">Estado de geoservicios</a>
+    </div>
+
+    <div class="computed-at">Calculado: ${new Date(d.computedAt).toLocaleString()}</div>
+  `;
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+
+let _currentPeriod = '30d';
+
+const PERIODS = [
+  { id: '7d',  label: '7 días' },
+  { id: '30d', label: '30 días' },
+  { id: '90d', label: '90 días' },
+  { id: 'all', label: 'Todo' },
+];
+
+function renderPeriodBar() {
+  document.getElementById('period-bar').innerHTML = PERIODS.map(p => `
+    <button class="period-btn${p.id === _currentPeriod ? ' active' : ''}"
+            onclick="loadPeriod('${p.id}')">${p.label}</button>
+  `).join('');
+}
+
+async function loadPeriod(period) {
+  _currentPeriod = period;
+  renderPeriodBar();
+
+  const el = document.getElementById('metrics-content');
+  el.innerHTML = `
+    <div class="loading-state">
+      <span class="material-icons">refresh</span>
+      Cargando métricas…
+    </div>
+  `;
+
+  try {
+    const data = await fetchMetrics(period);
+    el.innerHTML = renderMetrics(data);
+  } catch (err) {
+    el.innerHTML = `
+      <div class="error-state">
+        <span class="material-icons">error_outline</span>
+        ${err.message}
+        <br><br>
+        <button class="period-btn" onclick="loadPeriod('${period}')">Reintentar</button>
+      </div>
+    `;
+  }
+}
+
+// Tema día/noche
+const savedTheme = localStorage.getItem('sm_theme');
+const isDayHour  = new Date().getHours() >= 7 && new Date().getHours() < 20;
+const theme      = savedTheme || (isDayHour ? 'day' : 'night');
+document.body.classList.toggle('day', theme === 'day');
+
+// Función global para los botones
+window.loadPeriod = loadPeriod;
+
+// Arrancar
+renderPeriodBar();
+loadPeriod(_currentPeriod);
+</script>
 </body>
 </html>
