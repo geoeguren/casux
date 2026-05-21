@@ -51,6 +51,8 @@ const UI = {
     btnStatus:          'ESTADO DE GEOSERVICIOS',
     computedAt:         'Calculado',
     retryBtn:           'Reintentar',
+    refreshBtn:         'Actualizar',
+    errorMsg:           'Las métricas no están disponibles en este momento. Volvé a intentarlo más tarde.',
     updatedAt:          'Actualizado',
 
     periodLabels: {
@@ -98,6 +100,8 @@ const UI = {
     btnStatus:          'GEOSERVICE STATUS',
     computedAt:         'Computed',
     retryBtn:           'Retry',
+    refreshBtn:         'Refresh',
+    errorMsg:           'Metrics are not available right now. Please try again later.',
     updatedAt:          'Updated',
 
     periodLabels: {
@@ -145,6 +149,8 @@ const UI = {
     btnStatus:          'ESTADO DOS GEOSERVIÇOS',
     computedAt:         'Calculado',
     retryBtn:           'Tentar novamente',
+    refreshBtn:         'Atualizar',
+    errorMsg:           'As métricas não estão disponíveis no momento. Tente novamente mais tarde.',
     updatedAt:          'Atualizado',
 
     periodLabels: {
@@ -487,10 +493,16 @@ const PERIODS = [
 ];
 
 function renderPeriodBar() {
-  document.getElementById('period-bar').innerHTML = PERIODS.map(p => `
-    <button class="period-btn${p.id === _currentPeriod ? ' active' : ''}"
-            onclick="loadPeriod('${p.id}')">${typeof p.label === 'function' ? p.label() : p.label}</button>
-  `).join('');
+  document.getElementById('period-bar').innerHTML =
+    PERIODS.map(p => `
+      <button class="period-btn${p.id === _currentPeriod ? ' active' : ''}"
+              onclick="loadPeriod('${p.id}')">${typeof p.label === 'function' ? p.label() : p.label}</button>
+    `).join('') +
+    `<button class="refresh-btn" id="btn-refresh">
+       <span class="material-icons">refresh</span>
+       ${t('refreshBtn')}
+     </button>`;
+  document.getElementById('btn-refresh').addEventListener('click', () => loadPeriod(_currentPeriod));
 }
 
 async function loadPeriod(period) {
@@ -501,7 +513,7 @@ async function loadPeriod(period) {
   el.innerHTML = `
     <div class="loading-state">
       <span class="material-icons">refresh</span>
-      Cargando métricas…
+      ${t('loading')}
     </div>
   `;
 
@@ -512,9 +524,8 @@ async function loadPeriod(period) {
     el.innerHTML = `
       <div class="error-state">
         <span class="material-icons">error_outline</span>
-        ${err.message}
-        <br><br>
-        <button class="period-btn" onclick="loadPeriod('${period}')">Reintentar</button>
+        <span>${t('errorMsg')}</span>
+        <button class="period-btn" onclick="loadPeriod('${period}')">${t('retryBtn')}</button>
       </div>
     `;
   }
