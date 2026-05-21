@@ -350,6 +350,38 @@ window.REST = (() => {
 
   const _inFlight = new Map();
 
+  // ── Snapshot B2 ──────────────────────────────────────────────
+  // Intenta leer el snapshot pre-generado desde Backblaze B2.
+  // Solo cuando no hay whereClause (el snapshot tiene la capa completa).
+  // Si B2_PUBLIC_URL no está configurado, falla silenciosamente.
+
+  const B2_PUBLIC_URL = window.CASUX_CONFIG?.b2PublicUrl || '';
+
+  function b2SnapshotUrl(typename) {
+    if (!B2_PUBLIC_URL) return null;
+    // typename MOP tiene formato: "CARPETA/SERVICIO/MapServer/N"
+    const safe = typename.replace(/[\/\\]/g, '__');
+    return `${B2_PUBLIC_URL.replace(/\/$/, '')}/mop_cl/${safe}.geojson`;
+  }
+
+  async function fetchFromB2(typename) {
+    const url = b2SnapshotUrl(typename);
+    if (!url) return null;
+    try {
+      const ctrl  = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 3000); // 3s máximo
+      const resp  = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(timer);
+      if (!resp.ok) return null;
+      const geojson = await resp.json();
+      if (!geojson?.features) return null;
+      console.log(`[REST] Snapshot B2: ${typename} (${geojson.features.length} features)`);
+      return geojson;
+    } catch {
+      return null; // timeout o error — caer al REST sin ruido
+    }
+  }
+
   // ── Fetch principal (interfaz idéntica a wfs.js) ──────────────
 
   async function fetchLayer(typename, options = {}) {
@@ -368,7 +400,18 @@ window.REST = (() => {
     const where = sanitizedWhere || '1=1';
     const key   = cacheKey(restBase, typename, where);
 
-    // 1. Caché fresca
+    // 1. Snapshot B2 — solo cuando no hay filtro dinámico
+    const canUseSnapshot = !forceRefresh && where === '1=1';
+    if (canUseSnapshot) {
+      const snapshot = await fetchFromB2(typename);
+      if (snapshot) {
+        // Guardar en IndexedDB para requests siguientes (misma TTL que el cache normal)
+        await cacheSet(key, snapshot);
+        return snapshot;
+      }
+    }
+
+    // 2. Caché fresca en IndexedDB
     if (!forceRefresh) {
       const cached = await cacheGet(key);
       if (cached && !cached.stale) {
