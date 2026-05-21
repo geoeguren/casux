@@ -156,14 +156,7 @@ body {
 
 /* ── Section title ────────────────────────────── */
 
-.section-title {
-  font-family: var(--font-serif);
-  font-size: 18px;
-  font-weight: 300;
-  color: var(--cream);
-  margin-bottom: 12px;
-  margin-top: 40px;
-}
+
 
 /* ── KPI grid ─────────────────────────────────── */
 
