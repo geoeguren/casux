@@ -460,6 +460,7 @@ window.SPATIAL = (() => {
         return ejecutarIntersectExclude(instruccion, layerDef, wfsOpts, cql);
 
       case 'buffer':
+      case 'buffer_exclude':
         return ejecutarBuffer(instruccion, layerDef, wfsOpts, cql);
 
       default:
