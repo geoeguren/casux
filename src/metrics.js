@@ -497,12 +497,7 @@ function renderPeriodBar() {
     PERIODS.map(p => `
       <button class="period-btn${p.id === _currentPeriod ? ' active' : ''}"
               onclick="loadPeriod('${p.id}')">${typeof p.label === 'function' ? p.label() : p.label}</button>
-    `).join('') +
-    `<button class="refresh-btn" id="btn-refresh">
-       <span class="material-icons">refresh</span>
-       ${t('refreshBtn')}
-     </button>`;
-  document.getElementById('btn-refresh').addEventListener('click', () => loadPeriod(_currentPeriod));
+    `).join('');
 }
 
 async function loadPeriod(period) {
