@@ -11,47 +11,51 @@
  *   node scripts/generate-snapshots.js --dry-run → sin subir, solo lista
  *   node scripts/generate-snapshots.js --force   → re-genera aunque ya exista
  *
- * Requiere en .env.local:
+ * Requiere en .env.local (local) o secrets (GitHub Actions):
  *   B2_ENDPOINT, B2_BUCKET, B2_KEY_ID, B2_APP_KEY, B2_REGION
- *
- * Instalar dependencias una vez:
- *   npm install @aws-sdk/client-s3 @turf/simplify dotenv --save-dev
  */
 
 'use strict';
 
 const path    = require('path');
-const fs      = require('fs');
+const { execSync } = require('child_process');
 
-// Cargar .env.local
-require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
+// Cargar .env.local si existe (local) — en Actions las vars vienen de secrets
+try {
+  require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
+} catch { /* dotenv opcional */ }
 
 const { S3Client, PutObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
-const simplify = require('@turf/simplify').default;
+
+// ── Argumentos CLI ────────────────────────────────────────────────
+
+const args        = process.argv.slice(2);
+const DRY_RUN     = args.includes('--dry-run');
+const FORCE       = args.includes('--force');
+const sourceIdx   = args.indexOf('--source');
+const ONLY_SOURCE = sourceIdx !== -1 ? args[sourceIdx + 1] : null;
 
 // ── Configuración B2 ──────────────────────────────────────────────
 
 const B2 = new S3Client({
-  endpoint:        `https://${process.env.B2_ENDPOINT}`,
-  region:          process.env.B2_REGION,
+  endpoint:    `https://${process.env.B2_ENDPOINT}`,
+  region:      process.env.B2_REGION,
   credentials: {
     accessKeyId:     process.env.B2_KEY_ID,
     secretAccessKey: process.env.B2_APP_KEY,
   },
-  forcePathStyle: true,  // requerido para B2
+  forcePathStyle: true,
 });
 
 const BUCKET = process.env.B2_BUCKET;
 
-// ── Argumentos CLI ────────────────────────────────────────────────
+// ── Límites ───────────────────────────────────────────────────────
 
-const args       = process.argv.slice(2);
-const DRY_RUN    = args.includes('--dry-run');
-const FORCE      = args.includes('--force');
-const sourceArg  = args.find(a => a.startsWith('--source'));
-const ONLY_SOURCE = sourceArg ? sourceArg.split('=')[1] || args[args.indexOf(sourceArg) + 1] : null;
+const DISPLAY_THRESHOLD = 55000;
+const FETCH_TIMEOUT_MS  = 60000;
+const CONCURRENCY       = 3;
 
-// ── Catálogo de fuentes ───────────────────────────────────────────
+// ── Fuentes ───────────────────────────────────────────────────────
 
 const SOURCES = {
   ign_ar:  { wfsBase: 'https://wms.ign.gob.ar/geoserver/ows',           wfsVersion: '1.1.0', type: 'wfs' },
@@ -62,87 +66,55 @@ const SOURCES = {
   mop_cl:  { restBase: 'https://rest-sit.mop.gob.cl/arcgis/rest/services', type: 'rest' },
 };
 
-// ── Tolerancias de simplificación por tipo de geometría ──────────
-// Valores en grados decimales (~0.001° ≈ 100m en latitudes medias)
+// ── Tolerancias de simplificación ────────────────────────────────
 
 const TOLERANCE = {
   polygon: 0.001,
   line:    0.0005,
-  point:   null,   // los puntos no se simplifican
+  point:   null,
 };
 
-// ── Límites ───────────────────────────────────────────────────────
-
-const DISPLAY_THRESHOLD = 55000;  // en sync con layers/index.js
-const FETCH_TIMEOUT_MS  = 60000;  // 60s por capa
-const CONCURRENCY       = 3;      // requests simultáneos
-
-// ── Cargar capas del catálogo ─────────────────────────────────────
+// ── Cargar catálogo via export-catalog.mjs ────────────────────────
 
 function loadLayers() {
-  const layerFiles = [
-    '../layers/ar/ign.js',
-    '../layers/ar/se.js',
-    '../layers/ar/ssa.js',
-    '../layers/uy/igm.js',
-    '../layers/uy/mtop.js',
-    '../layers/cl/mop.js',
-  ];
+  const exportScript = path.join(__dirname, 'export-catalog.mjs');
+
+  let raw;
+  try {
+    raw = execSync(`node ${exportScript}`, {
+      encoding: 'utf8',
+      timeout:  30000,
+      cwd: path.join(__dirname, '..'),
+    });
+  } catch (err) {
+    throw new Error(`Error ejecutando export-catalog.mjs: ${err.message}`);
+  }
+
+  let catalog;
+  try {
+    catalog = JSON.parse(raw);
+  } catch {
+    throw new Error('export-catalog.mjs devolvió JSON inválido');
+  }
 
   const layers = [];
+  for (const [key, def] of Object.entries(catalog)) {
+    if (!def.visible) continue;
+    if (!def.typename || !def.source) continue;
+    if (ONLY_SOURCE && def.source !== ONLY_SOURCE) continue;
+    if (!SOURCES[def.source]) continue;
+    if (def.geomType === 'none' || def.geomType === 'unknown') continue;
+    if (def.featureCount != null && def.featureCount > DISPLAY_THRESHOLD) continue;
 
-  for (const relPath of layerFiles) {
-    const absPath = path.join(__dirname, relPath);
-    if (!fs.existsSync(absPath)) {
-      console.warn(`  ⚠ No encontrado: ${relPath}`);
-      continue;
-    }
-
-    // Ejecutar el archivo como módulo CommonJS aislado
-    // Los archivos usan module.exports o window.LAYERS — adaptamos
-    const code = fs.readFileSync(absPath, 'utf8');
-
-    // Convertir sintaxis de browser (window.LAYERS = {...}) a módulo
-    const wrapped = code
-      .replace(/window\.LAYERS\s*=\s*\{/, 'const _LAYERS = {')
-      .replace(/window\.LAYERS\s*=\s*Object\.assign/, 'Object.assign(_LAYERS,')
-      + '\nif (typeof module !== "undefined") module.exports = { _LAYERS };';
-
-    try {
-      const tmpFile = path.join(__dirname, '_tmp_layer.js');
-      fs.writeFileSync(tmpFile, wrapped);
-      const mod = require(tmpFile);
-      fs.unlinkSync(tmpFile);
-      // Limpiar cache de require para el archivo temporal
-      delete require.cache[tmpFile];
-
-      const layerMap = mod._LAYERS || mod;
-      for (const [key, def] of Object.entries(layerMap)) {
-        if (!def || typeof def !== 'object') continue;
-        if (def.visible === false) continue;
-        if (!def.typename) continue;
-        if (!def.source) continue;
-        if (ONLY_SOURCE && def.source !== ONLY_SOURCE) continue;
-
-        // Excluir capas sin geometría real
-        if (def.geomType === 'none' || def.geomType === 'unknown') continue;
-
-        // Excluir capas que superan el display threshold
-        if (def.featureCount != null && def.featureCount > DISPLAY_THRESHOLD) continue;
-
-        layers.push({
-          key,
-          typename:     def.typename,
-          source:       def.source,
-          geomType:     def.geomType || 'polygon',
-          featureCount: def.featureCount || null,
-          filterField:  def.filterField || null,
-          filterValues: def.filterValues || null,
-        });
-      }
-    } catch (err) {
-      console.warn(`  ⚠ Error parseando ${relPath}: ${err.message}`);
-    }
+    layers.push({
+      key,
+      typename:     def.typename,
+      source:       def.source,
+      geomType:     def.geomType || 'polygon',
+      featureCount: def.featureCount,
+      filterField:  def.filterField,
+      filterValues: def.filterValues,
+    });
   }
 
   return layers;
@@ -162,15 +134,14 @@ async function fetchWFS(source, typename, filterField, filterValues) {
   });
 
   if (filterField && filterValues?.length) {
-    const values = filterValues.map(v => `'${v}'`).join(',');
     params.set('CQL_FILTER',
       filterValues.length === 1
         ? `${filterField}='${filterValues[0]}'`
-        : `${filterField} IN (${values})`
+        : `${filterField} IN (${filterValues.map(v => `'${v}'`).join(',')})`
     );
   }
 
-  const url = `${src.wfsBase}?${params.toString()}`;
+  const url  = `${src.wfsBase}?${params.toString()}`;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
 
@@ -179,9 +150,9 @@ async function fetchWFS(source, typename, filterField, filterValues) {
     clearTimeout(timer);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const text = await resp.text();
-    if (text.trimStart().startsWith('<')) throw new Error('Respuesta XML — posible error WFS');
+    if (text.trimStart().startsWith('<')) throw new Error('Respuesta XML del WFS');
     const geojson = JSON.parse(text);
-    if (!geojson.features) throw new Error('Sin features en la respuesta');
+    if (!geojson.features) throw new Error('Sin features');
     return geojson;
   } catch (err) {
     clearTimeout(timer);
@@ -194,14 +165,12 @@ async function fetchWFS(source, typename, filterField, filterValues) {
 async function fetchREST(source, typename) {
   const src = SOURCES[source];
   const url = `${src.restBase}/${typename}/query?` + new URLSearchParams({
-    where:          '1=1',
-    outFields:      '*',
-    f:              'geojson',
-    outSR:          '4326',
-    returnGeometry: 'true',
+    where: '1=1', outFields: '*', f: 'geojson',
+    outSR: '4326', returnGeometry: 'true',
+    resultRecordCount: '2000',
   });
 
-  const ctrl = new AbortController();
+  const ctrl  = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
 
   try {
@@ -209,7 +178,7 @@ async function fetchREST(source, typename) {
     clearTimeout(timer);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const geojson = await resp.json();
-    if (!geojson.features) throw new Error('Sin features en la respuesta REST');
+    if (!geojson.features) throw new Error('Sin features REST');
     return geojson;
   } catch (err) {
     clearTimeout(timer);
@@ -217,231 +186,198 @@ async function fetchREST(source, typename) {
   }
 }
 
-// ── Simplificar GeoJSON ───────────────────────────────────────────
+// ── Simplificar ───────────────────────────────────────────────────
 
 function simplifyGeoJSON(geojson, geomType) {
-  const tolerance = TOLERANCE[geomType] || TOLERANCE.polygon;
-  if (!tolerance) return geojson; // puntos: sin simplificación
+  const tolerance = TOLERANCE[geomType];
+  if (!tolerance) return geojson;
 
-  try {
-    return simplify(geojson, { tolerance, highQuality: false, mutate: false });
-  } catch {
-    return geojson; // si falla la simplificación, devolver original
+  // Simplificación manual sin @turf/simplify para evitar dependencias pesadas
+  // Algoritmo: reducir vértices por distancia mínima entre puntos consecutivos
+  function simplifyCoords(coords) {
+    if (coords.length <= 2) return coords;
+    const result = [coords[0]];
+    for (let i = 1; i < coords.length - 1; i++) {
+      const prev = result[result.length - 1];
+      const curr = coords[i];
+      const dx = Math.abs(curr[0] - prev[0]);
+      const dy = Math.abs(curr[1] - prev[1]);
+      if (dx > tolerance || dy > tolerance) result.push(curr);
+    }
+    result.push(coords[coords.length - 1]);
+    return result.length >= 2 ? result : coords;
   }
+
+  function simplifyGeom(geom) {
+    if (!geom) return geom;
+    switch (geom.type) {
+      case 'LineString':
+        return { ...geom, coordinates: simplifyCoords(geom.coordinates) };
+      case 'MultiLineString':
+        return { ...geom, coordinates: geom.coordinates.map(simplifyCoords) };
+      case 'Polygon':
+        return { ...geom, coordinates: geom.coordinates.map(simplifyCoords) };
+      case 'MultiPolygon':
+        return { ...geom, coordinates: geom.coordinates.map(p => p.map(simplifyCoords)) };
+      default:
+        return geom;
+    }
+  }
+
+  return {
+    ...geojson,
+    features: geojson.features.map(f => ({ ...f, geometry: simplifyGeom(f.geometry) })),
+  };
 }
 
-// ── Subir a B2 ────────────────────────────────────────────────────
+// ── B2 helpers ────────────────────────────────────────────────────
 
-function r2Key(source, typename) {
-  // Normalizar typename para usar como key de archivo
-  // Ej: "ign:provincia" → "ign_ar/ign:provincia.geojson"
-  const safe = typename.replace(/[\/\\]/g, '__');
-  return `${source}/${safe}.geojson`;
+function b2Key(source, typename) {
+  return `${source}/${typename.replace(/[\/\\]/g, '__')}.geojson`;
 }
 
 async function existsInB2(key) {
   try {
     await B2.send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }));
     return true;
-  } catch {
-    return false;
-  }
+  } catch { return false; }
 }
 
 async function uploadToB2(key, geojson) {
-  const body = JSON.stringify(geojson);
   await B2.send(new PutObjectCommand({
     Bucket:       BUCKET,
     Key:          key,
-    Body:         body,
+    Body:         JSON.stringify(geojson),
     ContentType:  'application/geo+json',
-    CacheControl: 'public, max-age=2592000', // 30 días
-    Metadata: {
-      'generated-at': new Date().toISOString(),
-      'feature-count': String(geojson.features?.length || 0),
-    },
+    CacheControl: 'public, max-age=2592000',
+    Metadata:     { 'generated-at': new Date().toISOString(), 'feature-count': String(geojson.features?.length || 0) },
   }));
 }
 
-// ── Procesar una capa ─────────────────────────────────────────────
+// ── Procesar capa ─────────────────────────────────────────────────
 
 async function processLayer(layer) {
-  const key = r2Key(layer.source, layer.typename);
-  const src = SOURCES[layer.source];
+  const key = b2Key(layer.source, layer.typename);
 
-  if (!src) {
-    return { key: layer.key, status: 'skip', reason: 'source desconocido' };
-  }
-
-  // Verificar si ya existe (skip si no --force)
   if (!FORCE && !DRY_RUN) {
-    const exists = await existsInB2(key);
-    if (exists) {
-      return { key: layer.key, status: 'skip', reason: 'ya existe' };
-    }
+    if (await existsInB2(key)) return { key: layer.key, status: 'skip' };
   }
 
-  if (DRY_RUN) {
-    return { key: layer.key, status: 'dry-run', b2Key: key, count: layer.featureCount };
-  }
+  if (DRY_RUN) return { key: layer.key, status: 'dry-run', b2Key: key, count: layer.featureCount };
 
-  // Fetch
   let geojson;
   try {
-    if (src.type === 'wfs') {
-      geojson = await fetchWFS(layer.source, layer.typename, layer.filterField, layer.filterValues);
-    } else {
-      geojson = await fetchREST(layer.source, layer.typename);
-    }
+    const src = SOURCES[layer.source];
+    geojson = src.type === 'wfs'
+      ? await fetchWFS(layer.source, layer.typename, layer.filterField, layer.filterValues)
+      : await fetchREST(layer.source, layer.typename);
   } catch (err) {
     return { key: layer.key, status: 'error', reason: `fetch: ${err.message}` };
   }
 
-  const count = geojson.features?.length || 0;
+  const count        = geojson.features?.length || 0;
+  const simplified   = simplifyGeoJSON(geojson, layer.geomType);
+  const originalKB   = Math.round(JSON.stringify(geojson).length / 1024);
+  const simplifiedKB = Math.round(JSON.stringify(simplified).length / 1024);
 
-  // Simplificar
-  const simplified = simplifyGeoJSON(geojson, layer.geomType);
-
-  // Subir
   try {
     await uploadToB2(key, simplified);
   } catch (err) {
     return { key: layer.key, status: 'error', reason: `upload: ${err.message}` };
   }
 
-  const originalKB  = Math.round(JSON.stringify(geojson).length / 1024);
-  const simplifiedKB = Math.round(JSON.stringify(simplified).length / 1024);
-
   return {
-    key:    layer.key,
-    status: 'ok',
-    b2Key:  key,
-    count,
-    originalKB,
-    simplifiedKB,
-    saved:  Math.round((1 - simplifiedKB / originalKB) * 100) + '%',
+    key: layer.key, status: 'ok', b2Key: key, count,
+    originalKB, simplifiedKB,
+    saved: originalKB > 0 ? Math.round((1 - simplifiedKB / originalKB) * 100) + '%' : '0%',
   };
 }
 
-// ── Cola con concurrencia limitada ────────────────────────────────
+// ── Concurrencia ──────────────────────────────────────────────────
 
 async function runWithConcurrency(tasks, concurrency) {
-  const results = [];
+  const results = new Array(tasks.length);
   let i = 0;
-
   async function worker() {
     while (i < tasks.length) {
       const idx = i++;
       results[idx] = await tasks[idx]();
     }
   }
-
-  const workers = Array.from({ length: concurrency }, () => worker());
-  await Promise.all(workers);
+  await Promise.all(Array.from({ length: concurrency }, worker));
   return results;
 }
 
 // ── Main ──────────────────────────────────────────────────────────
 
 async function main() {
-  console.log('');
-  console.log('══════════════════════════════════════════════════════');
+  console.log('\n══════════════════════════════════════════════════════');
   console.log('  Casux — Generación de snapshots WFS/REST → B2');
   console.log(`  Bucket: ${BUCKET}`);
-  if (DRY_RUN)    console.log('  Modo: DRY-RUN (sin subir)');
-  if (FORCE)      console.log('  Modo: FORCE (re-genera todo)');
+  if (DRY_RUN)     console.log('  Modo: DRY-RUN (sin subir)');
+  if (FORCE)       console.log('  Modo: FORCE (re-genera todo)');
   if (ONLY_SOURCE) console.log(`  Fuente: ${ONLY_SOURCE}`);
-  console.log('══════════════════════════════════════════════════════');
-  console.log('');
+  console.log('══════════════════════════════════════════════════════\n');
 
-  // Verificar credenciales
   if (!process.env.B2_KEY_ID || !process.env.B2_APP_KEY) {
-    console.error('❌ Faltan variables B2_KEY_ID o B2_APP_KEY en .env.local');
+    console.error('❌ Faltan variables B2_KEY_ID o B2_APP_KEY');
     process.exit(1);
   }
 
-  // Cargar catálogo
   console.log('📋 Cargando catálogo de capas…');
   const layers = loadLayers();
-  console.log(`   ${layers.length} capas elegibles (visible:true, featureCount ≤ ${DISPLAY_THRESHOLD})`);
-  console.log('');
+  console.log(`   ${layers.length} capas elegibles (visible:true, featureCount ≤ ${DISPLAY_THRESHOLD})\n`);
 
-  if (layers.length === 0) {
-    console.log('No hay capas para procesar.');
-    return;
-  }
+  if (!layers.length) { console.log('No hay capas para procesar.'); return; }
 
-  // Agrupar por fuente para el log
+  // Log por fuente
   const bySource = {};
-  for (const l of layers) {
-    bySource[l.source] = (bySource[l.source] || 0) + 1;
-  }
-  for (const [src, count] of Object.entries(bySource)) {
-    console.log(`   ${src.padEnd(12)} ${count} capas`);
-  }
+  for (const l of layers) bySource[l.source] = (bySource[l.source] || 0) + 1;
+  for (const [src, n] of Object.entries(bySource)) console.log(`   ${src.padEnd(12)} ${n} capas`);
   console.log('');
 
-  // Procesar
-  const tasks = layers.map(layer => () => {
-    process.stdout.write(`  ⏳ ${layer.key.slice(0, 60).padEnd(60)}\r`);
+  const tasks   = layers.map(layer => () => {
+    process.stdout.write(`  ⏳ ${layer.key.slice(0, 65).padEnd(65)}\r`);
     return processLayer(layer);
   });
 
   const results = await runWithConcurrency(tasks, CONCURRENCY);
-
-  // Resumen
   console.log('');
-  console.log('══════════════════════════════════════════════════════');
-  console.log('  Resultados');
-  console.log('══════════════════════════════════════════════════════');
 
-  const ok     = results.filter(r => r.status === 'ok');
+  const ok      = results.filter(r => r.status === 'ok');
   const skipped = results.filter(r => r.status === 'skip');
   const errors  = results.filter(r => r.status === 'error');
   const dryRuns = results.filter(r => r.status === 'dry-run');
 
+  console.log('\n══════════════════════════════════════════════════════');
+  console.log('  Resultados');
+  console.log('══════════════════════════════════════════════════════');
+
   if (ok.length) {
+    let totOrig = 0, totSimp = 0;
     console.log(`\n  ✓ Subidos: ${ok.length}`);
-    let totalOriginal = 0, totalSimplified = 0;
     for (const r of ok) {
-      totalOriginal   += r.originalKB;
-      totalSimplified += r.simplifiedKB;
-      console.log(`    ${r.key.slice(0, 45).padEnd(45)} ${String(r.count).padStart(6)} features  ${r.originalKB}KB → ${r.simplifiedKB}KB (${r.saved})`);
+      totOrig += r.originalKB; totSimp += r.simplifiedKB;
+      console.log(`    ${r.key.slice(0,45).padEnd(45)} ${String(r.count).padStart(6)} feat  ${r.originalKB}KB→${r.simplifiedKB}KB (${r.saved})`);
     }
-    console.log(`\n    Total: ${totalOriginal}KB → ${totalSimplified}KB (${Math.round((1 - totalSimplified/totalOriginal)*100)}% reducción)`);
+    console.log(`\n    Total: ${totOrig}KB → ${totSimp}KB (${Math.round((1-totSimp/totOrig)*100)}% reducción)`);
   }
 
-  if (skipped.length) {
-    console.log(`\n  ↷ Saltados (ya existían): ${skipped.length}`);
-  }
+  if (skipped.length) console.log(`\n  ↷ Saltados (ya existían): ${skipped.length}`);
 
   if (dryRuns.length) {
     console.log(`\n  🔍 Dry-run — se procesarían ${dryRuns.length} capas:`);
-    for (const r of dryRuns) {
-      const count = r.count != null ? `${r.count} features` : 'count desconocido';
-      console.log(`    ${r.key.slice(0, 50).padEnd(50)} ${count}`);
-    }
+    for (const r of dryRuns) console.log(`    ${r.key.slice(0,55).padEnd(55)} ${r.count != null ? r.count + ' features' : '?'}`);
   }
 
   if (errors.length) {
     console.log(`\n  ✗ Errores: ${errors.length}`);
-    for (const r of errors) {
-      console.log(`    ${r.key.slice(0, 45).padEnd(45)} ${r.reason}`);
-    }
+    for (const r of errors) console.log(`    ${r.key.slice(0,45).padEnd(45)} ${r.reason}`);
   }
 
-  console.log('');
   const total = ok.length + errors.length + dryRuns.length;
-  if (errors.length === 0) {
-    console.log(`  ✅ ${total} capas procesadas sin errores`);
-  } else {
-    console.log(`  ⚠ ${total} capas procesadas, ${errors.length} con errores`);
-  }
-  console.log('══════════════════════════════════════════════════════');
-  console.log('');
+  console.log(`\n  ${errors.length === 0 ? '✅' : '⚠'} ${total} capas procesadas${errors.length ? `, ${errors.length} con errores` : ' sin errores'}`);
+  console.log('══════════════════════════════════════════════════════\n');
 }
 
-main().catch(err => {
-  console.error('\n❌ Error fatal:', err.message);
-  process.exit(1);
-});
+main().catch(err => { console.error('\n❌ Error fatal:', err.message); process.exit(1); });
