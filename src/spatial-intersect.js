@@ -1,17 +1,12 @@
 /**
  * src/spatial-intersect.js — Intersección espacial (intersect / intersect_exclude)
  *
- * Maneja ambas operaciones en un único módulo:
+ * Maneja ambas operaciones:
  *   - op 'intersect':         features completas que TOCAN el área
  *   - op 'intersect_exclude': features completas que NO tocan el área
  *
- * Para intersect: intenta via edge function /api/intersect (capas grandes WFS).
- * Para intersect_exclude: siempre procesa en cliente (necesita todos los features).
- *
- * Flujo:
- *   1. Edge function /api/intersect (con exclude: true/false en el body)
- *   2. Fallback: Worker (intersect-worker.js)
- *   3. Fallback: Turf síncrono
+ * Utilidades compartidas (calcularBbox, deberiaUsarEdgeFunction, toastFallbackOnce,
+ * _clipPuntosDirecto) viven en spatial-utils.js y se acceden vía window._SPATIAL_UTILS.
  *
  * Consumido exclusivamente por src/spatial.js.
  */
@@ -19,6 +14,10 @@
 window._SPATIAL_INTERSECT = (() => {
 
   const EDGE_FN_URL = '/api/intersect';
+
+  // ── Alias local de utilidades compartidas ─────────────────────
+
+  const U = () => window._SPATIAL_UTILS;
 
   // ── Edge Function ─────────────────────────────────────────────
 
@@ -202,33 +201,21 @@ window._SPATIAL_INTERSECT = (() => {
     return { type: 'FeatureCollection', features: result };
   }
 
-  // ── Decisión: edge function vs cliente directo ────────────────
-
-  const EDGE_FN_UMBRAL = 500;
-
-  function deberiaUsarEdgeFunction(layerDef, op, isArcgis) {
-    if (isArcgis)                     return false;
-    if (op === 'intersect_exclude')   return false;
-    const fc = layerDef?.featureCount;
-    if (fc !== undefined && fc <= EDGE_FN_UMBRAL) return false;
-    return true;
-  }
-
   // ── Punto de entrada del módulo ───────────────────────────────
 
   async function ejecutar(instruccion, layerDef, wfsOpts, cql, maskFeature) {
-    const bbox      = window._SPATIAL_CLIP.calcularBbox(maskFeature);
+    const bbox      = U().calcularBbox(maskFeature);
     const isArcgis  = !!wfsOpts.restBase;
     const op        = instruccion.op || 'intersect';
     const isExclude = op === 'intersect_exclude';
 
     // ── Camino principal: edge function ───────────────────────
-    if (deberiaUsarEdgeFunction(layerDef, op, isArcgis)) {
+    if (U().deberiaUsarEdgeFunction(layerDef, op, isArcgis)) {
       try {
         return await intersectViaEdgeFunction(layerDef, wfsOpts, cql, bbox, maskFeature, instruccion);
       } catch (edgeErr) {
         console.warn('[SPATIAL:intersect] Edge Function falló, usando Worker:', edgeErr.message);
-        window._SPATIAL_CLIP.toastFallbackOnce();
+        U().toastFallbackOnce();
       }
     } else {
       if (isArcgis) {
@@ -238,7 +225,7 @@ window._SPATIAL_INTERSECT = (() => {
       } else {
         console.log(`[SPATIAL:intersect] Capa pequeña (${layerDef.featureCount ?? '?'} features) — procesando en cliente directamente.`);
       }
-      window._SPATIAL_CLIP.toastFallbackOnce();
+      U().toastFallbackOnce();
     }
 
     // ── Fallback cliente ─────────────────────────────────────
@@ -253,13 +240,13 @@ window._SPATIAL_INTERSECT = (() => {
       return { type: 'FeatureCollection', features: [] };
     }
 
-    // Puntos: ray-casting desde spatial-clip (sin Worker ni Turf)
+    // Puntos: ray-casting directo (sin Worker ni Turf)
     const solosPuntos = layerGeoJSON.features.every(f => {
       const t = f.geometry?.type;
       return t === 'Point' || t === 'MultiPoint';
     });
     if (solosPuntos) {
-      const result = window._SPATIAL_CLIP._clipPuntosDirecto(layerGeoJSON.features, maskFeature, isExclude);
+      const result = U()._clipPuntosDirecto(layerGeoJSON.features, maskFeature, isExclude);
       return { type: 'FeatureCollection', features: result };
     }
 
