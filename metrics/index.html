@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Casux — Métricas de uso</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=Fraunces:opsz,wght@9..144,300;9..144,500&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  <link rel="stylesheet" href="../style/metrics.css"/>
+</head>
+<body>
+
+<div class="page">
+
+  <a href="/" class="back-link" id="back-link">
+    <span class="material-icons">arrow_back</span>
+    <span id="back-label">Volver</span>
+  </a>
+
+  <div class="page-header">
+    <h1 class="page-title" id="page-title">Métricas de uso</h1>
+    <p class="page-subtitle" id="page-subtitle">
+      Acceso abierto a datos geoespaciales públicos, sin conocimientos técnicos.
+    </p>
+  </div>
+
+  <div class="period-bar" id="period-bar"></div>
+
+  <div id="metrics-content">
+    <div class="loading-state">
+      <span class="material-icons">refresh</span>
+      Cargando métricas…
+    </div>
+  </div>
+
+</div>
+
+<script src="../src/metrics.js"></script>
+
+</body>
+</html>
