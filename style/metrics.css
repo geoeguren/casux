@@ -157,13 +157,12 @@ body {
 /* ── Section title ────────────────────────────── */
 
 .section-title {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--cream2);
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 300;
+  color: var(--cream);
   margin-bottom: 12px;
-  margin-top: 36px;
+  margin-top: 40px;
 }
 
 /* ── KPI grid ─────────────────────────────────── */
@@ -205,11 +204,7 @@ body {
 .kpi-value.accent { color: var(--accent); }
 .kpi-value.ok     { color: var(--ok); }
 
-.kpi-sub {
-  font-size: 11px;
-  color: var(--cream2);
-  margin-top: 2px;
-}
+
 
 /* ── Highlight card ───────────────────────────── */
 
