@@ -4,65 +4,104 @@
  * El prefijo _ impide que Vercel lo exponga como endpoint HTTP.
  * Importado por api/clip.js, api/intersect.js y api/buffer.js.
  *
- * Construye la URL WFS con los parámetros recibidos y devuelve
- * el GeoJSON parseado. Sin caché — eso es responsabilidad del cliente.
+ * Flujo con cache B2:
+ *   1. Si existe snapshot en Backblaze B2 → devolverlo directamente
+ *   2. Si no → fetchear el WFS externo como siempre
  *
- * Timeout: 7 segundos (igual que el proxy LLM).
- * En Vercel Hobby el límite total de la función es 10s, así que
- * dejamos 3s de margen para el procesamiento posterior al fetch.
+ * El snapshot se genera por scripts/generate-snapshots.js (cron mensual).
+ * La key en B2 es: {source}/{typename}.geojson
+ * Ej: ign_ar/ign:provincia.geojson
+ *
+ * Si B2 no está configurado (variables de entorno ausentes), el cache
+ * se omite silenciosamente y el fetch WFS funciona como antes.
+ *
+ * Timeout WFS: 7 segundos (3s de margen para procesamiento posterior).
  */
 
 const FETCH_TIMEOUT_MS = 7000;
 
-// Mapa de host → campo de geometría.
-// GeoServer usa "the_geom" por defecto; agregar excepciones si algún servidor difiere.
-// Este mapa sirve también como lista de hosts WFS autorizados:
-// cualquier wfsBase cuyo hostname no esté aquí es rechazado antes del fetch.
-// Para agregar un servidor nuevo: incluirlo acá con su campo de geometría.
-const GEOM_FIELD_BY_HOST = {
-  'wms.ign.gob.ar':    'the_geom',
-  'sig.igm.gub.uy':    'the_geom',
+// Mapa host → fuente B2 y campo de geometría.
+// También actúa como whitelist SSRF — hosts no listados son rechazados.
+const HOST_META = {
+  'wms.ign.gob.ar':               { source: 'ign_ar',  geomField: 'the_geom' },
+  'sig.igm.gub.uy':               { source: 'igm_uy',  geomField: 'the_geom' },
+  'geoservicios.mtop.gub.uy':     { source: 'mtop_uy', geomField: 'the_geom' },
+  'mapa.educacion.gob.ar':        { source: 'se_ar',   geomField: 'the_geom' },
+  'geo.ambiente.gob.ar':          { source: 'ssa_ar',  geomField: 'the_geom' },
 };
 
-function _geomFieldForUrl(wfsBase) {
+function _metaForUrl(wfsBase) {
   try {
     const host = new URL(wfsBase).hostname;
-    return GEOM_FIELD_BY_HOST[host] || 'the_geom';
+    return HOST_META[host] || null;
   } catch {
-    return 'the_geom';
+    return null;
   }
 }
 
-/**
- * fetchWFS({ typename, wfsBase, wfsVersion, cqlFilter, bbox, geomField })
- *
- * Devuelve un GeoJSON FeatureCollection.
- * Lanza Error si el servidor WFS responde con error o si hay timeout.
- *
- * geomField: nombre del campo de geometría para BBOX() en CQL (default: 'the_geom').
- *   GeoServer rechaza CQL_FILTER y bbox como parámetros simultáneos; cuando ambos
- *   están presentes, el bbox se embebe dentro del CQL como BBOX(geomField,...).
- */
+// ── Cache B2 ──────────────────────────────────────────────────────
+
+const B2_PUBLIC_URL = process.env.B2_PUBLIC_URL; // ej: https://pub-xxx.r2.dev o URL pública B2
+
+function b2Key(source, typename) {
+  const safe = typename.replace(/[\/\\]/g, '__');
+  return `${source}/${safe}.geojson`;
+}
+
+async function fetchFromB2(source, typename) {
+  if (!B2_PUBLIC_URL) return null; // B2 no configurado
+
+  const key = b2Key(source, typename);
+  const url = `${B2_PUBLIC_URL.replace(/\/$/, '')}/${key}`;
+
+  try {
+    const ctrl  = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 3000); // 3s máximo para el cache
+    const resp  = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(timer);
+
+    if (!resp.ok) return null; // snapshot no existe todavía
+    const geojson = await resp.json();
+    if (!geojson.features) return null;
+
+    console.log(`[_wfs] Cache B2 hit: ${key} (${geojson.features.length} features)`);
+    return geojson;
+  } catch {
+    // Timeout o error de red — caer al WFS sin ruido
+    return null;
+  }
+}
+
+// ── Fetch WFS externo ─────────────────────────────────────────────
+
 async function fetchWFS({ typename, wfsBase, wfsVersion, cqlFilter, bbox, geomField }) {
   if (!typename) throw new Error('[_wfs] typename requerido');
   if (!wfsBase)  throw new Error('[_wfs] wfsBase requerido');
 
-  // Validar que el host esté en la lista de servidores autorizados.
-  // Evita que un cliente malicioso apunte a hosts arbitrarios (SSRF).
-  try {
-    const host = new URL(wfsBase).hostname;
-    if (!Object.prototype.hasOwnProperty.call(GEOM_FIELD_BY_HOST, host)) {
-      const error = new Error(`Servidor WFS no autorizado: ${host}`);
-      error.isExternalServerError = false;
-      throw error;
-    }
-  } catch (err) {
-    if (err.isExternalServerError === false) throw err;
-    throw new Error('[_wfs] wfsBase inválida');
+  // Validar host (whitelist SSRF)
+  const meta = _metaForUrl(wfsBase);
+  if (!meta) {
+    const error = new Error(`Servidor WFS no autorizado: ${wfsBase}`);
+    error.isExternalServerError = false;
+    throw error;
   }
 
-  // Resolver campo de geometría: parámetro explícito > tabla por host > default
-  const resolvedGeomField = geomField || _geomFieldForUrl(wfsBase);
+  // ── Intentar cache B2 primero ─────────────────────────────────
+  // Solo cuando no hay filtros dinámicos (cqlFilter o bbox) que
+  // acotan los resultados — el snapshot tiene la capa completa.
+  // Con bbox o cqlFilter, el snapshot no sirve porque habría que
+  // filtrarlo aquí, y eso lo hace mejor la edge function con el WFS.
+  // Excepción: si viene cqlFilter de filterField/filterValues (filtro
+  // estructural fijo de la capa), el snapshot ya lo incorpora.
+  const canUseCache = !bbox && !cqlFilter;
+
+  if (canUseCache) {
+    const cached = await fetchFromB2(meta.source, typename);
+    if (cached) return cached;
+  }
+
+  // ── Fetch WFS externo ─────────────────────────────────────────
+  const resolvedGeomField = geomField || meta.geomField || 'the_geom';
 
   const params = new URLSearchParams({
     service:      'WFS',
@@ -74,13 +113,10 @@ async function fetchWFS({ typename, wfsBase, wfsVersion, cqlFilter, bbox, geomFi
   });
 
   if (bbox) {
-    // GeoServer IGN/IGM no acepta CQL_FILTER y bbox como parámetros simultáneos.
-    // Cuando hay filtro de atributos, embebemos el bbox en el CQL con BBOX().
     const bboxCql = `BBOX(${resolvedGeomField},${bbox.minX},${bbox.minY},${bbox.maxX},${bbox.maxY},'EPSG:4326')`;
     if (cqlFilter) {
       params.set('CQL_FILTER', `(${cqlFilter}) AND ${bboxCql}`);
     } else {
-      // Sin filtro de atributos: parámetro bbox nativo WFS (más eficiente)
       params.set('bbox', `${bbox.minX},${bbox.minY},${bbox.maxX},${bbox.maxY},EPSG:4326`);
     }
   } else if (cqlFilter) {
@@ -118,7 +154,7 @@ async function fetchWFS({ typename, wfsBase, wfsVersion, cqlFilter, bbox, geomFi
   let geojson;
   try {
     geojson = await resp.json();
-  } catch (err) {
+  } catch {
     const error = new Error('La respuesta del servidor de datos no es válida.');
     error.isExternalServerError = true;
     throw error;
