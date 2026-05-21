@@ -1,0 +1,31 @@
+name: Refresh WFS Snapshots
+
+on:
+  schedule:
+    - cron: '0 3 1 * *'   # 1ro de cada mes, 3am UTC
+  workflow_dispatch:        # también disparo manual desde GitHub
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Generar snapshots
+        env:
+          B2_ENDPOINT: ${{ secrets.B2_ENDPOINT }}
+          B2_BUCKET:   ${{ secrets.B2_BUCKET }}
+          B2_KEY_ID:   ${{ secrets.B2_KEY_ID }}
+          B2_APP_KEY:  ${{ secrets.B2_APP_KEY }}
+          B2_REGION:   ${{ secrets.B2_REGION }}
+        run: node scripts/generate-snapshots.js --force
