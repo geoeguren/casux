@@ -68,7 +68,7 @@ window.SPATIAL = (() => {
    */
   function normalizarValueDesdeGeoMaps(layerKey, value) {
     const geoMaps = window.GEO_MAPS || {};
-    const valueNorm = window._SPATIAL_CLIP.normalizar(value);
+    const valueNorm = window._SPATIAL_UTILS.normalizar(value);
     for (const tipos of Object.values(geoMaps)) {
       for (const mapaMeta of Object.values(tipos)) {
         if (mapaMeta.layerKey !== layerKey) continue;
@@ -99,7 +99,7 @@ window.SPATIAL = (() => {
       );
       if (features.length === 1) return features[0];
       // Unir todos los features en uno solo usando el Worker/Turf union
-      return window._SPATIAL_CLIP.unionFeatures(features);
+      return window._SPATIAL_UTILS.unionFeatures(features);
     }
 
     const { layerKey, field } = areaDesc;
@@ -148,7 +148,7 @@ window.SPATIAL = (() => {
 
       const valorCanonical = value;                                         // con tildes, capitalización WFS
       const valorLower     = value.toLowerCase();                           // minúsculas, con tildes
-      const valorNorm      = window._SPATIAL_CLIP.normalizar(value);        // minúsculas, sin tildes
+      const valorNorm      = window._SPATIAL_UTILS.normalizar(value);        // minúsculas, sin tildes
 
       // Intento 1 — exacto canónico (valor exacto del GEO_MAPS, con tildes)
       maskGeoJSON = await maskFetcher.fetch(maskDef.typename, {
@@ -225,7 +225,7 @@ window.SPATIAL = (() => {
       // (union convierte MultiPolygon → Polygon). Sin esto, los fallbacks del cliente
       // reciben un MultiPolygon crudo y recortan solo contra el primer subpolígono.
       if (feat.geometry?.type === 'MultiPolygon') {
-        areaFeature = await window._SPATIAL_CLIP.unionFeatures([feat]);
+        areaFeature = await window._SPATIAL_UTILS.unionFeatures([feat]);
       } else {
         areaFeature = feat;
       }
@@ -233,10 +233,10 @@ window.SPATIAL = (() => {
       const geomType = maskGeoJSON.features[0]?.geometry?.type;
       if (geomType === 'Point' || geomType === 'MultiPoint') {
         // Para puntos: tomar el feature cuyo campo coincide más con el valor buscado
-        const valorNorm = window._SPATIAL_CLIP.normalizar(value);
+        const valorNorm = window._SPATIAL_UTILS.normalizar(value);
         areaFeature = maskGeoJSON.features.reduce((best, feat) => {
-          const nombre = window._SPATIAL_CLIP.normalizar(feat.properties?.[field] || '');
-          const bestNombre = window._SPATIAL_CLIP.normalizar(best.properties?.[field] || '');
+          const nombre = window._SPATIAL_UTILS.normalizar(feat.properties?.[field] || '');
+          const bestNombre = window._SPATIAL_UTILS.normalizar(best.properties?.[field] || '');
           // Preferir coincidencia exacta, luego el nombre más corto (más específico)
           if (nombre === valorNorm) return feat;
           if (bestNombre === valorNorm) return best;
@@ -244,7 +244,7 @@ window.SPATIAL = (() => {
         });
       } else {
         // Para polígonos: unir todos (comportamiento original)
-        areaFeature = await window._SPATIAL_CLIP.unionFeatures(maskGeoJSON.features);
+        areaFeature = await window._SPATIAL_UTILS.unionFeatures(maskGeoJSON.features);
       }
     }
 
