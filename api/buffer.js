@@ -6,24 +6,18 @@
  *   Forma nueva (camino principal — el servidor busca los datos y genera el buffer):
  *     { typename, wfsBase, wfsVersion?, cqlFilter?,
  *       bufferFeature: GeoJSON,   ← feature central (ej: punto de Rosario)
- *       distanceKm: number }
+ *       distanceKm: number,
+ *       exclude?: boolean }
  *
  *   Forma vieja (fallback — el cliente manda los datos inline):
- *     { layer: GeoJSON, buffer: GeoJSON }  ← buffer ya calculado por el cliente
+ *     { layer: GeoJSON, buffer: GeoJSON, exclude?: boolean }
  *
- * En la forma nueva, el servidor:
- *   1. Genera el polígono circular con @turf/buffer
- *   2. Calcula el bbox del círculo
- *   3. Hace el fetch WFS de la capa con ese bbox como pre-filtro
- *   4. Filtra las features dentro del área de influencia
+ * exclude: false (default) → features DENTRO del área de influencia (buffer)
+ * exclude: true            → features FUERA del área de influencia (buffer_exclude)
  *
- * Devuelve: features COMPLETAS dentro del área de influencia (sin recortar).
- *
- * El filtro espacial es idéntico a intersect.js — el buffer se trata
- * como cualquier polígono máscara.
- *
- * Separado de intersect.js para mantener semántica clara en los logs
- * y poder divergir el comportamiento en el futuro si hace falta.
+ * Con exclude:false el servidor usa el bbox del círculo como pre-filtro WFS.
+ * Con exclude:true el bbox no se usa — se necesitan todos los features para
+ * poder devolver los que quedan fuera.
  */
 
 const { fetchWFS } = require('./_wfs');
@@ -51,7 +45,8 @@ function normalizarBuffer(bufferFeature) {
 
 /**
  * Determina si un feature toca el área de influencia.
- * Lógica idéntica a intersect.js — el buffer se trata como cualquier polígono máscara.
+ * Para líneas: al menos un vértice dentro (misma lógica que el original).
+ * Para polígonos: cualquier intersección geométrica.
  */
 function dentroDelBuffer(feat, bufferNormalizado) {
   const geomType = feat.geometry?.type;
@@ -98,21 +93,16 @@ module.exports = async function handler(req, res) {
 
   try {
 
-  const { layer, buffer, typename, wfsBase, wfsVersion, cqlFilter, bufferFeature, distanceKm } = req.body || {};
+  const { layer, buffer, typename, wfsBase, wfsVersion, cqlFilter, bufferFeature, distanceKm, exclude } = req.body || {};
+  const isExclude = !!exclude;
 
   // ── Resolver el polígono de área de influencia ────────────────
-  //
-  // Forma vieja: buffer ya viene calculado desde el cliente.
-  // Forma nueva: bufferFeature es el feature central (ej: punto de Rosario)
-  //              y el servidor genera el círculo con @turf/buffer.
 
   let bufferPolygon;
 
   if (buffer) {
-    // Forma vieja: usar el polígono que mandó el cliente directamente
     bufferPolygon = buffer;
   } else if (bufferFeature && distanceKm) {
-    // Forma nueva: generar el polígono circular en el servidor
     if (!typename) return res.status(400).json({ error: 'Se requiere "typename" en la forma nueva' });
     try {
       bufferPolygon = turfBuffer(bufferFeature, distanceKm, { units: 'kilometers' });
@@ -126,37 +116,37 @@ module.exports = async function handler(req, res) {
 
   // ── Resolver la capa a filtrar ────────────────────────────────
   //
-  // Forma vieja: layer viene inline desde el cliente.
-  // Forma nueva: el servidor hace el fetch WFS usando el bbox del buffer como pre-filtro.
+  // exclude:false → bbox del círculo como pre-filtro (trae solo lo que puede estar adentro)
+  // exclude:true  → sin bbox, se necesitan TODOS los features de la capa
 
   let layerGeoJSON = layer;
   if (!layerGeoJSON) {
     if (!typename) return res.status(400).json({ error: 'Se requiere "layer" o "typename"' });
-    // Calcular bbox del polígono de buffer para pre-filtrar el fetch WFS
-    const [minX, minY, maxX, maxY] = turfBbox(bufferPolygon);
-    layerGeoJSON = await fetchWFS({ typename, wfsBase, wfsVersion, cqlFilter, bbox: { minX, minY, maxX, maxY } });
+    let fetchBbox;
+    if (!isExclude) {
+      const [minX, minY, maxX, maxY] = turfBbox(bufferPolygon);
+      fetchBbox = { minX, minY, maxX, maxY };
+    }
+    layerGeoJSON = await fetchWFS({ typename, wfsBase, wfsVersion, cqlFilter, bbox: fetchBbox });
   }
 
   const bufferFeatureResolved = bufferPolygon.features?.[0] || bufferPolygon;
   const bufferNormalizado     = normalizarBuffer(bufferFeatureResolved);
-  const filtered              = [];
+  const result                = [];
 
   for (const feat of layerGeoJSON.features || []) {
     try {
-      if (dentroDelBuffer(feat, bufferNormalizado)) {
-        filtered.push(feat);
-      }
+      const dentro = dentroDelBuffer(feat, bufferNormalizado);
+      if (isExclude ? !dentro : dentro) result.push(feat);
     } catch { /* feature individual rota — omitir */ }
   }
 
   return res.status(200).json({
     type:     'FeatureCollection',
-    features: filtered,
+    features: result,
   });
 
   } catch (err) {
-    // Error no manejado — fetchWFS timeout, IGN caído, etc.
-    // Devolver JSON con error en lugar de dejar que Vercel retorne un 500 vacío.
     console.error(`[api/buffer] Error:`, err.message);
     const status = err.isExternalServerError ? 504 : 500;
     return res.status(status).json({ error: err.message });
