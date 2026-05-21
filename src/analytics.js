@@ -61,18 +61,44 @@ window.ANALYTICS = (() => {
 
   function sessionStart() {
     track('session_start', {
-      referrer: document.referrer || 'direct',
+      referrer:  document.referrer || 'direct',
+      // userType: 'anon' para usuarios sin Google login, 'registered' para los que sí.
+      // Permite medir el embudo de conversión anónimo → registrado.
+      userType:  window.AUTH?.isAnon?.() ? 'anon' : 'registered',
     });
   }
 
   function mapGenerated(plan) {
     _mapCount++;
-    const now = Date.now();
+    const now  = Date.now();
+    const insts = plan?.instrucciones || [];
+
+    // queryTypes: operaciones espaciales usadas en este mapa.
+    // 'clip' es el default cuando no hay op explícita.
+    // Permite medir adopción de clip_exclude, intersect, buffer, etc.
+    const queryTypes = [...new Set(
+      insts.map(i => i.op || 'clip').filter(Boolean)
+    )];
+
+    // sources: países de los datos consultados.
+    // Se deriva del campo source del layerDef → country en SOURCES.
+    // Permite medir uso por país de fuente (AR, UY, CL...).
+    const sources = [...new Set(
+      insts
+        .map(i => {
+          const layerDef = window.LAYERS?.[i.layerKey];
+          const src      = layerDef?.source;
+          return src ? (window.SOURCES?.[src]?.country || src) : null;
+        })
+        .filter(Boolean)
+    )];
 
     const props = {
-      mapCount:    _mapCount,
-      layerCount:  (plan?.instrucciones || []).length,
-      layers:      (plan?.instrucciones || []).map(i => i.layerKey).filter(Boolean),
+      mapCount:     _mapCount,
+      layerCount:   insts.length,
+      layers:       insts.map(i => i.layerKey).filter(Boolean),
+      queryTypes,
+      sources,
       msToFirstMap: _firstMapTs ? null : now - SESSION_START,  // solo en el primero
     };
 
