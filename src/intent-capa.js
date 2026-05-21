@@ -61,9 +61,24 @@ window.INTENT_CAPA = (() => {
   const PATRON_BUFFER    = /\b(a\s+\d[\d.,]*\s*km|cerca\s+de|distancia\s+de|radio\s+de|a\s+menos\s+de|within\s+\d[\d.,]*\s*km|near|within\s+distance|less\s+than\s+\d[\d.,]*\s*km|around|close\s+to|a\s+\d[\d.,]*\s*km|perto\s+de|distância\s+de|raio\s+de|a\s+menos\s+de)\b/;
   const PATRON_DISTANCIA = /(\d[\d.,]*)\s*km/;
 
+  // Patrones de exclusión — se evalúan ANTES que los de inclusión para que
+  // "rutas que no pasan por Mendoza" no matchee primero el PATRON_INTERSECT.
+  // Capturan las tres variantes (ES, EN, PT) de cada operación inversa.
+
+  const PATRON_CLIP_EXCLUDE = /\b(fuera\s+de|excepto\s+(los?|las?)\s+de|salvo\s+(los?|las?)\s+de|todos?\s+menos\s+(los?|las?)\s+de|que\s+no\s+est[aá]n?\s+en|outside(\s+of)?|except(\s+those)?\s+(in|from)|all\s+except|excluding|fora\s+de|exceto\s+(os?|as?)\s+de|salvo\s+(os?|as?)\s+de|todos?\s+exceto)\b/i;
+
+  const PATRON_INTERSECT_EXCLUDE = /\b(no\s+pasan?\s+por|no\s+tocan?|no\s+atraviesan?|no\s+cruzan?|que\s+evitan?|que\s+no\s+recorren?|not\s+pass(ing)?\s+through|not\s+cross(ing)?|not\s+go(ing)?\s+through|avoid(ing)?|that\s+don'?t?\s+(pass|cross|go\s+through)|não\s+passam?\s+por|não\s+cruzam?|não\s+atravessam?|evitam?)\b/i;
+
+  const PATRON_BUFFER_EXCLUDE = /\b(a\s+m[aá]s\s+de\s+\d[\d.,]*\s*km|lejos\s+de|fuera\s+del?\s+radio|m[aá]s\s+de\s+\d[\d.,]*\s*km|more\s+than\s+\d[\d.,]*\s*km\s+(from|away)|outside\s+(a\s+)?\d[\d.,]*\s*km|far\s+(from|away)|beyond\s+\d[\d.,]*\s*km|a\s+mais\s+de\s+\d[\d.,]*\s*km|longe\s+de|fora\s+do\s+raio)\b/i;
+
   function detectarOpEspacial(textoNorm) {
-    if (PATRON_BUFFER.test(textoNorm))    return 'buffer';
-    if (PATRON_INTERSECT.test(textoNorm)) return 'intersect';
+    // Los exclude se evalúan primero para evitar que los patrones
+    // de inclusión ganen por substring (ej: "no pasan por" contiene "pasan por").
+    if (PATRON_BUFFER_EXCLUDE.test(textoNorm))    return 'buffer_exclude';
+    if (PATRON_INTERSECT_EXCLUDE.test(textoNorm)) return 'intersect_exclude';
+    if (PATRON_CLIP_EXCLUDE.test(textoNorm))      return 'clip_exclude';
+    if (PATRON_BUFFER.test(textoNorm))            return 'buffer';
+    if (PATRON_INTERSECT.test(textoNorm))         return 'intersect';
     return 'clip';
   }
 
@@ -196,8 +211,8 @@ window.INTENT_CAPA = (() => {
     const strategy = capa.clipStrategy;
 
     // ── Buffer ────────────────────────────────────────────────────
-    if (op === 'buffer') {
-      instruccion.op = 'buffer';
+    if (op === 'buffer' || op === 'buffer_exclude') {
+      instruccion.op = op;
       instruccion.bufferArea = {
         layerKey:   area.layerKey,
         field:      area.field,
@@ -209,21 +224,23 @@ window.INTENT_CAPA = (() => {
       return instruccion;
     }
 
-    // ── Intersect ─────────────────────────────────────────────────
-    if (op === 'intersect') {
+    // ── Intersect / intersect_exclude ────────────────────────────
+    if (op === 'intersect' || op === 'intersect_exclude') {
       if (strategy === 'attribute') {
-        // Para capas de atributo, "pasa por" es semánticamente equivalente a "está en"
-        // → degradar silenciosamente a filtro de atributo (más eficiente)
+        // Para capas de atributo, "pasa por" / "no pasa por" se resuelve con filtro CQL.
+        // intersect_exclude → NOT IN / != (más eficiente que clip geométrico inverso).
         const campo = (capa.geoFields || {})[area.tipo] || capa.clipField;
         if (campo) {
-          const filtroArea = `${campo}='${area.valorOriginal}'`;
+          const filtroArea = op === 'intersect_exclude'
+            ? `${campo}!='${area.valorOriginal}'`
+            : `${campo}='${area.valorOriginal}'`;
           instruccion.filtro = instruccion.filtro
             ? `${instruccion.filtro} AND ${filtroArea}`
             : filtroArea;
         }
         return instruccion;
       }
-      instruccion.op = 'intersect';
+      instruccion.op = op;
       instruccion.intersectArea = {
         layerKey: area.layerKey,
         field:    area.field,
@@ -232,30 +249,35 @@ window.INTENT_CAPA = (() => {
       return instruccion;
     }
 
-    // ── Clip (default) ────────────────────────────────────────────
+    // ── Clip / clip_exclude ───────────────────────────────────────
     if (strategy === 'attribute') {
-      // Filtro por campo de atributo del WFS (más eficiente que clip geométrico)
-      // valorOriginal es el valor canónico del GEO_MAPS — case-sensitive correcto
+      // Filtro por campo de atributo del WFS (más eficiente que clip geométrico).
+      // clip_exclude → NOT IN / != en lugar de = .
       const campo = (capa.geoFields || {})[area.tipo] || capa.clipField;
       if (campo) {
-        const filtroArea = `${campo}='${area.valorOriginal}'`;
+        const filtroArea = op === 'clip_exclude'
+          ? `${campo}!='${area.valorOriginal}'`
+          : `${campo}='${area.valorOriginal}'`;
         instruccion.filtro = instruccion.filtro
           ? `${instruccion.filtro} AND ${filtroArea}`
           : filtroArea;
       }
     } else if (strategy === 'spatial') {
-      // Para fuentes ArcGIS REST: si la capa tiene geoFields para el tipo de área,
-      // usar filtro SQL (más eficiente que clip geométrico en el cliente).
+      // Para fuentes ArcGIS REST con geoFields: filtro SQL (más eficiente).
       // Para WFS (IGN/IGM): clip espacial en el servidor.
       const isArcgis = window.SOURCES?.[capa.source]?.tipo === 'arcgis';
       const campoGeo = isArcgis && (capa.geoFields || {})[area.tipo];
       if (campoGeo) {
-        const filtroArea = `${campoGeo}='${area.valorOriginal}'`;
+        const filtroArea = op === 'clip_exclude'
+          ? `${campoGeo}!='${area.valorOriginal}'`
+          : `${campoGeo}='${area.valorOriginal}'`;
         instruccion.filtro = instruccion.filtro
           ? `${instruccion.filtro} AND ${filtroArea}`
           : filtroArea;
         // No setear clipArea — el filtro SQL es suficiente
       } else {
+        // Clip geométrico espacial: setear clipArea con op
+        instruccion.op      = op === 'clip_exclude' ? 'clip_exclude' : undefined;
         instruccion.clipArea = {
           layerKey: area.layerKey,
           field:    area.field,
