@@ -56,7 +56,7 @@ const UI = {
       '7d':  'últimos 7 días',
       '30d': 'últimos 30 días',
       '90d': 'últimos 90 días',
-      'all': 'histórico total',
+      'all': 'desde el inicio',
     },
   },
   en: {
@@ -102,7 +102,7 @@ const UI = {
       '7d':  'last 7 days',
       '30d': 'last 30 days',
       '90d': 'last 90 days',
-      'all': 'all time',
+      'all': 'since launch',
     },
   },
   pt: {
@@ -148,7 +148,7 @@ const UI = {
       '7d':  'últimos 7 dias',
       '30d': 'últimos 30 dias',
       '90d': 'últimos 90 dias',
-      'all': 'histórico total',
+      'all': 'desde o início',
     },
   },
 };
@@ -395,7 +395,11 @@ function renderMetrics(d) {
       <span class="material-icons">map</span>
       <div class="highlight-text">
         <strong>${fmt(d.mapsGenerated)} ${t('mapsGenerated')}</strong>
-        <span>${fmt(d.sessions)} ${t('sessions')} · ${fmt(d.users)} ${t('registeredUsers')} · ${periodLabel[d.period] || d.period}</span>
+        <span>${fmt(d.sessions)} ${t('sessions')} · ${periodLabel[d.period] || d.period}</span>
+        <span class="highlight-rate">
+          <span class="material-icons">trending_up</span>
+          <strong>${fmtPct(d.sessionToMapRate)}</strong> ${t('sessionToMapRate')}
+        </span>
       </div>
     </div>
 
@@ -417,16 +421,6 @@ function renderMetrics(d) {
       <div class="kpi-card">
         <div class="kpi-label">${t('kpiMapsExported')}</div>
         <div class="kpi-value">${fmt(d.mapsExported)}</div>
-      </div>
-    </div>
-
-    ${S}
-    <!-- Tasa de conversión sesión → mapa -->
-    <div class="rate-card" style="margin-top:10px">
-      <span class="material-icons">trending_up</span>
-      <div class="rate-text">
-        <strong>${fmtPct(d.sessionToMapRate)}</strong>
-        <span> ${t('sessionToMapRate')}</span>
       </div>
     </div>
 
