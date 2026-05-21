@@ -401,6 +401,8 @@ function renderMetrics(d) {
 
   const periodLabel = t('periodLabels');
 
+  const S = '<div class="metrics-sep"></div>';
+
   return `
     <!-- Highlight principal -->
     <div class="highlight-card">
@@ -411,6 +413,7 @@ function renderMetrics(d) {
       </div>
     </div>
 
+    ${S}
     <!-- KPIs de adopción -->
     <div class="kpi-grid">
       <div class="kpi-card">
@@ -431,6 +434,7 @@ function renderMetrics(d) {
       </div>
     </div>
 
+    ${S}
     <!-- Tasa de conversión sesión → mapa -->
     <div class="rate-card" style="margin-top:10px">
       <span class="material-icons">trending_up</span>
@@ -440,6 +444,7 @@ function renderMetrics(d) {
       </div>
     </div>
 
+    ${S}
     <!-- KPIs de calidad -->
     <div class="kpi-grid">
       <div class="kpi-card">
@@ -460,24 +465,30 @@ function renderMetrics(d) {
       </div>
     </div>
 
+    ${S}
     <!-- Gráfico mapas por día -->
     ${renderChart(d.mapsPerDay, 'Mapas generados por día')}
     ${renderChart(d.sessionsPerDay, 'Sesiones por día', 'var(--ok)')}
 
+    ${S}
     <!-- Top capas -->
     ${renderTopLayers(d.topLayers)}
 
+    ${S}
     <!-- Distribución -->
     <div class="dist-row">${renderDistLang(d.byLanguage)}</div>
     <div class="dist-row" style="margin-top:8px">${renderDistDevice(d.byDevice)}</div>
     <div class="dist-row" style="margin-top:8px">${renderDistUserType(d.byUserType)}</div>
 
+    ${S}
     <!-- Operaciones espaciales -->
     <div class="dist-row">${renderDistQueryType(d.byQueryType)}</div>
 
+    ${S}
     <!-- Países de datos -->
     <div class="dist-row">${renderDistSource(d.bySource)}</div>
 
+    ${S}
     <div class="computed-at">${t('computedAt')}: ${new Date(d.computedAt).toLocaleString()}</div>
 
     <div class="metrics-footer">
