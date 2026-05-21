@@ -266,34 +266,10 @@ function fmtPct(n) {
 
 // ── Auth ─────────────────────────────────────────────────────────
 
-const KEY_STORAGE = 'casux_analytics_key';
-
-function getKey() {
-  return sessionStorage.getItem(KEY_STORAGE) || '';
-}
-
-function promptKey() {
-  const k = prompt(t('keyPrompt'));
-  if (k) sessionStorage.setItem(KEY_STORAGE, k);
-  return k || '';
-}
-
 // ── Fetch de métricas ─────────────────────────────────────────────
 
 async function fetchMetrics(period) {
-  let key = getKey();
-  if (!key) key = promptKey();
-  if (!key) throw new Error(t('keyRequired'));
-
-  const resp = await fetch(`/api/metrics?period=${period}`, {
-    headers: { 'X-Analytics-Key': key },
-  });
-
-  if (resp.status === 403) {
-    sessionStorage.removeItem(KEY_STORAGE);
-    throw new Error(t('keyWrong'));
-  }
-
+  const resp = await fetch(`/api/metrics?period=${period}`);
   if (!resp.ok) throw new Error(`Error ${resp.status}`);
   return resp.json();
 }
