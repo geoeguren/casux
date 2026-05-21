@@ -1,14 +1,17 @@
 /**
- * src/spatial-intersect.js — Intersección espacial
+ * src/spatial-intersect.js — Intersección espacial (intersect / intersect_exclude)
  *
- * Devuelve features COMPLETAS que tocan un área, sin recortarlas.
- * Ejemplo: "rutas que pasan por Salta" → rutas completas, no recortadas al límite.
+ * Maneja ambas operaciones en un único módulo:
+ *   - op 'intersect':         features completas que TOCAN el área
+ *   - op 'intersect_exclude': features completas que NO tocan el área
+ *
+ * Para intersect: intenta via edge function /api/intersect (capas grandes WFS).
+ * Para intersect_exclude: siempre procesa en cliente (necesita todos los features).
  *
  * Flujo:
- *   1. Recibe maskFeature ya resuelto desde spatial.js
- *   2. Calcula bbox de la máscara → fetch WFS pre-filtrado
- *   3. Llama a api/intersect.js para el filtro geométrico real
- *   4. Fallback: Worker → Turf síncrono
+ *   1. Edge function /api/intersect (con exclude: true/false en el body)
+ *   2. Fallback: Worker (intersect-worker.js)
+ *   3. Fallback: Turf síncrono
  *
  * Consumido exclusivamente por src/spatial.js.
  */
@@ -20,6 +23,8 @@ window._SPATIAL_INTERSECT = (() => {
   // ── Edge Function ─────────────────────────────────────────────
 
   async function intersectViaEdgeFunction(layerDef, wfsOpts, cql, bbox, maskFeature, instruccion) {
+    const isExclude = instruccion.op === 'intersect_exclude';
+
     let maskPayload;
     const intersectArea = instruccion?.intersectArea;
     if (intersectArea?.layerKey && intersectArea?.field && intersectArea?.value) {
@@ -48,12 +53,13 @@ window._SPATIAL_INTERSECT = (() => {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
-        op:         instruccion.op || 'intersect',
+        exclude:    isExclude,
         typename:   layerDef.typename,
         wfsBase:    wfsOpts.wfsBase,
         wfsVersion: wfsOpts.wfsVersion,
         cqlFilter:  cql || undefined,
-        bbox,
+        // intersect_exclude necesita todos los features — no mandar bbox
+        bbox:       isExclude ? undefined : bbox,
         ...maskPayload,
       }),
       signal: AbortSignal.timeout(25000),
@@ -95,8 +101,6 @@ window._SPATIAL_INTERSECT = (() => {
   }
 
   // ── Fallback Turf síncrono ────────────────────────────────────
-  // Mismos umbrales que api/intersect.js para resultados consistentes
-  // sin importar qué ruta de ejecución se use.
 
   const OVERLAP_LINE_MIN    = 0.10;
   const OVERLAP_POLYGON_MIN = 0.05;
@@ -152,7 +156,7 @@ window._SPATIAL_INTERSECT = (() => {
     } catch { return 0; }
   }
 
-  function intersectWithTurf(layerGeoJSON, maskFeature) {
+  function intersectWithTurf(layerGeoJSON, maskFeature, exclude = false) {
     if (typeof turf === 'undefined') throw new Error('Turf.js no disponible');
     const result = [];
 
@@ -161,19 +165,21 @@ window._SPATIAL_INTERSECT = (() => {
         const geomType = feat.geometry?.type;
         if (!geomType) return;
 
+        let supera = false;
+
         if (geomType === 'Point') {
-          if (turf.booleanPointInPolygon(feat, maskFeature)) result.push(feat);
+          supera = turf.booleanPointInPolygon(feat, maskFeature);
 
         } else if (geomType === 'MultiPoint') {
-          if (feat.geometry.coordinates.some(coord =>
+          supera = feat.geometry.coordinates.some(coord =>
             turf.booleanPointInPolygon(
               { type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: {} },
               maskFeature
             )
-          )) result.push(feat);
+          );
 
         } else if (geomType === 'LineString') {
-          if (_fraccionLinea(feat.geometry.coordinates, maskFeature) >= OVERLAP_LINE_MIN) result.push(feat);
+          supera = _fraccionLinea(feat.geometry.coordinates, maskFeature) >= OVERLAP_LINE_MIN;
 
         } else if (geomType === 'MultiLineString') {
           let totalLen = 0, dentroLen = 0;
@@ -182,38 +188,42 @@ window._SPATIAL_INTERSECT = (() => {
             totalLen  += len;
             dentroLen += _fraccionLinea(ring, maskFeature) * len;
           }
-          if (totalLen > 0 && (dentroLen / totalLen) >= OVERLAP_LINE_MIN) result.push(feat);
+          supera = totalLen > 0 && (dentroLen / totalLen) >= OVERLAP_LINE_MIN;
 
         } else if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
-          if (_fraccionPoligono(feat, maskFeature) >= OVERLAP_POLYGON_MIN) result.push(feat);
+          supera = _fraccionPoligono(feat, maskFeature) >= OVERLAP_POLYGON_MIN;
         }
+
+        if (exclude ? !supera : supera) result.push(feat);
+
       } catch { /* feature individual rota — ignorar */ }
     });
 
     return { type: 'FeatureCollection', features: result };
   }
 
+  // ── Decisión: edge function vs cliente directo ────────────────
+
+  const EDGE_FN_UMBRAL = 500;
+
+  function deberiaUsarEdgeFunction(layerDef, op, isArcgis) {
+    if (isArcgis)                     return false;
+    if (op === 'intersect_exclude')   return false;
+    const fc = layerDef?.featureCount;
+    if (fc !== undefined && fc <= EDGE_FN_UMBRAL) return false;
+    return true;
+  }
+
   // ── Punto de entrada del módulo ───────────────────────────────
 
-  /**
-   * ejecutar(instruccion, layerDef, wfsOpts, cql, maskFeature)
-   *
-   * Recibe el feature de máscara ya resuelto desde spatial.js.
-   * Manda las instrucciones al servidor para que haga el fetch WFS
-   * y filtre las features completas que tocan el área.
-   *
-   * Para capas ArcGIS REST (Chile/MOP): el edge function solo entiende WFS,
-   * así que se salta y se va directo al fallback cliente con REST.fetch().
-   *
-   * Si el servidor falla, cae al fallback local con Worker o Turf síncrono.
-   */
   async function ejecutar(instruccion, layerDef, wfsOpts, cql, maskFeature) {
-    const bbox     = window._SPATIAL_CLIP.calcularBbox(maskFeature);
-    const isArcgis = !!wfsOpts.restBase;
-    const op       = instruccion.op || 'intersect';
+    const bbox      = window._SPATIAL_CLIP.calcularBbox(maskFeature);
+    const isArcgis  = !!wfsOpts.restBase;
+    const op        = instruccion.op || 'intersect';
+    const isExclude = op === 'intersect_exclude';
 
-    // ── Camino principal: edge function (capas grandes WFS) ───
-    if (window._SPATIAL_CLIP.deberiaUsarEdgeFunction(layerDef, op, isArcgis)) {
+    // ── Camino principal: edge function ───────────────────────
+    if (deberiaUsarEdgeFunction(layerDef, op, isArcgis)) {
       try {
         return await intersectViaEdgeFunction(layerDef, wfsOpts, cql, bbox, maskFeature, instruccion);
       } catch (edgeErr) {
@@ -223,16 +233,18 @@ window._SPATIAL_INTERSECT = (() => {
     } else {
       if (isArcgis) {
         console.log('[SPATIAL:intersect] Fuente ArcGIS REST — procesando en cliente directamente.');
+      } else if (isExclude) {
+        console.log(`[SPATIAL:intersect] intersect_exclude — fetch directo sin bbox (${layerDef.featureCount ?? '?'} features esperados).`);
       } else {
         console.log(`[SPATIAL:intersect] Capa pequeña (${layerDef.featureCount ?? '?'} features) — procesando en cliente directamente.`);
       }
       window._SPATIAL_CLIP.toastFallbackOnce();
     }
 
-    // ── Fallback cliente (WFS y ArcGIS REST) ─────────────────
+    // ── Fallback cliente ─────────────────────────────────────
     const fetchOpts = isArcgis
       ? { ...wfsOpts, whereClause: cql || undefined }
-      : { ...wfsOpts, cqlFilter: cql || undefined, bbox };
+      : { ...wfsOpts, cqlFilter: cql || undefined, ...(isExclude ? {} : { bbox }) };
 
     const clientFetcher = isArcgis ? window.REST : window.WFS;
     const layerGeoJSON  = await clientFetcher.fetch(layerDef.typename, fetchOpts);
@@ -241,21 +253,21 @@ window._SPATIAL_INTERSECT = (() => {
       return { type: 'FeatureCollection', features: [] };
     }
 
-    // Puntos: reutilizar el ray-casting de spatial-clip (sin Worker ni Turf).
+    // Puntos: ray-casting desde spatial-clip (sin Worker ni Turf)
     const solosPuntos = layerGeoJSON.features.every(f => {
       const t = f.geometry?.type;
       return t === 'Point' || t === 'MultiPoint';
     });
     if (solosPuntos) {
-      const clipped = window._SPATIAL_CLIP._clipPuntosDirecto(layerGeoJSON.features, maskFeature);
-      return { type: 'FeatureCollection', features: clipped };
+      const result = window._SPATIAL_CLIP._clipPuntosDirecto(layerGeoJSON.features, maskFeature, isExclude);
+      return { type: 'FeatureCollection', features: result };
     }
 
     try {
-      return await intersectWithWorker(layerGeoJSON, maskFeature, instruccion.op || 'intersect');
+      return await intersectWithWorker(layerGeoJSON, maskFeature, op);
     } catch (workerErr) {
       console.warn('[SPATIAL:intersect] Worker falló, usando Turf.js síncrono:', workerErr.message);
-      return intersectWithTurf(layerGeoJSON, maskFeature);
+      return intersectWithTurf(layerGeoJSON, maskFeature, isExclude);
     }
   }
 
