@@ -53,7 +53,7 @@ const UI = {
     retryBtn:           'Reintentar',
     refreshBtn:         'Actualizar',
     errorMsg:           'Las métricas no están disponibles en este momento. Volvé a intentarlo más tarde.',
-    updatedAt:          'Actualizado',
+    updatedAt:          'Última actualización',
 
     periodLabels: {
       '7d':  'últimos 7 días',
@@ -102,7 +102,7 @@ const UI = {
     retryBtn:           'Retry',
     refreshBtn:         'Refresh',
     errorMsg:           'Metrics are not available right now. Please try again later.',
-    updatedAt:          'Updated',
+    updatedAt:          'Last updated',
 
     periodLabels: {
       '7d':  'last 7 days',
@@ -151,7 +151,7 @@ const UI = {
     retryBtn:           'Tentar novamente',
     refreshBtn:         'Atualizar',
     errorMsg:           'As métricas não estão disponíveis no momento. Tente novamente mais tarde.',
-    updatedAt:          'Atualizado',
+    updatedAt:          'Última atualização',
 
     periodLabels: {
       '7d':  'últimos 7 dias',
@@ -477,7 +477,6 @@ function renderMetrics(d) {
     <!-- Países de datos -->
     ${renderDistSource(d.bySource)}
 
-    ${d.computedAt ? `<div class="computed-at">${t('updatedAt')}: ${new Date(d.computedAt).toLocaleDateString(detectLang(), { day: 'numeric', month: 'long', year: 'numeric' })}</div>` : ''}
   `;
 }
 
@@ -515,6 +514,12 @@ async function loadPeriod(period) {
   try {
     const data = await fetchMetrics(period);
     el.innerHTML = renderMetrics(data);
+    const lu = document.getElementById('last-updated');
+    if (lu) {
+      lu.textContent = data.computedAt
+        ? `${t('updatedAt')}: ${new Date(data.computedAt).toLocaleDateString(detectLang(), { day: 'numeric', month: 'long', year: 'numeric' })}`
+        : '';
+    }
   } catch (err) {
     el.innerHTML = `
       <div class="error-state">
