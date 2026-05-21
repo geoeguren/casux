@@ -109,7 +109,10 @@ async function computeMetrics(period) {
       }
     }
 
-    if (userId && userId !== 'anonymous') users.add(userId);
+    // Usuarios registrados: excluir anónimos ('anonymous' o uid con prefijo 'anon_')
+    if (userId && userId !== 'anonymous' && !userId.startsWith('anon_')) {
+      users.add(userId);
+    }
 
     // Idioma y mobile — desde cualquier evento
     if (props.language) langCounts[props.language] = (langCounts[props.language] || 0) + 1;
