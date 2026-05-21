@@ -234,32 +234,41 @@ async function fetchMetrics(period) {
 
 // ── Renderizado ───────────────────────────────────────────────────
 
-function renderChart(data, label, color = 'var(--accent)') {
+function renderChart(data, label, color = 'var(--accent)', period = '30d') {
   // data: { 'YYYY-MM-DD': count }
-  // Últimos 30 días ordenados
-  const today = new Date();
-  const days  = [];
-  for (let i = 29; i >= 0; i--) {
+  // Generar el rango de días según el período activo
+  const today    = new Date();
+  const daysBack = period === '7d' ? 6 : period === '90d' ? 89 : period === 'all' ? 179 : 29;
+  const days     = [];
+  for (let i = daysBack; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     days.push(d.toISOString().slice(0, 10));
   }
 
-  const values = days.map(d => data[d] || 0);
+  // Para 'all' — si hay datos anteriores al rango, solo mostrar desde el primer día con datos
+  const allDataKeys = Object.keys(data).sort();
+  const effectiveDays = period === 'all' && allDataKeys.length
+    ? days.filter(d => d >= allDataKeys[0])
+    : days;
+
+  const total = effectiveDays.length;
+  const values = effectiveDays.map(d => data[d] || 0);
   const max    = Math.max(...values, 1);
 
-  const bars = days.map((d, i) => {
+  // Etiquetas: siempre inicio, fin, y un punto intermedio si hay espacio
+  const showLabelSet = new Set([0, Math.floor(total / 2), total - 1]);
+
+  const bars = effectiveDays.map((d, i) => {
     const v      = values[i];
     const height = Math.round((v / max) * 100);
-    const label  = d.slice(5); // MM-DD
-    // Mostrar solo algunos labels para no saturar
-    const showLabel = i === 0 || i === 14 || i === 29;
+    const lbl    = d.slice(5); // MM-DD
     return `
       <div class="chart-bar-wrap">
         <div class="chart-bar"
              style="height:${height}%; background:${color}"
              data-tooltip="${d}: ${v}"></div>
-        <div class="chart-label">${showLabel ? label : ''}</div>
+        <div class="chart-label">${showLabelSet.has(i) ? lbl : ''}</div>
       </div>
     `;
   }).join('');
@@ -333,14 +342,17 @@ function renderDistUserType(byUserType) {
   </div>`;
 }
 
-const OP_LABELS = {
-  clip:              'Recorte',
-  clip_exclude:      'Recorte inverso',
-  intersect:         'Intersección',
-  intersect_exclude: 'Intersección inversa',
-  buffer:            'Área de influencia',
-  buffer_exclude:    'Área de influencia inversa',
-};
+function opLabel(op) {
+  const map = {
+    clip:              'opClip',
+    clip_exclude:      'opClipExclude',
+    intersect:         'opIntersect',
+    intersect_exclude: 'opIntersectExclude',
+    buffer:            'opBuffer',
+    buffer_exclude:    'opBufferExclude',
+  };
+  return map[op] ? t(map[op]) : op;
+}
 
 function renderDistQueryType(byQueryType) {
   if (!byQueryType || !Object.keys(byQueryType).length) return '';
@@ -349,7 +361,7 @@ function renderDistQueryType(byQueryType) {
     .sort((a, b) => b[1] - a[1])
     .map(([op, count]) => {
       const pct = Math.round((count / total) * 100);
-      return `<div class="kpi-card"><div class="kpi-value">${pct}%</div><div class="kpi-label">${OP_LABELS[op] || op}</div></div>`;
+      return `<div class="kpi-card"><div class="kpi-value">${pct}%</div><div class="kpi-label">${opLabel(op)}</div></div>`;
     }).join('');
   return `<div class="kpi-grid">${cards}</div>`;
 }
@@ -382,7 +394,7 @@ function renderMetrics(d) {
     <div class="highlight-card">
       <span class="material-icons">map</span>
       <div class="highlight-text">
-        <strong>${fmt(d.mapsGenerated)} mapas generados</strong>
+        <strong>${fmt(d.mapsGenerated)} ${t('mapsGenerated')}</strong>
         <span>${fmt(d.sessions)} ${t('sessions')} · ${fmt(d.users)} ${t('registeredUsers')} · ${periodLabel[d.period] || d.period}</span>
       </div>
     </div>
@@ -391,19 +403,19 @@ function renderMetrics(d) {
     <!-- KPIs de adopción -->
     <div class="kpi-grid">
       <div class="kpi-card">
-        <div class="kpi-label">Sesiones únicas</div>
+        <div class="kpi-label">${t('kpiSessions')}</div>
         <div class="kpi-value">${fmt(d.sessions)}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Usuarios registrados</div>
+        <div class="kpi-label">${t('kpiUsers')}</div>
         <div class="kpi-value">${fmt(d.users)}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Mapas generados</div>
+        <div class="kpi-label">${t('kpiMapsGenerated')}</div>
         <div class="kpi-value accent">${fmt(d.mapsGenerated)}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Mapas exportados</div>
+        <div class="kpi-label">${t('kpiMapsExported')}</div>
         <div class="kpi-value">${fmt(d.mapsExported)}</div>
       </div>
     </div>
@@ -414,7 +426,7 @@ function renderMetrics(d) {
       <span class="material-icons">trending_up</span>
       <div class="rate-text">
         <strong>${fmtPct(d.sessionToMapRate)}</strong>
-        <span> de las sesiones generó al menos un mapa</span>
+        <span> ${t('sessionToMapRate')}</span>
       </div>
     </div>
 
@@ -422,27 +434,27 @@ function renderMetrics(d) {
     <!-- KPIs de calidad -->
     <div class="kpi-grid">
       <div class="kpi-card">
-        <div class="kpi-label">Promedio capas / mapa</div>
+        <div class="kpi-label">${t('kpiAvgLayers')}</div>
         <div class="kpi-value">${d.avgLayersPerMap ?? '—'}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Tiempo a primer mapa</div>
+        <div class="kpi-label">${t('kpiTimeToMap')}</div>
         <div class="kpi-value">${fmtMs(d.avgMsToFirstMap)}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Refinamientos / sesión</div>
+        <div class="kpi-label">${t('kpiRefinements')}</div>
         <div class="kpi-value">${d.avgRefinements ?? '—'}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Mensajes totales</div>
+        <div class="kpi-label">${t('kpiMessages')}</div>
         <div class="kpi-value">${fmt(d.messages)}</div>
       </div>
     </div>
 
     ${S}
     <!-- Gráfico mapas por día -->
-    ${renderChart(d.mapsPerDay, 'Mapas generados por día')}
-    ${renderChart(d.sessionsPerDay, 'Sesiones por día', 'var(--ok)')}
+    ${renderChart(d.mapsPerDay, t('chartMapsByDay'), 'var(--accent)', d.period)}
+    ${renderChart(d.sessionsPerDay, t('chartSessionsByDay'), 'var(--ok)', d.period)}
 
     ${S}
     <!-- Top capas -->
