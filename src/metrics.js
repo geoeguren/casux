@@ -362,20 +362,23 @@ function renderTopLayers(layers) {
 }
 
 function renderDistLang(byLang) {
-  if (!byLang || !Object.keys(byLang).length) return '—';
-  const total = Object.values(byLang).reduce((a, b) => a + b, 0);
-  const labels = { es: 'Español', en: 'English', pt: 'Português' };
-  return Object.entries(byLang)
-    .sort((a, b) => b[1] - a[1])
-    .map(([lang, count]) => {
-      const pct = Math.round((count / total) * 100);
-      return `
-        <div class="dist-pill">
-          <span class="dist-pill-label">${labels[lang] || lang}</span>
-          <span class="dist-pill-value">${pct}%</span>
-        </div>
-      `;
-    }).join('');
+  const data  = byLang || {};
+  const total = Object.values(data).reduce((a, b) => a + b, 0);
+  const langs = [
+    { code: 'es', label: 'Español' },
+    { code: 'en', label: 'English' },
+    { code: 'pt', label: 'Português' },
+  ];
+  return langs.map(({ code, label }) => {
+    const count = data[code] || 0;
+    const pct   = total > 0 ? Math.round((count / total) * 100) : 0;
+    return `
+      <div class="dist-pill">
+        <span class="dist-pill-label">${label}</span>
+        <span class="dist-pill-value">${pct}%</span>
+      </div>
+    `;
+  }).join('');
 }
 
 function renderDistDevice(byDevice) {
