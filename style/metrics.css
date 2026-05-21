@@ -238,6 +238,27 @@ body {
   line-height: 1.4;
 }
 
+.highlight-rate {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--ok);
+}
+
+.highlight-rate .material-icons {
+  font-size: 15px;
+  color: var(--ok);
+}
+
+.highlight-rate strong {
+  font-family: var(--font-mono);
+  font-size: 13px !important;
+  color: var(--ok) !important;
+  font-weight: 500;
+}
+
 /* ── Chart ────────────────────────────────────── */
 
 .chart-card {
@@ -378,29 +399,6 @@ body {
   text-align: right;
   flex-shrink: 0;
 }
-
-/* ── Rate card ────────────────────────────────── */
-
-.rate-card {
-  background: var(--ok2);
-  border: 0.5px solid var(--ok);
-  border-radius: 8px;
-  padding: 12px 14px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.rate-card .material-icons { color: var(--ok); font-size: 22px; flex-shrink: 0; }
-
-.rate-text strong {
-  font-family: var(--font-mono);
-  font-size: 20px;
-  color: var(--ok);
-  font-weight: 500;
-}
-
-.rate-text span { font-size: 13px; color: var(--cream2); }
 
 /* ── Computed at ──────────────────────────────── */
 
