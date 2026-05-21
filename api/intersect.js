@@ -4,25 +4,24 @@
  * Acepta dos formas de request:
  *
  *   Forma nueva (camino principal — el servidor busca los datos):
- *     { typename, wfsBase, wfsVersion?, cqlFilter?, bbox?, mask: GeoJSON }
+ *     { typename, wfsBase, wfsVersion?, cqlFilter?, bbox?, mask: GeoJSON, exclude?: boolean }
  *
  *   Forma vieja (fallback — el cliente manda los datos inline):
- *     { layer: GeoJSON, mask: GeoJSON }
+ *     { layer: GeoJSON, mask: GeoJSON, exclude?: boolean }
  *
- * Devuelve: features COMPLETAS que tocan el área (sin recortar)
+ * exclude: false (default) → features completas que TOCAN el área (intersect)
+ * exclude: true            → features completas que NO tocan el área (intersect_exclude)
  *
  * A diferencia de clip.js, no recorta la geometría — devuelve cada
- * feature íntegra si tiene al menos un punto dentro del polígono máscara.
+ * feature íntegra si supera el umbral de overlap.
  *
- * Usa los mismos módulos individuales de Turf que clip.js para evitar
- * la dependencia de concaveman (ESM-only, incompatible con CommonJS de Vercel).
+ * En exclude:true no se usa bbox como pre-filtro porque se necesitan
+ * todos los features para poder excluir los que tocan el área.
  *
- * Filtro de overlap mínimo:
- *   - Líneas:    ≥ 10% de la longitud total debe caer dentro de la máscara.
- *   - Polígonos: ≥ 5%  del área total debe solaparse con la máscara.
- *   - Puntos:    sin umbral (un punto o está adentro o no).
- * Esto evita que features que apenas rozan el borde del área de recorte
- * aparezcan en el resultado.
+ * Umbrales de overlap:
+ *   - Puntos:    sin umbral (un punto está adentro o no)
+ *   - Líneas:    ≥ 10% de la longitud total debe caer dentro de la máscara
+ *   - Polígonos: ≥ 5%  del área total debe solaparse con la máscara
  */
 
 const { fetchWFS }                              = require('./_wfs');
@@ -30,20 +29,11 @@ const { checkOrigin }                           = require('./_cors');
 const { normalizarMascara, areaGeometria }      = require('./_geo');
 const { booleanPointInPolygon, bbox, intersect } = require('./_turf');
 
-// Umbrales de overlap minimo
-// Porcentaje de la geometria del feature que debe quedar dentro de la
-// mascara para que el feature sea incluido en el resultado.
-//   - Lineas: 10% — evita rutas que apenas cruzan un limite provincial.
-//   - Poligonos: 5% — criterio mas permisivo porque areas grandes que
-//     cruzan un limite suelen ser relevantes aunque el overlap sea pequeno.
 const OVERLAP_LINE_MIN    = 0.10;
 const OVERLAP_POLYGON_MIN = 0.05;
 
-// Helpers geometricos sin dependencias extra
+// ── Helpers geométricos ───────────────────────────────────────────
 
-/**
- * Distancia Haversine entre dos puntos [lng, lat] en metros.
- */
 function haversine([lng1, lat1], [lng2, lat2]) {
   const R  = 6371000;
   const phi1 = lat1 * Math.PI / 180;
@@ -54,9 +44,6 @@ function haversine([lng1, lat1], [lng2, lat2]) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-/**
- * Longitud total de un array de coordenadas [lng, lat] en metros.
- */
 function longitudRing(coords) {
   let total = 0;
   for (let i = 1; i < coords.length; i++) total += haversine(coords[i - 1], coords[i]);
@@ -64,10 +51,8 @@ function longitudRing(coords) {
 }
 
 /**
- * Calcula que fraccion de la longitud de una linea cae dentro de la mascara.
- * Estrategia: por cada segmento, el punto medio determina si el segmento
- * esta "dentro". Es mas estable que contar vertices, porque un vertice
- * exactamente en el borde puede quedar dentro o fuera segun precision numerica.
+ * Fracción de la longitud de una línea que cae dentro de la máscara.
+ * El punto medio de cada segmento determina si el segmento está "dentro".
  */
 function fraccionLineaDentro(coords, maskNormalizada) {
   if (coords.length < 2) return 0;
@@ -78,7 +63,6 @@ function fraccionLineaDentro(coords, maskNormalizada) {
     const segLen = haversine(coords[i - 1], coords[i]);
     total += segLen;
 
-    // Punto medio del segmento como proxy de "esta dentro"
     const mid = [
       (coords[i - 1][0] + coords[i][0]) / 2,
       (coords[i - 1][1] + coords[i][1]) / 2,
@@ -93,9 +77,7 @@ function fraccionLineaDentro(coords, maskNormalizada) {
 }
 
 /**
- * Calcula que fraccion del area de un poligono se solapa con la mascara.
- * Usa turf/intersect (ya disponible) para obtener el poligono de interseccion
- * y compara su area con la del feature original.
+ * Fracción del área de un polígono que se solapa con la máscara.
  */
 function fraccionPoligonoDentro(feat, maskNormalizada) {
   try {
@@ -110,37 +92,31 @@ function fraccionPoligonoDentro(feat, maskNormalizada) {
 }
 
 /**
- * Determina si un feature supera el umbral de overlap con la mascara.
- * Para puntos: booleanPointInPolygon (sin umbral).
- * Para lineas: >= OVERLAP_LINE_MIN de longitud dentro.
- * Para poligonos: >= OVERLAP_POLYGON_MIN de area dentro.
- * Devuelve el feature original integro (no recortado) si supera el umbral.
+ * Calcula la fracción de overlap del feature con la máscara.
+ * Devuelve un número entre 0 y 1.
  */
-function tocaMascara(feat, maskNormalizada) {
+function fraccionOverlap(feat, maskNormalizada) {
   const geomType = feat.geometry?.type;
-  if (!geomType) return false;
+  if (!geomType) return 0;
 
   try {
-    // Puntos
     if (geomType === 'Point') {
-      return booleanPointInPolygon(feat, maskNormalizada);
+      return booleanPointInPolygon(feat, maskNormalizada) ? 1 : 0;
     }
 
     if (geomType === 'MultiPoint') {
-      return feat.geometry.coordinates.some(coord => {
+      const alguno = feat.geometry.coordinates.some(coord => {
         const pt = { type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: {} };
         return booleanPointInPolygon(pt, maskNormalizada);
       });
+      return alguno ? 1 : 0;
     }
 
-    // Lineas: fraccion de longitud dentro de la mascara >= 10%
     if (geomType === 'LineString') {
-      const fraccion = fraccionLineaDentro(feat.geometry.coordinates, maskNormalizada);
-      return fraccion >= OVERLAP_LINE_MIN;
+      return fraccionLineaDentro(feat.geometry.coordinates, maskNormalizada);
     }
 
     if (geomType === 'MultiLineString') {
-      // Fraccion ponderada por longitud de cada sub-linea
       let totalLen  = 0;
       let dentroLen = 0;
       for (const ring of feat.geometry.coordinates) {
@@ -148,21 +124,17 @@ function tocaMascara(feat, maskNormalizada) {
         totalLen  += len;
         dentroLen += fraccionLineaDentro(ring, maskNormalizada) * len;
       }
-      const fraccion = totalLen > 0 ? dentroLen / totalLen : 0;
-      return fraccion >= OVERLAP_LINE_MIN;
+      return totalLen > 0 ? dentroLen / totalLen : 0;
     }
 
-    // Poligonos: fraccion de area dentro de la mascara >= 5%
     if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
-      const fraccion = fraccionPoligonoDentro(feat, maskNormalizada);
-      return fraccion >= OVERLAP_POLYGON_MIN;
+      return fraccionPoligonoDentro(feat, maskNormalizada);
     }
-
   } catch {
-    // Feature rota o geometria invalida — omitir de forma segura
+    // Feature rota o geometría inválida
   }
 
-  return false;
+  return 0;
 }
 
 module.exports = async function handler(req, res) {
@@ -173,14 +145,19 @@ module.exports = async function handler(req, res) {
 
   try {
 
-  const { layer, mask, maskInstructions, typename, wfsBase, wfsVersion, cqlFilter, bbox: bboxParam } = req.body || {};
+  const { layer, mask, maskInstructions, typename, wfsBase, wfsVersion, cqlFilter, bbox: bboxParam, exclude } = req.body || {};
+  const isExclude = !!exclude;
 
   if (!mask && !maskInstructions) return res.status(400).json({ error: 'Se requiere "mask" o "maskInstructions"' });
   if (!layer && !typename) return res.status(400).json({ error: 'Se requiere "layer" o "typename"' });
 
+  // En exclude:true no usar bbox — se necesitan TODOS los features.
   let layerGeoJSON = layer;
   if (!layerGeoJSON) {
-    layerGeoJSON = await fetchWFS({ typename, wfsBase, wfsVersion, cqlFilter, bbox: bboxParam });
+    layerGeoJSON = await fetchWFS({
+      typename, wfsBase, wfsVersion, cqlFilter,
+      bbox: isExclude ? undefined : bboxParam,
+    });
   }
 
   let maskFeatureRaw;
@@ -198,24 +175,39 @@ module.exports = async function handler(req, res) {
   }
 
   const maskNormalizada = normalizarMascara(maskFeatureRaw);
-  const intersected     = [];
+  const result          = [];
 
   for (const feat of layerGeoJSON.features || []) {
     try {
-      if (tocaMascara(feat, maskNormalizada)) {
-        intersected.push(feat);
+      const geomType = feat.geometry?.type;
+      if (!geomType) continue;
+
+      // Puntos: sin umbral fraccionario
+      if (geomType === 'Point' || geomType === 'MultiPoint') {
+        const fraccion = fraccionOverlap(feat, maskNormalizada);
+        const toca = fraccion > 0;
+        if (isExclude ? !toca : toca) result.push(feat);
+        continue;
       }
+
+      // Líneas y polígonos: comparar fracción contra umbral
+      const fraccion = fraccionOverlap(feat, maskNormalizada);
+      const umbral = (geomType === 'LineString' || geomType === 'MultiLineString')
+        ? OVERLAP_LINE_MIN
+        : OVERLAP_POLYGON_MIN;
+
+      const supera = fraccion >= umbral;
+      if (isExclude ? !supera : supera) result.push(feat);
+
     } catch { /* feature individual rota — omitir */ }
   }
 
   return res.status(200).json({
     type:     'FeatureCollection',
-    features: intersected,
+    features: result,
   });
 
   } catch (err) {
-    // Error no manejado — fetchWFS timeout, IGN caído, etc.
-    // Devolver JSON con error en lugar de dejar que Vercel retorne un 500 vacío.
     console.error(`[api/intersect] Error:`, err.message);
     const status = err.isExternalServerError ? 504 : 500;
     return res.status(status).json({ error: err.message });
