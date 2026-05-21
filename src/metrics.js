@@ -22,23 +22,23 @@ const UI = {
     period30d:     'Últimos 30 días',
     period90d:     'Últimos 90 días',
     periodAll:     'Desde el inicio',
-    kpiSessions:        'Sesiones únicas',
-    kpiUsers:           'Usuarios registrados',
-    kpiMapsGenerated:   'Mapas generados',
-    kpiMapsExported:    'Mapas exportados',
-    kpiAvgLayers:       'Promedio capas / mapa',
-    kpiTimeToMap:       'Tiempo a primer mapa',
-    kpiRefinements:     'Refinamientos / sesión',
-    kpiMessages:        'Mensajes totales',
+    kpiSessions:        'sesiones únicas',
+    kpiUsers:           'usuarios registrados',
+    kpiMapsGenerated:   'mapas generados',
+    kpiMapsExported:    'mapas exportados',
+    kpiAvgLayers:       'promedio de capas por mapa',
+    kpiTimeToMap:       'tiempo hasta el primer mapa',
+    kpiRefinements:     'refinamientos por sesión',
+    kpiMessages:        'mensajes totales',
     mapsGenerated:      'mapas generados',
     sessions:           'sesiones',
     registeredUsers:    'usuarios registrados',
     sessionToMapRate:   'de las sesiones generó al menos un mapa',
-    chartMapsByDay:     'Mapas generados por día',
-    chartSessionsByDay: 'Sesiones por día',
-    noData:             'Sin datos',
-    distAnon:           'Anónimos',
-    distRegistered:     'Registrados',
+    chartMapsByDay:     'mapas generados por día',
+    chartSessionsByDay: 'sesiones por día',
+    noData:             'sin datos',
+    distAnon:           'anónimos',
+    distRegistered:     'registrados',
     opClip:             'Recorte',
     opClipExclude:      'Recorte inverso',
     opIntersect:        'Intersección',
@@ -78,23 +78,23 @@ const UI = {
     period30d:     'Last 30 days',
     period90d:     'Last 90 days',
     periodAll:     'Since launch',
-    kpiSessions:        'Unique sessions',
-    kpiUsers:           'Registered users',
-    kpiMapsGenerated:   'Maps generated',
-    kpiMapsExported:    'Maps exported',
-    kpiAvgLayers:       'Avg layers / map',
-    kpiTimeToMap:       'Time to first map',
-    kpiRefinements:     'Refinements / session',
-    kpiMessages:        'Total messages',
+    kpiSessions:        'unique sessions',
+    kpiUsers:           'registered users',
+    kpiMapsGenerated:   'maps generated',
+    kpiMapsExported:    'maps exported',
+    kpiAvgLayers:       'average layers per map',
+    kpiTimeToMap:       'time to first map',
+    kpiRefinements:     'refinements per session',
+    kpiMessages:        'total messages',
     mapsGenerated:      'maps generated',
     sessions:           'sessions',
     registeredUsers:    'registered users',
     sessionToMapRate:   'of sessions generated at least one map',
-    chartMapsByDay:     'Maps generated per day',
-    chartSessionsByDay: 'Sessions per day',
-    noData:             'No data',
-    distAnon:           'Anonymous',
-    distRegistered:     'Registered',
+    chartMapsByDay:     'maps generated per day',
+    chartSessionsByDay: 'sessions per day',
+    noData:             'no data',
+    distAnon:           'anonymous',
+    distRegistered:     'registered',
     opClip:             'Clip',
     opClipExclude:      'Inverse clip',
     opIntersect:        'Intersect',
@@ -134,23 +134,23 @@ const UI = {
     period30d:     'Últimos 30 dias',
     period90d:     'Últimos 90 dias',
     periodAll:     'Desde o início',
-    kpiSessions:        'Sessões únicas',
-    kpiUsers:           'Usuários registrados',
-    kpiMapsGenerated:   'Mapas gerados',
-    kpiMapsExported:    'Mapas exportados',
-    kpiAvgLayers:       'Média camadas / mapa',
-    kpiTimeToMap:       'Tempo até primeiro mapa',
-    kpiRefinements:     'Refinamentos / sessão',
-    kpiMessages:        'Mensagens totais',
+    kpiSessions:        'sessões únicas',
+    kpiUsers:           'usuários registrados',
+    kpiMapsGenerated:   'mapas gerados',
+    kpiMapsExported:    'mapas exportados',
+    kpiAvgLayers:       'média de camadas por mapa',
+    kpiTimeToMap:       'tempo até o primeiro mapa',
+    kpiRefinements:     'refinamentos por sessão',
+    kpiMessages:        'mensagens totais',
     mapsGenerated:      'mapas gerados',
     sessions:           'sessões',
     registeredUsers:    'usuários registrados',
     sessionToMapRate:   'das sessões gerou pelo menos um mapa',
-    chartMapsByDay:     'Mapas gerados por dia',
-    chartSessionsByDay: 'Sessões por dia',
-    noData:             'Sem dados',
-    distAnon:           'Anônimos',
-    distRegistered:     'Registrados',
+    chartMapsByDay:     'mapas gerados por dia',
+    chartSessionsByDay: 'sessões por dia',
+    noData:             'sem dados',
+    distAnon:           'anônimos',
+    distRegistered:     'registrados',
     opClip:             'Recorte',
     opClipExclude:      'Recorte inverso',
     opIntersect:        'Interseção',
@@ -198,39 +198,23 @@ function t(key) {
 }
 
 // ── Nombres de capas legibles ────────────────────────────────────
-// Derivados del layerKey. Para mostrar en la tabla de top layers
-// sin necesidad de cargar el catálogo completo de capas.
 
-const LAYER_LABELS = {
-  // Argentina IGN
-  localidad_ar:        'Localidades',
-  provincia_ar:        'Provincias',
-  departamento_ar:     'Departamentos',
-  municipio_ar:        'Municipios',
-  vial_nacional_ar:    'Red vial nacional',
-  vial_provincial_ar:  'Red vial provincial',
-  aeropuerto_ar:       'Aeropuertos',
-  // Argentina otros
-  escuela_ar:          'Establecimientos educativos',
-  area_protegida_ar:   'Áreas protegidas',
-  // Uruguay
-  departamento_uy:     'Departamentos UY',
-  localidad_uy:        'Localidades UY',
-  // Chile
-  region_cl:           'Regiones CL',
-  comuna_cl:           'Comunas CL',
-};
-
-function layerLabel(key) {
-  if (LAYER_LABELS[key]) return LAYER_LABELS[key];
-  // Fallback: limpiar el key
-  return key.replace(/_ar$|_uy$|_cl$/, '').replace(/_/g, ' ');
+function layerTitleUI(key) {
+  const layer = window.LAYERS?.[key];
+  if (!layer) {
+    // fallback: limpiar el key
+    return key.replace(/_ar$|_uy$|_cl$/, '').replace(/_/g, ' ');
+  }
+  const lang = detectLang();
+  if (lang === 'en' && layer.tituloUIEn) return layer.tituloUIEn;
+  if (lang === 'pt' && layer.tituloUIPt) return layer.tituloUIPt;
+  return layer.tituloUIEs || layer.tituloUI || key;
 }
 
-function layerSource(key) {
-  if (key.endsWith('_ar')) return 'AR';
-  if (key.endsWith('_uy')) return 'UY';
-  if (key.endsWith('_cl')) return 'CL';
+function layerCountry(key) {
+  if (key.endsWith('_ar')) return 'Argentina';
+  if (key.endsWith('_uy')) return 'Uruguay';
+  if (key.endsWith('_cl')) return 'Chile';
   return '';
 }
 
@@ -250,7 +234,9 @@ function fmtMs(ms) {
 
 function fmtSec(ms) {
   if (ms == null) return '—';
-  return (ms / 1000).toFixed(1) + 's';
+  const lang = detectLang();
+  const unit = lang === 'en' ? 'sec.' : 'seg.';
+  return (ms / 1000).toFixed(1) + ' ' + unit;
 }
 
 function fmtPct(n) {
@@ -319,15 +305,17 @@ function renderChart(data, label, color = 'var(--accent)', period = '30d') {
 function renderTopLayers(layers) {
   if (!layers?.length) return `<p style="color:var(--cream2);font-size:13px;padding:16px">${t('noData')}</p>`;
 
-  const max = layers[0].count;
+  const max  = layers[0].count;
   const rows = layers.map((l, i) => {
-    const pct  = Math.round((l.count / max) * 100);
-    const src  = layerSource(l.key);
+    const pct     = Math.round((l.count / max) * 100);
+    const country = layerCountry(l.key);
     return `
       <div class="layer-row">
         <span class="layer-rank">${i + 1}</span>
-        <span class="layer-name">${layerLabel(l.key)}</span>
-        ${src ? `<span class="layer-source">${src}</span>` : ''}
+        <span class="layer-name">
+          ${layerTitleUI(l.key)}
+          ${country ? `<span class="layer-country">${country}</span>` : ''}
+        </span>
         <div class="layer-bar-wrap">
           <div class="layer-bar" style="width:${pct}%"></div>
         </div>
@@ -416,8 +404,6 @@ function renderDistSource(bySource) {
 }
 
 function renderMetrics(d) {
-  const exportRate  = d.mapsGenerated > 0
-    ? Math.round((d.mapsExported / d.mapsGenerated) * 100) : 0;
   const periodLabel = t('periodLabels');
   const S = (title) => `<div class="section-header"><span class="section-title">${title}</span></div>`;
 
@@ -449,9 +435,7 @@ function renderMetrics(d) {
       </div>
       <div class="kpi-card">
         <div class="kpi-label">${t('kpiMapsExported')}</div>
-        <div class="kpi-value">${fmt(d.mapsExported)}
-          ${exportRate > 0 ? `<span class="kpi-sub">${exportRate}%</span>` : ''}
-        </div>
+        <div class="kpi-value">${fmt(d.mapsExported)}</div>
       </div>
     </div>
 
