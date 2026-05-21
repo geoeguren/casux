@@ -251,6 +251,15 @@ window._SPATIAL_CLIP = (() => {
     try {
       return await clipWithWorker(geoParaClip, maskParaFallback, op);
     } catch (workerErr) {
+      // Para operaciones _exclude no caer al Turf síncrono:
+      // necesitan procesar toda la capa y bloquearían el hilo principal.
+      // TODO (largo plazo): simplificar el polígono máscara (turf.simplify con
+      // tolerance ~0.01) antes de mandarlo al Worker para reducir la carga
+      // geométrica en capas grandes con máscaras complejas.
+      if (isExclude) {
+        console.error('[SPATIAL:clip] Worker falló en clip_exclude:', workerErr.message);
+        throw new Error('La operación es demasiado pesada para procesar en este dispositivo. Intentá con un área más pequeña.');
+      }
       console.warn('[SPATIAL:clip] Worker falló, usando Turf.js síncrono:', workerErr.message);
       return clipWithTurf(geoParaClip, maskParaFallback, isExclude);
     }
