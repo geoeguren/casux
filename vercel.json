@@ -19,6 +19,14 @@
     {
       "source": "/status/:path*",
       "destination": "/status/index.html"
+    },
+    {
+      "source": "/metrics",
+      "destination": "/metrics/index.html"
+    },
+    {
+      "source": "/metrics/:path*",
+      "destination": "/metrics/index.html"
     }
   ],
   "headers": [
