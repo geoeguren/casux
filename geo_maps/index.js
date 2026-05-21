@@ -10,9 +10,7 @@
  *         valores:  { 'nombre normalizado': 'Valor Exacto WFS' | [...ambiguos] },
  *         layerKey: clave en window.LAYERS de la capa que representa esta unidad,
  *         tipo:     nombre del tipo geográfico ('provincia', 'departamento', etc.)
- *         nivel:    jerarquía administrativa (1 = más alto/general, 2, 3...).
- *                   Usado para desambiguar cuando el mismo nombre aparece en
- *                   varios niveles: se prefiere el nivel más bajo (más general).
+ *         nivel:    jerarquía administrativa (1 = más alto/general, 2, 3...)
  *                   Convención:
  *                     1 = nación / estado soberano
  *                     2 = primera subdivisión (provincia, estado, región)
@@ -43,11 +41,20 @@ window.GEO_MAPS = {
       tipo:     'provincia',
       nivel:    2,
     },
-    // nivel 3: segunda subdivisión de Argentina
+    // nivel 3: segunda subdivisión de Argentina (departamentos/partidos)
     departamentos: {
       valores:  AR_GEO_MAPS.departamentos,
       layerKey: 'departamento_ar',
       tipo:     'departamento',
+      nivel:    3,
+    },
+    // nivel 3: municipios (gobiernos locales — misma jerarquía que departamentos)
+    // Se registran en nivel 3 junto a departamentos. El scorer desambigua
+    // entre ambos por contexto o elige el de mayor score.
+    municipios: {
+      valores:  AR_GEO_MAPS.municipios,
+      layerKey: 'municipio_ar',
+      tipo:     'municipio',
       nivel:    3,
     },
     // nivel 4: localidades (puntos poblados)
@@ -82,7 +89,7 @@ window.GEO_MAPS = {
       tipo:     'region',
       nivel:    2,
     },
-    // nivel 3: comunas de Chile (segunda subdivisión — Chile no tiene provincias como unidad de uso común)
+    // nivel 3: comunas de Chile
     comunas: {
       valores:  CL_GEO_MAPS.comunas,
       layerKey: 'MAPA_BASE_LIMITES_MapServer_2_cl',
