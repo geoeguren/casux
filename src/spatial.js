@@ -389,7 +389,7 @@ window.SPATIAL = (() => {
     // Optimización para ArcGIS REST: si hay geoFields, no se puede hacer clip_exclude
     // con atributo (no hay operador NOT IN espacial en REST simple) — va siempre al spatial.
     const maskFeature = await resolverAreaFeature(clipArea, 'clip_exclude');
-    return window._SPATIAL_CLIP_EXCLUDE.ejecutar(instruccion, layerDef, wfsOpts, cql, maskFeature);
+    return window._SPATIAL_CLIP.ejecutar(instruccion, layerDef, wfsOpts, cql, maskFeature);
   }
 
   // ── Operación: intersect_exclude ─────────────────────────────
@@ -402,7 +402,7 @@ window.SPATIAL = (() => {
     }
 
     const maskFeature = await resolverAreaFeature(intersectArea, 'intersect_exclude');
-    return window._SPATIAL_INTERSECT_EXCLUDE.ejecutar(instruccion, layerDef, wfsOpts, cql, maskFeature);
+    return window._SPATIAL_INTERSECT.ejecutar(instruccion, layerDef, wfsOpts, cql, maskFeature);
   }
 
   // ── Punto de entrada principal ────────────────────────────────
