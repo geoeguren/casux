@@ -110,19 +110,22 @@ body {
 }
 
 .period-btn {
-  padding: 5px 14px;
-  border-radius: 20px;
-  background: var(--cream3);
-  color: var(--cream2);
-  font-size: 13px;
-  font-family: var(--font-sans);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 6px;
+  font-size: 12px;
   font-weight: 500;
-  cursor: pointer;
+  background: var(--bg2);
   border: 0.5px solid var(--border);
-  transition: background .15s, color .15s, border-color .15s;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+  font-family: var(--font-sans);
+  color: var(--cream);
 }
-.period-btn:hover    { background: var(--border-md); color: var(--cream); }
-.period-btn.active   { background: var(--accent); color: #fff; border-color: var(--accent); }
+.period-btn:hover  { border-color: var(--border-md); }
+.period-btn.active { background: var(--accent2); border-color: var(--accent); color: var(--cream); }
 
 /* ── Loading / error ──────────────────────────── */
 
@@ -428,20 +431,6 @@ body {
 
 .rate-text span { font-size: 13px; color: var(--cream2); }
 
-/* ── Footer note ──────────────────────────────── */
-
-.footer-note {
-  margin-top: 48px;
-  font-size: 12px;
-  color: var(--cream2);
-  text-align: center;
-  line-height: 1.6;
-  border-top: 0.5px solid var(--border);
-  padding-top: 24px;
-}
-
-.footer-note a { color: var(--cream2); text-decoration: underline; }
-
 /* ── Computed at ──────────────────────────────── */
 
 .computed-at {
@@ -450,6 +439,33 @@ body {
   text-align: center;
   margin-top: 12px;
   font-family: var(--font-mono);
+}
+
+/* ── Status button ────────────────────────────── */
+
+.btn-status {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 20px;
+  background: transparent;
+  border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-sm);
+  color: var(--cream2);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color .15s, color .15s;
+  margin-top: 32px;
+}
+.btn-status:hover { border-color: var(--cream2); color: var(--cream); }
+
+.metrics-footer {
+  text-align: center;
+  margin-top: 40px;
 }
 
 /* ── Responsive ───────────────────────────────── */
