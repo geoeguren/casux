@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Casux — Métricas de uso</title>
+  <title>Casux — Métricas</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -15,16 +15,13 @@
 
 <div class="page">
 
-  <a href="/" class="back-link" id="back-link">
+  <a href="/" class="back-link">
     <span class="material-icons">arrow_back</span>
-    <span id="back-label">Volver</span>
+    Volver
   </a>
 
   <div class="page-header">
-    <h1 class="page-title" id="page-title">Métricas de uso</h1>
-    <p class="page-subtitle" id="page-subtitle">
-      Acceso abierto a datos geoespaciales públicos, sin conocimientos técnicos.
-    </p>
+    <h1 class="page-title">Métricas</h1>
   </div>
 
   <div class="period-bar" id="period-bar"></div>
@@ -395,15 +392,11 @@ function renderMetrics(d) {
     <div class="section-title">Datos por país de fuente</div>
     <div class="dist-row">${renderDistSource(d.bySource)}</div>
 
-    <!-- Nota al pie -->
-    <div class="footer-note">
-      Casux conecta lenguaje natural con datos geoespaciales públicos del IGN Argentina,
-      IGM Uruguay y otros organismos oficiales. Sin instalar software, sin conocimientos GIS.
-      <br><br>
-      <a href="/status">Estado de geoservicios</a>
-    </div>
-
     <div class="computed-at">Calculado: ${new Date(d.computedAt).toLocaleString()}</div>
+
+    <div class="metrics-footer">
+      <a href="/status" class="btn-status">ESTADO DE GEOSERVICIOS</a>
+    </div>
   `;
 }
 
