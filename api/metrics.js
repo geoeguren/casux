@@ -19,7 +19,7 @@
  *   - avgRefinements: promedio de mensajes de refinamiento por sesión
  *   - topLayers:     top 10 capas más usadas (layerKey → count)
  *   - byLanguage:    distribución por idioma
- *   - byMobile:      % mobile vs desktop
+ *   - byDevice:      % mobile vs desktop
  *   - mapsPerDay:    serie temporal de mapas por día (últimos 30d)
  *   - sessionsPerDay: serie temporal de sesiones por día (últimos 30d)
  *   - sessionToMapRate: % de sesiones que generaron al menos un mapa
