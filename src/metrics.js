@@ -51,6 +51,7 @@ const UI = {
     btnStatus:          'ESTADO DE GEOSERVICIOS',
     computedAt:         'Calculado',
     retryBtn:           'Reintentar',
+    updatedAt:          'Actualizado',
 
     periodLabels: {
       '7d':  'últimos 7 días',
@@ -97,6 +98,7 @@ const UI = {
     btnStatus:          'GEOSERVICE STATUS',
     computedAt:         'Computed',
     retryBtn:           'Retry',
+    updatedAt:          'Updated',
 
     periodLabels: {
       '7d':  'last 7 days',
@@ -143,6 +145,7 @@ const UI = {
     btnStatus:          'ESTADO DOS GEOSERVIÇOS',
     computedAt:         'Calculado',
     retryBtn:           'Tentar novamente',
+    updatedAt:          'Atualizado',
 
     periodLabels: {
       '7d':  'últimos 7 dias',
@@ -468,6 +471,7 @@ function renderMetrics(d) {
     <!-- Países de datos -->
     ${renderDistSource(d.bySource)}
 
+    ${d.computedAt ? `<div class="computed-at">${t('updatedAt')}: ${new Date(d.computedAt).toLocaleDateString(detectLang(), { day: 'numeric', month: 'long', year: 'numeric' })}</div>` : ''}
   `;
 }
 
