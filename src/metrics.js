@@ -2,7 +2,7 @@
  * src/metrics.js — Página de métricas de uso de Casux
  *
  * Consume /api/metrics y renderiza las estadísticas.
- * Protegida con la ANALYTICS_KEY guardada en sessionStorage.
+ * Página pública — no requiere autenticación.
  * Diseñada para mostrar el impacto de Casux como iniciativa
  * de acceso abierto a datos geoespaciales, orientada a
  * presentaciones de financiamiento.
@@ -63,9 +63,7 @@ const UI = {
     btnStatus:          'ESTADO DE GEOSERVICIOS',
     computedAt:         'Calculado',
     retryBtn:           'Reintentar',
-    keyPrompt:          'Clave de acceso a métricas:',
-    keyRequired:        'Se requiere clave de acceso',
-    keyWrong:           'Clave incorrecta',
+
     periodLabels: {
       '7d':  'últimos 7 días',
       '30d': 'últimos 30 días',
@@ -123,9 +121,7 @@ const UI = {
     btnStatus:          'GEOSERVICE STATUS',
     computedAt:         'Computed',
     retryBtn:           'Retry',
-    keyPrompt:          'Metrics access key:',
-    keyRequired:        'Access key required',
-    keyWrong:           'Wrong key',
+
     periodLabels: {
       '7d':  'last 7 days',
       '30d': 'last 30 days',
@@ -183,9 +179,7 @@ const UI = {
     btnStatus:          'ESTADO DOS GEOSERVIÇOS',
     computedAt:         'Calculado',
     retryBtn:           'Tentar novamente',
-    keyPrompt:          'Chave de acesso às métricas:',
-    keyRequired:        'Chave de acesso necessária',
-    keyWrong:           'Chave incorreta',
+
     periodLabels: {
       '7d':  'últimos 7 dias',
       '30d': 'últimos 30 dias',
