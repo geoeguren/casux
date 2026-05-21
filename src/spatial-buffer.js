@@ -1,18 +1,12 @@
 /**
  * src/spatial-buffer.js — Área de influencia (buffer / buffer_exclude)
  *
- * Maneja ambas operaciones en un único módulo:
+ * Maneja ambas operaciones:
  *   - op 'buffer':         features DENTRO del área de influencia
  *   - op 'buffer_exclude': features FUERA del área de influencia
  *
- * Para buffer: intenta via edge function /api/buffer (capas grandes WFS).
- * Para buffer_exclude: siempre procesa en cliente — necesita todos los
- * features para poder devolver los que quedan fuera del círculo.
- *
- * Flujo:
- *   1. Edge function /api/buffer (con exclude: true/false en el body)
- *   2. Fallback: Worker (buffer-worker.js con op 'buffer' o 'buffer_exclude')
- *   3. Fallback: Turf síncrono
+ * Utilidades compartidas (deberiaUsarEdgeFunction, toastFallbackOnce)
+ * viven en spatial-utils.js y se acceden vía window._SPATIAL_UTILS.
  *
  * Consumido exclusivamente por src/spatial.js.
  */
@@ -20,6 +14,10 @@
 window._SPATIAL_BUFFER = (() => {
 
   const EDGE_FN_URL = '/api/buffer';
+
+  // ── Alias local de utilidades compartidas ─────────────────────
+
+  const U = () => window._SPATIAL_UTILS;
 
   // ── Generación del buffer ─────────────────────────────────────
 
@@ -35,7 +33,7 @@ window._SPATIAL_BUFFER = (() => {
       const [minX, minY, maxX, maxY] = turf.bbox(bufferFeature);
       return { minX, minY, maxX, maxY };
     }
-    return window._SPATIAL_CLIP.calcularBbox(bufferFeature);
+    return U().calcularBbox(bufferFeature);
   }
 
   // ── Edge Function ─────────────────────────────────────────────
@@ -146,13 +144,12 @@ window._SPATIAL_BUFFER = (() => {
     const isExclude = op === 'buffer_exclude';
 
     // ── Camino principal: edge function ───────────────────────
-    // buffer_exclude siempre en cliente: necesita todos los features.
-    if (window._SPATIAL_CLIP.deberiaUsarEdgeFunction(layerDef, op, isArcgis)) {
+    if (U().deberiaUsarEdgeFunction(layerDef, op, isArcgis)) {
       try {
         return await bufferViaEdgeFunction(layerDef, wfsOpts, cql, areaFeature, distanceKm, isExclude);
       } catch (edgeErr) {
         console.warn('[SPATIAL:buffer] Edge Function falló, usando Worker:', edgeErr.message);
-        window._SPATIAL_CLIP.toastFallbackOnce();
+        U().toastFallbackOnce();
       }
     } else {
       if (isArcgis) {
@@ -162,13 +159,12 @@ window._SPATIAL_BUFFER = (() => {
       } else {
         console.log(`[SPATIAL:buffer] Capa pequeña (${layerDef.featureCount ?? '?'} features) — procesando en cliente directamente.`);
       }
-      window._SPATIAL_CLIP.toastFallbackOnce();
+      U().toastFallbackOnce();
     }
 
     // ── Fallback cliente ─────────────────────────────────────
     const bufferFeature = generarBuffer(areaFeature, distanceKm);
 
-    // buffer_exclude: fetch sin bbox (necesita toda la capa)
     const fetchOpts = isArcgis
       ? { ...wfsOpts, whereClause: cql || undefined }
       : {
