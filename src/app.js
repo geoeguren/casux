@@ -782,6 +782,8 @@ window.APP = (() => {
     if (Object.keys(activeLayers).length > 0) {
       emptyEl?.classList.add('hidden');
       window.MAP.updateLegend();
+      // Registrar mapa generado exitosamente
+      window.ANALYTICS?.mapGenerated?.(plan);
       setTimeout(() => {
         window.MAP.getInstance()?.invalidateSize();
         if (!window.MAP_CONTROLS?.isMobile?.()) {
