@@ -1,14 +1,18 @@
 /**
- * src/spatial-buffer.js — Área de influencia (buffer)
+ * src/spatial-buffer.js — Área de influencia (buffer / buffer_exclude)
  *
- * Genera un buffer alrededor de un feature y devuelve las features
- * de la capa pedida que caen dentro de ese área de influencia.
+ * Maneja ambas operaciones en un único módulo:
+ *   - op 'buffer':         features DENTRO del área de influencia
+ *   - op 'buffer_exclude': features FUERA del área de influencia
  *
- * Ejemplo: "localidades a menos de 50km de Rosario"
- *   1. Busca el feature de Rosario (bufferArea.layerKey/field/value)
- *   2. Genera buffer de 50km con turf.buffer (CDN)
- *   3. Fetch WFS de localidades con bbox del buffer como pre-filtro
- *   4. Filtra las que caen dentro via api/buffer.js
+ * Para buffer: intenta via edge function /api/buffer (capas grandes WFS).
+ * Para buffer_exclude: siempre procesa en cliente — necesita todos los
+ * features para poder devolver los que quedan fuera del círculo.
+ *
+ * Flujo:
+ *   1. Edge function /api/buffer (con exclude: true/false en el body)
+ *   2. Fallback: Worker (buffer-worker.js con op 'buffer' o 'buffer_exclude')
+ *   3. Fallback: Turf síncrono
  *
  * Consumido exclusivamente por src/spatial.js.
  */
@@ -19,10 +23,6 @@ window._SPATIAL_BUFFER = (() => {
 
   // ── Generación del buffer ─────────────────────────────────────
 
-  /**
-   * Genera el polígono de buffer usando Turf.js del CDN (window.turf).
-   * Devuelve un Feature<Polygon>.
-   */
   function generarBuffer(feature, distanceKm) {
     if (typeof turf === 'undefined') throw new Error('Turf.js no disponible para generar buffer');
     const buffered = turf.buffer(feature, distanceKm, { units: 'kilometers' });
@@ -30,34 +30,28 @@ window._SPATIAL_BUFFER = (() => {
     return buffered;
   }
 
-  /**
-   * Calcula el bbox de cualquier feature GeoJSON (polígono o punto).
-   * Usa turf.bbox del CDN — más robusto para tipos arbitrarios.
-   */
   function calcularBboxBuffer(bufferFeature) {
     if (typeof turf !== 'undefined') {
       const [minX, minY, maxX, maxY] = turf.bbox(bufferFeature);
       return { minX, minY, maxX, maxY };
     }
-    // Fallback manual si turf no está disponible (no debería ocurrir)
     return window._SPATIAL_CLIP.calcularBbox(bufferFeature);
   }
 
   // ── Edge Function ─────────────────────────────────────────────
 
-  async function bufferViaEdgeFunction(layerDef, wfsOpts, cql, areaFeature, distanceKm) {
+  async function bufferViaEdgeFunction(layerDef, wfsOpts, cql, areaFeature, distanceKm, isExclude) {
     const resp = await fetch(EDGE_FN_URL, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
-        // Instrucciones WFS — el servidor busca los datos directamente al IGN/IGM
         typename:      layerDef.typename,
         wfsBase:       wfsOpts.wfsBase,
         wfsVersion:    wfsOpts.wfsVersion,
         cqlFilter:     cql || undefined,
-        // Feature central del buffer (ej: punto de Rosario) — el servidor genera el círculo
         bufferFeature: areaFeature,
         distanceKm,
+        exclude:       isExclude || undefined,
       }),
       signal: AbortSignal.timeout(25000),
     });
@@ -67,7 +61,7 @@ window._SPATIAL_BUFFER = (() => {
 
   // ── Fallback Web Worker ───────────────────────────────────────
 
-  function bufferWithWorker(layerGeoJSON, bufferFeature) {
+  function bufferWithWorker(layerGeoJSON, bufferFeature, op = 'buffer') {
     return new Promise((resolve, reject) => {
       try {
         const worker = new Worker('/src/workers/buffer-worker.js');
@@ -81,7 +75,7 @@ window._SPATIAL_BUFFER = (() => {
           reject(new Error(e.message || 'Worker error'));
         };
         worker.postMessage({
-          op:            'buffer',
+          op,
           layerFeatures: layerGeoJSON.features,
           bufferFeature,
         });
@@ -93,7 +87,7 @@ window._SPATIAL_BUFFER = (() => {
 
   // ── Fallback Turf síncrono ────────────────────────────────────
 
-  function bufferWithTurf(layerGeoJSON, bufferFeature) {
+  function bufferWithTurf(layerGeoJSON, bufferFeature, exclude = false) {
     if (typeof turf === 'undefined') throw new Error('Turf.js no disponible');
     const result = [];
 
@@ -102,34 +96,37 @@ window._SPATIAL_BUFFER = (() => {
         const geomType = feat.geometry?.type;
         if (!geomType) return;
 
+        let dentro = false;
+
         if (geomType === 'Point') {
-          if (turf.booleanPointInPolygon(feat, bufferFeature)) result.push(feat);
+          dentro = turf.booleanPointInPolygon(feat, bufferFeature);
 
         } else if (geomType === 'MultiPoint') {
-          const tocaAlguno = feat.geometry.coordinates.some(coord =>
+          dentro = feat.geometry.coordinates.some(coord =>
             turf.booleanPointInPolygon(
               { type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: {} },
               bufferFeature
             )
           );
-          if (tocaAlguno) result.push(feat);
 
         } else if (geomType === 'LineString' || geomType === 'MultiLineString') {
           const coordsList = geomType === 'LineString'
             ? feat.geometry.coordinates
             : feat.geometry.coordinates.flat();
-          const tocaAlguno = coordsList.some(coord =>
+          dentro = coordsList.some(coord =>
             turf.booleanPointInPolygon(
               { type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: {} },
               bufferFeature
             )
           );
-          if (tocaAlguno) result.push(feat);
 
         } else if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
           const inter = turf.intersect(feat, bufferFeature);
-          if (inter) result.push(feat); // feature completo, no recortado
+          dentro = inter !== null && inter !== undefined;
         }
+
+        if (exclude ? !dentro : dentro) result.push(feat);
+
       } catch { /* feature individual rota — ignorar */ }
     });
 
@@ -138,32 +135,21 @@ window._SPATIAL_BUFFER = (() => {
 
   // ── Punto de entrada del módulo ───────────────────────────────
 
-  /**
-   * ejecutar(instruccion, layerDef, wfsOpts, cql, areaFeature)
-   *
-   * areaFeature: el feature central del buffer (ej: el punto/polígono de Rosario),
-   * ya resuelto por spatial.js desde bufferArea.
-   * distanceKm: viene de instruccion.bufferArea.distanceKm.
-   *
-   * Para capas ArcGIS REST (Chile/MOP): el edge function solo entiende WFS,
-   * así que se salta y se va directo al fallback cliente con REST.fetch().
-   *
-   * Si el servidor falla, el cliente genera el círculo localmente con Turf,
-   * hace el fetch y procesa con Worker o Turf síncrono.
-   */
   async function ejecutar(instruccion, layerDef, wfsOpts, cql, areaFeature) {
     const distanceKm = instruccion.bufferArea?.distanceKm;
     if (!distanceKm || distanceKm <= 0) {
       throw new Error(`[SPATIAL:buffer] distanceKm inválido: ${distanceKm}`);
     }
 
-    const isArcgis = !!wfsOpts.restBase;
-    const op       = instruccion.op || 'buffer';
+    const isArcgis  = !!wfsOpts.restBase;
+    const op        = instruccion.op || 'buffer';
+    const isExclude = op === 'buffer_exclude';
 
-    // ── Camino principal: edge function (capas grandes WFS) ───
+    // ── Camino principal: edge function ───────────────────────
+    // buffer_exclude siempre en cliente: necesita todos los features.
     if (window._SPATIAL_CLIP.deberiaUsarEdgeFunction(layerDef, op, isArcgis)) {
       try {
-        return await bufferViaEdgeFunction(layerDef, wfsOpts, cql, areaFeature, distanceKm);
+        return await bufferViaEdgeFunction(layerDef, wfsOpts, cql, areaFeature, distanceKm, isExclude);
       } catch (edgeErr) {
         console.warn('[SPATIAL:buffer] Edge Function falló, usando Worker:', edgeErr.message);
         window._SPATIAL_CLIP.toastFallbackOnce();
@@ -171,19 +157,25 @@ window._SPATIAL_BUFFER = (() => {
     } else {
       if (isArcgis) {
         console.log('[SPATIAL:buffer] Fuente ArcGIS REST — procesando en cliente directamente.');
+      } else if (isExclude) {
+        console.log(`[SPATIAL:buffer] buffer_exclude — fetch directo sin bbox (${layerDef.featureCount ?? '?'} features esperados).`);
       } else {
         console.log(`[SPATIAL:buffer] Capa pequeña (${layerDef.featureCount ?? '?'} features) — procesando en cliente directamente.`);
       }
       window._SPATIAL_CLIP.toastFallbackOnce();
     }
 
-    // ── Fallback cliente (WFS y ArcGIS REST) ─────────────────
+    // ── Fallback cliente ─────────────────────────────────────
     const bufferFeature = generarBuffer(areaFeature, distanceKm);
-    const bbox          = calcularBboxBuffer(bufferFeature);
 
+    // buffer_exclude: fetch sin bbox (necesita toda la capa)
     const fetchOpts = isArcgis
       ? { ...wfsOpts, whereClause: cql || undefined }
-      : { ...wfsOpts, cqlFilter: cql || undefined, bbox };
+      : {
+          ...wfsOpts,
+          cqlFilter: cql || undefined,
+          ...(isExclude ? {} : { bbox: calcularBboxBuffer(bufferFeature) }),
+        };
 
     const clientFetcher = isArcgis ? window.REST : window.WFS;
     const layerGeoJSON  = await clientFetcher.fetch(layerDef.typename, fetchOpts);
@@ -193,10 +185,10 @@ window._SPATIAL_BUFFER = (() => {
     }
 
     try {
-      return await bufferWithWorker(layerGeoJSON, bufferFeature);
+      return await bufferWithWorker(layerGeoJSON, bufferFeature, op);
     } catch (workerErr) {
       console.warn('[SPATIAL:buffer] Worker falló, usando Turf.js síncrono:', workerErr.message);
-      return bufferWithTurf(layerGeoJSON, bufferFeature);
+      return bufferWithTurf(layerGeoJSON, bufferFeature, isExclude);
     }
   }
 
