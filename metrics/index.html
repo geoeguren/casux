@@ -15,21 +15,21 @@
 
 <div class="page">
 
-  <a href="/" class="back-link">
+  <a href="/" class="back-link" id="back-link">
     <span class="material-icons">arrow_back</span>
-    Volver
+    <span id="back-label"></span>
   </a>
 
   <div class="page-header">
-    <h1 class="page-title">Métricas</h1>
+    <h1 class="page-title" id="page-title"></h1>
   </div>
 
   <div class="period-bar" id="period-bar"></div>
 
   <div id="metrics-content">
-    <div class="loading-state">
+    <div class="loading-state" id="loading-msg">
       <span class="material-icons">refresh</span>
-      Cargando métricas…
+      <span id="loading-text"></span>
     </div>
   </div>
 
@@ -47,6 +47,219 @@
  * de acceso abierto a datos geoespaciales, orientada a
  * presentaciones de financiamiento.
  */
+
+// ── Idioma ───────────────────────────────────────────────────────
+// Misma lógica que la landing: localStorage → navigator.language → 'es'
+
+const UI = {
+  es: {
+    pageTitle:     'Métricas',
+    tabTitle:      'Casux — Métricas',
+    backLabel:     'Volver',
+    loading:       '${t('loading')}',
+    // Períodos
+    period7d:      '7 días',
+    period30d:     '30 días',
+    period90d:     '90 días',
+    periodAll:     'Todo',
+    // Secciones
+    sectionAdoption:    'Adopción',
+    sectionDepth:       'Profundidad de uso',
+    sectionActivity:    'Actividad diaria',
+    sectionLayers:      'Capas más consultadas',
+    sectionAudience:    'Audiencia',
+    sectionOps:         'Operaciones espaciales',
+    sectionSources:     'Datos por país de fuente',
+    // KPIs
+    kpiSessions:        '${t('kpiSessions')}',
+    kpiUsers:           '${t('kpiUsers')}',
+    kpiMapsGenerated:   '${t('kpiMapsGenerated')}',
+    kpiMapsExported:    '${t('kpiMapsExported')}',
+    kpiAvgLayers:       '${t('kpiAvgLayers')}',
+    kpiAvgLayers2:      '${t('kpiAvgLayers2')}',
+    kpiTimeToMap:       '${t('kpiTimeToMap')}',
+    kpiTimeToMap2:      '${t('kpiTimeToMap2')}',
+    kpiRefinements:     '${t('kpiRefinements')}',
+    kpiRefinements2:    '${t('kpiRefinements2')}',
+    kpiMessages:        '${t('kpiMessages')}',
+    kpiRestAnon:        '${t('kpiRestAnon')}',
+    kpiExportOf:        '${t('kpiExportOf')}',
+    // Highlight
+    mapsGenerated:      '${t('mapsGenerated')}',
+    sessions:           'sesiones',
+    registeredUsers:    'usuarios registrados',
+    // Rate
+    sessionToMapRate:   '${t('sessionToMapRate')}',
+    // Charts
+    chartMapsByDay:     t('chartMapsByDay'),
+    chartSessionsByDay: t('chartSessionsByDay'),
+    // Layers table
+    noData:             'Sin datos',
+    // Distribution
+    distAnon:       t('distAnon'),
+    distRegistered: t('distRegistered'),
+    // Ops
+    opClip:              t('opClip'),
+    opClipExclude:       t('opClipExclude'),
+    opIntersect:         t('opIntersect'),
+    opIntersectExclude:  t('opIntersectExclude'),
+    opBuffer:            t('opBuffer'),
+    opBufferExclude:     t('opBufferExclude'),
+    // Sources
+    srcAr: t('srcAr'),
+    srcUy: t('srcUy'),
+    srcCl: t('srcCl'),
+    // Button
+    btnStatus:      '${t('btnStatus')}',
+    // Computed at
+    computedAt:     'Calculado',
+    // Error
+    retryBtn:       '${t('retryBtn')}',
+    keyPrompt:      'Clave de acceso a métricas:',
+    keyRequired:    'Se requiere clave de acceso',
+    keyWrong:       'Clave incorrecta',
+    periodLabels: {
+      '7d':  'últimos 7 días',
+      '30d': 'últimos 30 días',
+      '90d': 'últimos 90 días',
+      'all': 'histórico total',
+    },
+  },
+  en: {
+    pageTitle:     'Metrics',
+    tabTitle:      'Casux — Metrics',
+    backLabel:     'Back',
+    loading:       'Loading metrics…',
+    period7d:      '7 days',
+    period30d:     '30 days',
+    period90d:     '90 days',
+    periodAll:     'All',
+    sectionAdoption:    'Adoption',
+    sectionDepth:       'Depth of use',
+    sectionActivity:    'Daily activity',
+    sectionLayers:      'Most queried layers',
+    sectionAudience:    'Audience',
+    sectionOps:         'Spatial operations',
+    sectionSources:     'Data by source country',
+    kpiSessions:        'Unique sessions',
+    kpiUsers:           'Registered users',
+    kpiMapsGenerated:   'Maps generated',
+    kpiMapsExported:    'Maps exported',
+    kpiAvgLayers:       'Avg layers / map',
+    kpiAvgLayers2:      'simultaneous layers',
+    kpiTimeToMap:       'Time to first map',
+    kpiTimeToMap2:      'from session start',
+    kpiRefinements:     'Refinements / session',
+    kpiRefinements2:    'messages after first map',
+    kpiMessages:        'Total messages',
+    kpiRestAnon:        'rest anonymous',
+    kpiExportOf:        'of generated',
+    mapsGenerated:      'maps generated',
+    sessions:           'sessions',
+    registeredUsers:    'registered users',
+    sessionToMapRate:   'of sessions generated at least one map',
+    chartMapsByDay:     'Maps generated per day',
+    chartSessionsByDay: 'Sessions per day',
+    noData:             'No data',
+    distAnon:       'Anonymous',
+    distRegistered: 'Registered',
+    opClip:              'Clip',
+    opClipExclude:       'Inverse clip',
+    opIntersect:         'Intersect',
+    opIntersectExclude:  'Inverse intersect',
+    opBuffer:            'Buffer',
+    opBufferExclude:     'Inverse buffer',
+    srcAr: '🇦🇷 Argentina',
+    srcUy: '🇺🇾 Uruguay',
+    srcCl: '🇨🇱 Chile',
+    btnStatus:      'GEOSERVICE STATUS',
+    computedAt:     'Computed',
+    retryBtn:       'Retry',
+    keyPrompt:      'Metrics access key:',
+    keyRequired:    'Access key required',
+    keyWrong:       'Wrong key',
+    periodLabels: {
+      '7d':  'last 7 days',
+      '30d': 'last 30 days',
+      '90d': 'last 90 days',
+      'all': 'all time',
+    },
+  },
+  pt: {
+    pageTitle:     'Métricas',
+    tabTitle:      'Casux — Métricas',
+    backLabel:     'Voltar',
+    loading:       'Carregando métricas…',
+    period7d:      '7 dias',
+    period30d:     '30 dias',
+    period90d:     '90 dias',
+    periodAll:     'Tudo',
+    sectionAdoption:    'Adoção',
+    sectionDepth:       'Profundidade de uso',
+    sectionActivity:    'Atividade diária',
+    sectionLayers:      'Camadas mais consultadas',
+    sectionAudience:    'Audiência',
+    sectionOps:         'Operações espaciais',
+    sectionSources:     'Dados por país de origem',
+    kpiSessions:        'Sessões únicas',
+    kpiUsers:           'Usuários registrados',
+    kpiMapsGenerated:   'Mapas gerados',
+    kpiMapsExported:    'Mapas exportados',
+    kpiAvgLayers:       'Média camadas / mapa',
+    kpiAvgLayers2:      'camadas simultâneas',
+    kpiTimeToMap:       'Tempo até primeiro mapa',
+    kpiTimeToMap2:      'desde início da sessão',
+    kpiRefinements:     'Refinamentos / sessão',
+    kpiRefinements2:    'mensagens pós-mapa',
+    kpiMessages:        'Mensagens totais',
+    kpiRestAnon:        'resto anônimos',
+    kpiExportOf:        'dos gerados',
+    mapsGenerated:      'mapas gerados',
+    sessions:           'sessões',
+    registeredUsers:    'usuários registrados',
+    sessionToMapRate:   'das sessões gerou pelo menos um mapa',
+    chartMapsByDay:     'Mapas gerados por dia',
+    chartSessionsByDay: 'Sessões por dia',
+    noData:             'Sem dados',
+    distAnon:       'Anônimos',
+    distRegistered: 'Registrados',
+    opClip:              'Recorte',
+    opClipExclude:       'Recorte inverso',
+    opIntersect:         'Interseção',
+    opIntersectExclude:  'Interseção inversa',
+    opBuffer:            'Área de influência',
+    opBufferExclude:     'Área de influência inversa',
+    srcAr: '🇦🇷 Argentina',
+    srcUy: '🇺🇾 Uruguay',
+    srcCl: '🇨🇱 Chile',
+    btnStatus:      'ESTADO DOS GEOSERVIÇOS',
+    computedAt:     'Calculado',
+    retryBtn:       'Tentar novamente',
+    keyPrompt:      'Chave de acesso às métricas:',
+    keyRequired:    'Chave de acesso necessária',
+    keyWrong:       'Chave incorreta',
+    periodLabels: {
+      '7d':  'últimos 7 dias',
+      '30d': 'últimos 30 dias',
+      '90d': 'últimos 90 dias',
+      'all': 'histórico total',
+    },
+  },
+};
+
+function detectLang() {
+  const saved = localStorage.getItem('sm_lang');
+  if (saved && ['es','en','pt'].includes(saved)) return saved;
+  const nav = (navigator.language || 'es').toLowerCase().slice(0, 2);
+  if (nav === 'pt') return 'pt';
+  if (nav === 'en') return 'en';
+  return 'es';
+}
+
+function t(key) {
+  const lang = detectLang();
+  return (UI[lang] || UI.es)[key] || (UI.es)[key] || key;
+}
 
 // ── Nombres de capas legibles ────────────────────────────────────
 // Derivados del layerKey. Para mostrar en la tabla de top layers
@@ -112,7 +325,7 @@ function getKey() {
 }
 
 function promptKey() {
-  const k = prompt('Clave de acceso a métricas:');
+  const k = prompt(t('keyPrompt'));
   if (k) sessionStorage.setItem(KEY_STORAGE, k);
   return k || '';
 }
@@ -122,7 +335,7 @@ function promptKey() {
 async function fetchMetrics(period) {
   let key = getKey();
   if (!key) key = promptKey();
-  if (!key) throw new Error('Se requiere clave de acceso');
+  if (!key) throw new Error(t('keyRequired'));
 
   const resp = await fetch(`/api/metrics?period=${period}`, {
     headers: { 'X-Analytics-Key': key },
@@ -130,7 +343,7 @@ async function fetchMetrics(period) {
 
   if (resp.status === 403) {
     sessionStorage.removeItem(KEY_STORAGE);
-    throw new Error('Clave incorrecta');
+    throw new Error(t('keyWrong'));
   }
 
   if (!resp.ok) throw new Error(`Error ${resp.status}`);
@@ -178,7 +391,7 @@ function renderChart(data, label, color = 'var(--accent)') {
 }
 
 function renderTopLayers(layers) {
-  if (!layers?.length) return '<p style="color:var(--cream2);font-size:13px;padding:16px">Sin datos</p>';
+  if (!layers?.length) return `<p style="color:var(--cream2);font-size:13px;padding:16px">${t('noData')}</p>`;
 
   const max = layers[0].count;
   const rows = layers.map((l, i) => {
@@ -301,7 +514,7 @@ function renderMetrics(d) {
     ? Math.round((d.mapsExported / d.mapsGenerated) * 100)
     : 0;
 
-  const periodLabel = { '7d': 'últimos 7 días', '30d': 'últimos 30 días', '90d': 'últimos 90 días', 'all': 'histórico total' };
+  const periodLabel = t('periodLabels');
 
   return `
     <!-- Highlight principal -->
@@ -309,12 +522,12 @@ function renderMetrics(d) {
       <span class="material-icons">map</span>
       <div class="highlight-text">
         <strong>${fmt(d.mapsGenerated)} mapas generados</strong>
-        <span>${fmt(d.sessions)} sesiones · ${fmt(d.users)} usuarios registrados · ${periodLabel[d.period] || d.period}</span>
+        <span>${fmt(d.sessions)} ${t('sessions')} · ${fmt(d.users)} ${t('registeredUsers')} · ${periodLabel[d.period] || d.period}</span>
       </div>
     </div>
 
     <!-- KPIs de adopción -->
-    <div class="section-title">Adopción</div>
+    <div class="section-title">${t('sectionAdoption')}</div>
     <div class="kpi-grid">
       <div class="kpi-card">
         <div class="kpi-label">Sesiones únicas</div>
@@ -346,7 +559,7 @@ function renderMetrics(d) {
     </div>
 
     <!-- KPIs de calidad -->
-    <div class="section-title">Profundidad de uso</div>
+    <div class="section-title">${t('sectionDepth')}</div>
     <div class="kpi-grid">
       <div class="kpi-card">
         <div class="kpi-label">Promedio capas / mapa</div>
@@ -370,29 +583,29 @@ function renderMetrics(d) {
     </div>
 
     <!-- Gráfico mapas por día -->
-    <div class="section-title">Actividad diaria</div>
+    <div class="section-title">${t('sectionActivity')}</div>
     ${renderChart(d.mapsPerDay, 'Mapas generados por día')}
     ${renderChart(d.sessionsPerDay, 'Sesiones por día', 'var(--ok)')}
 
     <!-- Top capas -->
-    <div class="section-title">Capas más consultadas</div>
+    <div class="section-title">${t('sectionLayers')}</div>
     ${renderTopLayers(d.topLayers)}
 
     <!-- Distribución -->
-    <div class="section-title">Audiencia</div>
+    <div class="section-title">${t('sectionAudience')}</div>
     <div class="dist-row">${renderDistLang(d.byLanguage)}</div>
     <div class="dist-row" style="margin-top:8px">${renderDistDevice(d.byDevice)}</div>
     <div class="dist-row" style="margin-top:8px">${renderDistUserType(d.byUserType)}</div>
 
     <!-- Operaciones espaciales -->
-    <div class="section-title">Operaciones espaciales</div>
+    <div class="section-title">${t('sectionOps')}</div>
     <div class="dist-row">${renderDistQueryType(d.byQueryType)}</div>
 
     <!-- Países de datos -->
-    <div class="section-title">Datos por país de fuente</div>
+    <div class="section-title">${t('sectionSources')}</div>
     <div class="dist-row">${renderDistSource(d.bySource)}</div>
 
-    <div class="computed-at">Calculado: ${new Date(d.computedAt).toLocaleString()}</div>
+    <div class="computed-at">${t('computedAt')}: ${new Date(d.computedAt).toLocaleString()}</div>
 
     <div class="metrics-footer">
       <a href="/status" class="btn-status">ESTADO DE GEOSERVICIOS</a>
@@ -405,16 +618,16 @@ function renderMetrics(d) {
 let _currentPeriod = '30d';
 
 const PERIODS = [
-  { id: '7d',  label: '7 días' },
-  { id: '30d', label: '30 días' },
-  { id: '90d', label: '90 días' },
-  { id: 'all', label: 'Todo' },
+  { id: '7d',  label: () => t('period7d') },
+  { id: '30d', label: () => t('period30d') },
+  { id: '90d', label: () => t('period90d') },
+  { id: 'all', label: () => t('periodAll') },
 ];
 
 function renderPeriodBar() {
   document.getElementById('period-bar').innerHTML = PERIODS.map(p => `
     <button class="period-btn${p.id === _currentPeriod ? ' active' : ''}"
-            onclick="loadPeriod('${p.id}')">${p.label}</button>
+            onclick="loadPeriod('${p.id}')">${typeof p.label === 'function' ? p.label() : p.label}</button>
   `).join('');
 }
 
@@ -457,6 +670,13 @@ window.loadPeriod = loadPeriod;
 // Arrancar
 renderPeriodBar();
 loadPeriod(_currentPeriod);
+
+// Apply i18n to static HTML elements
+document.getElementById('back-label').textContent  = t('backLabel');
+document.getElementById('page-title').textContent  = t('pageTitle');
+document.getElementById('loading-text').textContent = t('loading');
+document.title = t('tabTitle');
+document.documentElement.lang = detectLang();
 </script>
 </body>
 </html>
