@@ -312,8 +312,9 @@ window._SPATIAL_CLIP = (() => {
   const EDGE_FN_UMBRAL = 500;
 
   function deberiaUsarEdgeFunction(layerDef, op, isArcgis) {
-    if (isArcgis)                return false;
-    if (op === 'clip_exclude')   return false;
+    if (isArcgis)                   return false;
+    if (op === 'clip_exclude')      return false;
+    if (op === 'buffer_exclude')    return false;
     const fc = layerDef?.featureCount;
     if (fc !== undefined && fc <= EDGE_FN_UMBRAL) return false;
     return true;
