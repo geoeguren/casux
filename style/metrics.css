@@ -173,7 +173,8 @@ body {
   border-radius: var(--radius-sm);
   padding: 16px 18px;
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
+  align-items: center;
   gap: 4px;
   transition: border-color .15s;
 }
@@ -184,6 +185,7 @@ body {
   color: var(--cream2);
   font-weight: 500;
   letter-spacing: 0.02em;
+  text-align: center;
 }
 
 .kpi-value {
@@ -192,6 +194,7 @@ body {
   font-weight: 500;
   color: var(--cream);
   line-height: 1.1;
+  text-align: center;
 }
 
 .kpi-value.accent { color: var(--accent); }
