@@ -169,12 +169,36 @@ body {
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 8px;
 }
+.kpi-grid--3 { grid-template-columns: repeat(3, 1fr); }
+.kpi-grid--2 { grid-template-columns: repeat(2, 1fr); }
 
-.metrics-sep {
-  margin-top: 20px;
+/* ── Section headers ──────────────────────────── */
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 28px;
+  margin-bottom: 10px;
+}
+
+.section-title {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cream3);
+  font-family: var(--font-sans);
+}
+
+.section-header::after {
+  content: '';
+  flex: 1;
+  height: 0.5px;
+  background: var(--border);
 }
 
 .kpi-card {
@@ -209,6 +233,16 @@ body {
 
 .kpi-value.accent { color: var(--accent); }
 .kpi-value.ok     { color: var(--ok); }
+
+.kpi-card--large .kpi-value { font-size: 36px; }
+
+.kpi-sub {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--cream3);
+  font-weight: 400;
+  margin-left: 4px;
+}
 
 
 
