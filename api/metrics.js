@@ -5,7 +5,7 @@
  * GET /api/metrics?period=7d    → últimos 7 días
  * GET /api/metrics?period=all   → histórico completo
  *
- * Protegido con la misma ANALYTICS_KEY que api/analytics.js.
+ * Página pública — no requiere autenticación.
  * No expone PII — solo conteos y agregados.
  *
  * Métricas devueltas:
@@ -234,12 +234,6 @@ module.exports = async function handler(req, res) {
 
   // Solo GET
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
-
-  // Auth — misma clave que analytics
-  const key = req.headers['x-analytics-key'];
-  if (key !== process.env.ANALYTICS_KEY) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
 
   const period = ['7d', '30d', '90d', 'all'].includes(req.query.period)
     ? req.query.period
