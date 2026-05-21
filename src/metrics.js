@@ -22,13 +22,6 @@ const UI = {
     period30d:     'Últimos 30 días',
     period90d:     'Últimos 90 días',
     periodAll:     'Desde el inicio',
-    sectionAdoption:    'Adopción',
-    sectionDepth:       'Profundidad de uso',
-    sectionActivity:    'Actividad diaria',
-    sectionLayers:      'Capas más consultadas',
-    sectionAudience:    'Audiencia',
-    sectionOps:         'Operaciones espaciales',
-    sectionSources:     'Datos por país de fuente',
     kpiSessions:        'Sesiones únicas',
     kpiUsers:           'Usuarios registrados',
     kpiMapsGenerated:   'Mapas generados',
@@ -75,13 +68,6 @@ const UI = {
     period30d:     'Last 30 days',
     period90d:     'Last 90 days',
     periodAll:     'Since launch',
-    sectionAdoption:    'Adoption',
-    sectionDepth:       'Depth of use',
-    sectionActivity:    'Daily activity',
-    sectionLayers:      'Most queried layers',
-    sectionAudience:    'Audience',
-    sectionOps:         'Spatial operations',
-    sectionSources:     'Data by source country',
     kpiSessions:        'Unique sessions',
     kpiUsers:           'Registered users',
     kpiMapsGenerated:   'Maps generated',
@@ -128,13 +114,6 @@ const UI = {
     period30d:     'Últimos 30 dias',
     period90d:     'Últimos 90 dias',
     periodAll:     'Desde o início',
-    sectionAdoption:    'Adoção',
-    sectionDepth:       'Profundidade de uso',
-    sectionActivity:    'Atividade diária',
-    sectionLayers:      'Camadas mais consultadas',
-    sectionAudience:    'Audiência',
-    sectionOps:         'Operações espaciais',
-    sectionSources:     'Dados por país de origem',
     kpiSessions:        'Sessões únicas',
     kpiUsers:           'Usuários registrados',
     kpiMapsGenerated:   'Mapas gerados',
@@ -433,7 +412,6 @@ function renderMetrics(d) {
     </div>
 
     <!-- KPIs de adopción -->
-    <div class="section-title">${t('sectionAdoption')}</div>
     <div class="kpi-grid">
       <div class="kpi-card">
         <div class="kpi-label">Sesiones únicas</div>
@@ -463,7 +441,6 @@ function renderMetrics(d) {
     </div>
 
     <!-- KPIs de calidad -->
-    <div class="section-title">${t('sectionDepth')}</div>
     <div class="kpi-grid">
       <div class="kpi-card">
         <div class="kpi-label">Promedio capas / mapa</div>
@@ -484,26 +461,21 @@ function renderMetrics(d) {
     </div>
 
     <!-- Gráfico mapas por día -->
-    <div class="section-title">${t('sectionActivity')}</div>
     ${renderChart(d.mapsPerDay, 'Mapas generados por día')}
     ${renderChart(d.sessionsPerDay, 'Sesiones por día', 'var(--ok)')}
 
     <!-- Top capas -->
-    <div class="section-title">${t('sectionLayers')}</div>
     ${renderTopLayers(d.topLayers)}
 
     <!-- Distribución -->
-    <div class="section-title">${t('sectionAudience')}</div>
     <div class="dist-row">${renderDistLang(d.byLanguage)}</div>
     <div class="dist-row" style="margin-top:8px">${renderDistDevice(d.byDevice)}</div>
     <div class="dist-row" style="margin-top:8px">${renderDistUserType(d.byUserType)}</div>
 
     <!-- Operaciones espaciales -->
-    <div class="section-title">${t('sectionOps')}</div>
     <div class="dist-row">${renderDistQueryType(d.byQueryType)}</div>
 
     <!-- Países de datos -->
-    <div class="section-title">${t('sectionSources')}</div>
     <div class="dist-row">${renderDistSource(d.bySource)}</div>
 
     <div class="computed-at">${t('computedAt')}: ${new Date(d.computedAt).toLocaleString()}</div>
