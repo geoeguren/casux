@@ -13,18 +13,31 @@
  *   "CARPETA/SERVICIO/MapServer/N"  →  endpoint: {restBase}/CARPETA/SERVICIO/MapServer/N/query
  *
  * Comparte el mismo IndexedDB (sm_wfs_cache) que wfs.js — misma TTL y lógica de caché.
+ *
+ * Estrategia de caché y fallback (en orden):
+ *   1. IndexedDB fresca (< 24h) → devuelve directo
+ *   2. REST externo con paginación paralela (timeout 120s por página)
+ *      - Paralela falla → secuencial
+ *      - 502/503/504 en secuencial → 1 reintento (2s espera)
+ *      - Timeout / network / CORS → snapshot R2 sin reintentar
+ *      - 4xx / ArcGIS error / JSON inválido → snapshot R2 sin reintentar
+ *   3. Snapshot R2 (timeout 3s)
+ *   4. IndexedDB vencida (safety net, con toast)
+ *   5. Error al usuario
+ *
+ * Deduplicación: dos requests simultáneos a la misma capa comparten la Promise.
  */
 
 window.REST = (() => {
 
-  const CACHE_TTL   = 24 * 60 * 60 * 1000;
-  const DB_NAME     = 'sm_wfs_cache';
-  const DB_VERSION  = 1;
-  const STORE_NAME  = 'layers';
-  const MAX_RETRIES = 3;
-  const TIMEOUT_MS  = 120000; // 120s — el servidor MOP puede tardar hasta 80s por página
-  const PAGE_SIZE   = 10000; // ArcGIS REST soporta hasta 10.000 por página
-  const MAX_PAGES   = 55;   // límite de seguridad: 55.000 features máx por request
+  const CACHE_TTL    = 24 * 60 * 60 * 1000;
+  const DB_NAME      = 'sm_wfs_cache';
+  const DB_VERSION   = 1;
+  const STORE_NAME   = 'layers';
+  const TIMEOUT_MS   = 120000; // 120s — el servidor MOP puede tardar hasta 80s por página
+  const R2_TIMEOUT_MS = 3000;  // 3s máximo para el snapshot de R2
+  const PAGE_SIZE    = 10000;  // ArcGIS REST soporta hasta 10.000 por página
+  const MAX_PAGES    = 55;     // límite de seguridad: 55.000 features máx por request
 
   // ── IndexedDB (mismo store que wfs.js) ───────────────────────
 
@@ -174,12 +187,12 @@ window.REST = (() => {
         const text = await resp.text();
         let json;
         try { json = JSON.parse(text); } catch {
-          throw new Error('Respuesta ArcGIS REST inválida (JSON parse error)');
+          throw new Error('Respuesta ArcGIS REST inválida (JSON parse error) (sin reintentos)');
         }
         if (json.error)
           throw new Error(`ArcGIS error ${json.error.code}: ${json.error.message} (sin reintentos)`);
         if (!Array.isArray(json.features))
-          throw new Error('Respuesta ArcGIS REST sin features');
+          throw new Error('Respuesta ArcGIS REST sin features (sin reintentos)');
 
         _geojsonSupport.set(restBase, true);
         return json;
@@ -198,12 +211,12 @@ window.REST = (() => {
     const text = await resp.text();
     let json;
     try { json = JSON.parse(text); } catch {
-      throw new Error('Respuesta ArcGIS REST inválida (JSON parse error)');
+      throw new Error('Respuesta ArcGIS REST inválida (JSON parse error) (sin reintentos)');
     }
     if (json.error)
       throw new Error(`ArcGIS error ${json.error.code}: ${json.error.message} (sin reintentos)`);
     if (!Array.isArray(json.features))
-      throw new Error('Respuesta ArcGIS REST sin features');
+      throw new Error('Respuesta ArcGIS REST sin features (sin reintentos)');
 
     return esriResponseToGeoJSON(json);
   }
@@ -219,7 +232,7 @@ window.REST = (() => {
   // El servidor del MOP tarda ~30s por página — en paralelo, N páginas tardan
   // lo mismo que 1 en lugar de N×30s.
 
-  // Cache del maxRecordCount por servidor — se consulta una vez y se reutiliza
+  // Caché del maxRecordCount por servidor — se consulta una vez y se reutiliza
   const _maxRecordCount = new Map();
 
   async function _getServerPageSize(restBase, typename) {
@@ -267,13 +280,9 @@ window.REST = (() => {
         const pageCount = Math.min(pages, MAX_PAGES);
         console.log(`[REST] ${typename}: ${total} features → ${pageCount} páginas × ${pageSize} en paralelo`);
 
-        // Calcular cuántos features pedir en cada página.
-        // El servidor MOP siempre devuelve exceededTransferLimit=true (bug del servidor),
-        // así que no podemos confiar en ese flag. Usamos el count para saber
-        // exactamente cuántos features hay en cada página, evitando duplicados.
         const offsets = Array.from({ length: pageCount }, (_, i) => {
           const off   = i * pageSize;
-          const count = Math.min(pageSize, total - off);  // última página puede ser menor
+          const count = Math.min(pageSize, total - off);
           return { off, count };
         });
 
@@ -281,12 +290,13 @@ window.REST = (() => {
           offsets.map(({ off, count }) => fetchPage(restBase, typename, where || '1=1', off, count))
         );
         // Truncar cada página al count esperado — algunos servidores ignoran resultRecordCount
-        // y devuelven más features de los pedidos (bug del servidor MOP).
         const features = results.flatMap((r, i) => r.features.slice(0, offsets[i].count));
         console.log(`[REST] OK: ${typename} → ${features.length} features (esperados: ${total})`);
         return { type: 'FeatureCollection', features };
       }
     } catch (parallelErr) {
+      // Si es un error que no debe reintentarse, propagarlo directo
+      if (parallelErr?.message?.includes('sin reintentos')) throw parallelErr;
       console.warn(`[REST] ${typename}: paginación paralela falló (${parallelErr?.message}), usando secuencial`);
     }
 
@@ -310,10 +320,8 @@ window.REST = (() => {
         console.warn(`[REST] ${typename}: límite de ${MAX_PAGES} páginas alcanzado (${allFeatures.length} features). Usá un filtro para acotar la consulta.`);
         break;
       }
-      // Si tenemos el total exacto, parar cuando ya lo alcanzamos
-      if (seqTotal !== null && allFeatures.length >= seqTotal) {
-        break;
-      }
+      if (seqTotal !== null && allFeatures.length >= seqTotal) break;
+
       try {
         const page = await fetchPage(restBase, typename, where, offset);
         pageCount++;
@@ -322,22 +330,24 @@ window.REST = (() => {
         if (page.features.length === 0) {
           hasMore = false;
         } else if (seqTotal !== null) {
-          // Confiar en el count, no en exceededTransferLimit
           hasMore = allFeatures.length < seqTotal;
         } else {
-          // Sin count: usar exceededTransferLimit como señal
           hasMore = page.exceededTransferLimit === true;
         }
         offset += page.features.length;
 
       } catch (err) {
+        // Errores deterministas → no reintentar
         if (err.message.includes('sin reintentos')) throw err;
-        if (intento < MAX_RETRIES) {
-          const espera = Math.pow(2, intento) * 1000;
-          console.warn(`[REST] Intento ${intento} falló (${err.message}). Reintentando en ${espera/1000}s...`);
-          await new Promise(r => setTimeout(r, espera));
-          return fetchConReintentos(restBase, typename, where, intento + 1);
+        // Timeout → no reintentar
+        if (err.name === 'TimeoutError' || err.name === 'AbortError') throw err;
+        // 502/503/504 → 1 solo reintento
+        if (intento === 1) {
+          console.warn(`[REST] Intento ${intento} falló (${err.message}). Reintentando en 2s...`);
+          await new Promise(r => setTimeout(r, 2000));
+          return fetchConReintentos(restBase, typename, where, 2);
         }
+        // Segundo intento también falló → lanzar para que el caller intente R2
         throw err;
       }
     }
@@ -351,32 +361,28 @@ window.REST = (() => {
   const _inFlight = new Map();
 
   // ── Snapshot R2 ──────────────────────────────────────────────
-  // Intenta leer el snapshot pre-generado desde Cloudflare R2.
-  // Solo cuando no hay whereClause (el snapshot tiene la capa completa).
-  // Si b2PublicUrl no está configurado en CASUX_CONFIG, falla silenciosamente.
+  // Fallback cuando el REST falla. Lee el snapshot pre-generado mensualmente
+  // desde Cloudflare R2. Timeout de 3s — si no responde, no vale la pena esperar.
 
-  function b2SnapshotUrl(typename) {
+  function _r2SnapshotUrl(typename) {
     const base = window.CASUX_CONFIG?.b2PublicUrl || '';
     if (!base) return null;
     const safe = typename.replace(/[\/\\]/g, '__');
     return `${base.replace(/\/$/, '')}/mop_cl/${safe}.geojson`;
   }
 
-  async function fetchFromB2(typename) {
-    const url = b2SnapshotUrl(typename);
+  async function _fetchFromR2(typename) {
+    const url = _r2SnapshotUrl(typename);
     if (!url) return null;
     try {
-      const ctrl  = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 3000);
-      const resp  = await fetch(url, { signal: ctrl.signal });
-      clearTimeout(timer);
+      const resp = await fetch(url, { signal: AbortSignal.timeout(R2_TIMEOUT_MS) });
       if (!resp.ok) return null;
       const geojson = await resp.json();
       if (!geojson?.features) return null;
       console.log(`[REST] Snapshot R2: ${typename} (${geojson.features.length} features)`);
       return geojson;
     } catch {
-      return null;
+      return null; // timeout o error — no hacer ruido
     }
   }
 
@@ -398,18 +404,7 @@ window.REST = (() => {
     const where = sanitizedWhere || '1=1';
     const key   = cacheKey(restBase, typename, where);
 
-    // 1. Snapshot R2 — solo cuando no hay filtro dinámico
-    const canUseSnapshot = !forceRefresh && where === '1=1';
-    if (canUseSnapshot) {
-      const snapshot = await fetchFromB2(typename);
-      if (snapshot) {
-        // Guardar en IndexedDB para requests siguientes (misma TTL que el cache normal)
-        await cacheSet(key, snapshot);
-        return snapshot;
-      }
-    }
-
-    // 2. Caché fresca en IndexedDB
+    // 1. Caché fresca en IndexedDB
     if (!forceRefresh) {
       const cached = await cacheGet(key);
       if (cached && !cached.stale) {
@@ -418,17 +413,17 @@ window.REST = (() => {
       }
     }
 
-    // 2. Deduplicación
+    // 2. Deduplicación de requests en vuelo
     if (_inFlight.has(key)) {
       console.log(`[REST] Reutilizando fetch en vuelo: ${typename}`);
       return _inFlight.get(key);
     }
 
+    // 3. REST externo → snapshot R2 → caché vencida → error
     console.log(`[REST] Fetching: ${typename}${where !== '1=1' ? ' | ' + where : ''} (${restBase})`);
 
     const fetchPromise = fetchConReintentos(restBase, typename, where)
       .then(async geojson => {
-        // Respetar maxFeatures si se especifica
         if (maxFeatures && geojson.features.length > maxFeatures) {
           geojson.features = geojson.features.slice(0, maxFeatures);
         }
@@ -437,7 +432,18 @@ window.REST = (() => {
         return geojson;
       })
       .catch(async err => {
-        console.warn(`[REST] Todos los intentos fallaron para ${typename}: ${err.message}`);
+        console.warn(`[REST] REST falló para ${typename}: ${err.message}. Intentando snapshot R2...`);
+
+        // 4. Snapshot R2
+        const snapshot = await _fetchFromR2(typename);
+        if (snapshot) {
+          await cacheSet(key, snapshot);
+          console.log(`[REST] Snapshot R2 usado como fallback: ${typename}`);
+          window.TOAST?.warning(t('toast_cache_warning'));
+          return snapshot;
+        }
+
+        // 5. Caché vencida (safety net)
         const stale = await cacheGet(key);
         if (stale) {
           console.warn(`[REST] Usando caché vencida para ${typename}`);
@@ -445,9 +451,11 @@ window.REST = (() => {
           return stale.data;
         }
 
+        // 6. Error al usuario
         const isServerError =
           /HTTP 5\d\d/.test(err.message) ||
-          err.name === 'TimeoutError' ||
+          err.name === 'TimeoutError'    ||
+          err.name === 'AbortError'      ||
           err.message.toLowerCase().includes('network') ||
           err.message.toLowerCase().includes('cors');
 
@@ -478,7 +486,6 @@ window.REST = (() => {
 
   // SQL WHERE — ArcGIS no soporta CQL
   function filterEqual(campo, valor) {
-    // Strings → comillas simples; números → sin comillas
     const esNumero = !isNaN(valor) && valor !== '';
     return esNumero
       ? `${campo} = ${valor}`
@@ -498,7 +505,6 @@ window.REST = (() => {
     filterEqual,
     filterIn,
     clearCache: async () => {
-      // Limpia todo el store compartido con wfs.js
       window.WFS?.clearCache?.();
     },
   };
