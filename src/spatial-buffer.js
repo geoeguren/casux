@@ -44,18 +44,14 @@ window._SPATIAL_BUFFER = (() => {
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
         typename:      layerDef.typename,
-        // WFS
-        wfsBase:       wfsOpts.wfsBase    || undefined,
-        wfsVersion:    wfsOpts.wfsVersion || undefined,
-        cqlFilter:     !wfsOpts.restBase ? (cql || undefined) : undefined,
-        // REST
-        restBase:      wfsOpts.restBase   || undefined,
-        whereClause:   wfsOpts.restBase   ? (cql || undefined) : undefined,
+        wfsBase:       wfsOpts.wfsBase,
+        wfsVersion:    wfsOpts.wfsVersion,
+        cqlFilter:     cql || undefined,
         bufferFeature: areaFeature,
         distanceKm,
         exclude:       isExclude || undefined,
       }),
-      signal: AbortSignal.timeout(25000),
+      signal: AbortSignal.timeout(90000),
     });
     if (!resp.ok) throw new Error(`Edge Function HTTP ${resp.status}`);
     return resp.json();
