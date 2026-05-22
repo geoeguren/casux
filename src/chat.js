@@ -1,5 +1,5 @@
 /**
- * chat.js — Chat con streaming de tokens y persistencia en Firestore
+ * chat.js — Chat con streaming de tokens y persistencia en Turso
  */
 
 window.CHAT = (() => {
@@ -14,7 +14,7 @@ window.CHAT = (() => {
   // ── Sanitizar historial para el LLM ──────────────────────────
   //
   // Los mensajes del asistente se guardan con los bloques de código
-  // (```map, ```style, etc.) incluidos — necesarios para Firestore y
+  // (```map, ```style, etc.) incluidos — necesarios para persistencia y
   // para restaurar el estado. Pero enviárselos al LLM consume tokens
   // innecesarios y puede confundirlo en conversaciones largas.
   // Esta función devuelve una copia del historial con esos bloques
@@ -180,7 +180,7 @@ window.CHAT = (() => {
             await window.APP.renderMap(planCombinado);
             const tituloNuevaCapa = tituloDesdePlan([instruccionNueva]) || instruccionNueva.layerKey;
             history.push({ role: 'assistant', content: `[intent] +${tituloNuevaCapa}`, time: msgTime.toISOString(), model: 'pim' });
-            await saveToFirestore(userText, planCombinado);
+            await saveChat(userText, planCombinado);
           } catch (e) {
             console.error('[CHAT] agregar intent error:', e);
           }
@@ -230,9 +230,9 @@ window.CHAT = (() => {
           try {
             await window.APP.renderMap(plan);
             history.push({ role: 'assistant', content: `[intent] ${titulo}`, time: msgTime.toISOString(), model: 'pim' });
-            await saveToFirestore(userText, plan);
+            await saveChat(userText, plan);
           } catch (e) {
-            // renderMap y saveToFirestore tienen su propio manejo de errores,
+            // renderMap y saveChat tienen su propio manejo de errores,
             // pero si lanzan igual, evitamos que el catch externo haga history.pop()
             // sobre el mensaje del usuario (que es válido).
             console.error('[CHAT] capa intent error:', e);
@@ -365,7 +365,7 @@ window.CHAT = (() => {
                   UI.showMapReady(plan);
                   if (!window.MAP_CONTROLS?.isMobile?.()) window.MAP_CONTROLS?.setMapVisible(true);
                   await window.APP.renderMap(plan);
-                  await saveToFirestore(userText, plan);
+                  await saveChat(userText, plan);
                   return;
                 }
               }
@@ -373,7 +373,7 @@ window.CHAT = (() => {
               // stylePlan sin mapPlan = cambio de estilo sobre capas existentes
               if (stylePlan?.length) window.APP?.applyStylePlan?.(stylePlan);
 
-              await saveToFirestore(userText, null);
+              await saveChat(userText, null);
 
               // ── Selector de modo en primer chat ──────────────────
               // Si el usuario nunca eligió un modo explícito (tono = 'default'
@@ -406,9 +406,9 @@ window.CHAT = (() => {
     }
   }
 
-  // ── Guardar en Firestore ──────────────────────────────────────
+  // ── Guardar en Turso ────────────────────────────────────────
 
-  async function saveToFirestore(userText, mapPlan) {
+  async function saveChat(userText, mapPlan) {
     try {
       const user = window.AUTH?.currentUser();
       if (!user) return;
@@ -461,7 +461,7 @@ window.CHAT = (() => {
     }
   }
 
-  // ── Restaurar chat desde Firestore ────────────────────────────
+  // ── Restaurar chat desde Turso ──────────────────────────────
 
   function restore(chat) {
     history       = chat.messages || [];
