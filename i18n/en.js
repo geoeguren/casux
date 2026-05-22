@@ -128,7 +128,6 @@ window.I18N_EN = {
   toast_n_many: 'Several',
   toast_auth_error:        'Authentication error: {msg}.',
   toast_cache_warning:     'No server connection. Using cached data.',
-  toast_snapshot_unfiltered: 'No server connection. Showing all layer records — the applied filter could not be executed.',
   toast_server_unavailable: '{org} server is unavailable. Please try again in a few minutes.',
   toast_layer_fetch_error:  'Could not fetch "{typename}": {msg}.',
   toast_layer_truncated:    '{titulo} is too large to load without a filter. Try specifying a department or region.',
@@ -138,6 +137,10 @@ window.I18N_EN = {
   toast_spatial_none:      '{titulo} cannot be clipped. Showing the full layer.',
   toast_spatial_limit:     '{titulo} has {n} elements — showing full layer without clipping.',
   toast_spatial_fallback:  'Server took too long. Processing on device…',
+  toast_dissolve_empty: 'No features to merge with the applied filters.',
+  toast_within_layer_empty: 'No elements found within that distance.',
+  toast_adjacent_empty: 'No adjacent elements found.',
+  toast_nearest_empty: 'No nearby elements found.',
 
   // ── Sidebar / Auth ───────────────────────────────────────────
   toast_auth_login_error:  'Error signing in.',
