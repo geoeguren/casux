@@ -85,7 +85,6 @@ window.I18N_ES = {
   style_color:             'Color',
   style_opacity:           'Opacidad',
   style_weight:            'Grosor',
-  style_dash:              'Patrón de línea',
   style_dash:              'Estilo de línea',
 
   // ── Popup ────────────────────────────────────────────────────
@@ -129,6 +128,7 @@ window.I18N_ES = {
   toast_n_many: 'Varias',
   toast_auth_error:        'Error de autenticación: {msg}.',
   toast_cache_warning:     'Sin conexión al servidor. Usando datos en caché.',
+  toast_snapshot_unfiltered: 'Sin conexión al servidor. Mostrando la capa completa sin filtros aplicados.',
   toast_server_unavailable: 'El servidor de {org} no está disponible. Intentá de nuevo en unos minutos.',
   toast_layer_fetch_error:  'No se pudo obtener "{typename}": {msg}.',
   toast_layer_truncated:    '{titulo} es demasiado grande para cargar sin filtro. Pedí un departamento o región específica.',
@@ -275,8 +275,7 @@ window.I18N_ES = {
   adv_border_color:        'Color del borde',
   adv_fill_color:          'Color del relleno',
   adv_color:               'Color',
-  adv_line_pattern:        'Patrón de línea',
-  adv_classes:             'Clases',
+  adv_line_pattern:        'Estilo de línea',
 
   // ── Botones de estilo ─────────────────────────────────────────
   style_what_to_change:    '¿Qué querés cambiar?',
@@ -359,6 +358,7 @@ window.I18N_ES = {
   mode_sub_creativo:      'Exploratorio y conceptual',
   mode_chosen:           'Modo {mode} activado. Podés cambiarlo en cualquier momento desde el menú.',
 
+  sidebar_anon_label:    'Sesión local',
   sidebar_anon_sync:     'Sincronizar con Google',
 
 };
