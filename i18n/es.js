@@ -129,7 +129,6 @@ window.I18N_ES = {
   toast_n_many: 'Varias',
   toast_auth_error:        'Error de autenticación: {msg}.',
   toast_cache_warning:     'Sin conexión al servidor. Usando datos en caché.',
-  toast_snapshot_unfiltered: 'Sin conexión al servidor. Mostrando todos los registros de la capa — el filtro aplicado no pudo ejecutarse.',
   toast_server_unavailable: 'El servidor de {org} no está disponible. Intentá de nuevo en unos minutos.',
   toast_layer_fetch_error:  'No se pudo obtener "{typename}": {msg}.',
   toast_layer_truncated:    '{titulo} es demasiado grande para cargar sin filtro. Pedí un departamento o región específica.',
@@ -139,6 +138,10 @@ window.I18N_ES = {
   toast_spatial_none:      '{titulo} no se puede recortar. Se muestra completa.',
   toast_spatial_limit:     '{titulo} tiene {n} elementos — se muestra completa sin recorte.',
   toast_spatial_fallback:  'El servidor tardó demasiado. Procesando en el dispositivo…',
+  toast_dissolve_empty: 'No hay features para unir con los filtros aplicados.',
+  toast_within_layer_empty: 'No se encontraron elementos a esa distancia.',
+  toast_adjacent_empty: 'No se encontraron elementos adyacentes.',
+  toast_nearest_empty: 'No se encontraron elementos cercanos.',
 
   // ── Sidebar / Auth ───────────────────────────────────────────
   toast_auth_login_error:  'Error al iniciar sesión.',
