@@ -169,7 +169,7 @@ window.AUTH = (() => {
   }
 
   // Devuelve el token firmado para enviarlo al servidor.
-  // firebase.js lo usa en el header Authorization.
+  // db-client.js lo usa en el header Authorization.
   function getSignedToken() {
     const session = getSession();
     return session?.token || null;
