@@ -2,7 +2,7 @@
  * api/_turso.js — Inicialización compartida del cliente Turso/SQLite
  *
  * El prefijo _ impide que Vercel lo exponga como endpoint HTTP.
- * Reemplaza a api/_firebase.js.
+ * Reemplaza a api/_firebase.js (eliminado).
  * Importado por api/db.js, api/analytics.js y api/metrics.js.
  */
 
