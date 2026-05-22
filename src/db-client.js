@@ -1,5 +1,5 @@
 /**
- * firebase.js — Cliente de Firestore via Edge Function /api/db
+ * db-client.js — Cliente de base de datos via Edge Function /api/db
  *
  * Usa el token firmado que entrega AUTH.getSignedToken().
  * La verificación de firma ocurre en el servidor (api/db.js).
