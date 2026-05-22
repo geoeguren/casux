@@ -472,7 +472,7 @@ window.MAP = (() => {
     }
   }
 
-  // Popup prefs: setear desde Firestore (reemplaza localStorage)
+  // Popup prefs: setear desde Turso (reemplaza localStorage)
   function setPopupPrefs(prefs) {
     Object.keys(_popupFieldPrefs).forEach(k => delete _popupFieldPrefs[k]);
     Object.entries(prefs).forEach(([lk, fields]) => {
