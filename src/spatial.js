@@ -11,8 +11,8 @@
  *   'clip_exclude'       → src/spatial-clip.js       (recorte geométrico fuera de un área)
  *   'intersect'          → src/spatial-intersect.js  (features completas que tocan el área)
  *   'intersect_exclude'  → src/spatial-intersect.js  (features completas que NO tocan el área)
- *   'buffer'             → src/spatial-buffer.js     (área de influencia — DEPRECADO, usar within_layer)
- *   'buffer_exclude'     → src/spatial-buffer.js     (idem — DEPRECADO)
+ *   'buffer'             → redirigido a within_layer  (retrocompatibilidad — ver switch)
+ *   'buffer_exclude'     → redirigido a within_layer_exclude (ídem)
  *   undefined            → 'clip' (retrocompatibilidad con instrucciones antiguas)
  *
  *   Operaciones nuevas:
@@ -65,11 +65,11 @@
  * Dependencias (deben cargarse antes en index.html):
  *   window.WFS, window.LAYERS, window.SOURCES, window.TOAST, window.t
  *   window._SPATIAL_UTILS
- *   window._SPATIAL_CLIP, window._SPATIAL_INTERSECT, window._SPATIAL_BUFFER
+ *   window._SPATIAL_CLIP, window._SPATIAL_INTERSECT
  *   window._SPATIAL_DISSOLVE
- *   window._SPATIAL_WITHIN_LAYER (próximamente)
- *   window._SPATIAL_ADJACENT     (próximamente)
- *   window._SPATIAL_NEAREST      (próximamente)
+ *   window._SPATIAL_WITHIN_LAYER
+ *   window._SPATIAL_ADJACENT
+ *   window._SPATIAL_NEAREST
  */
 
 window.SPATIAL = (() => {
@@ -466,17 +466,6 @@ window.SPATIAL = (() => {
     }
     const maskFeature = await resolverAreaFeature(dissolveArea, 'dissolve_exclude');
     return window._SPATIAL_DISSOLVE.ejecutar(instruccion, layerDef, wfsOpts, cql, maskFeature);
-  }
-
-  async function ejecutarBuffer(instruccion, layerDef, wfsOpts, cql) {
-    const { bufferArea } = instruccion;
-
-    if (!bufferArea) {
-      throw new Error('[SPATIAL:buffer] La instrucción no tiene bufferArea.');
-    }
-
-    const areaFeature = await resolverAreaFeature(bufferArea, 'buffer');
-    return window._SPATIAL_BUFFER.ejecutar(instruccion, layerDef, wfsOpts, cql, areaFeature);
   }
 
   // ── Operación: clip_exclude ───────────────────────────────────
