@@ -10,10 +10,17 @@
 
 window.ANALYTICS = (() => {
 
-  // Cargar la clave de analytics desde el servidor (una sola vez al inicio)
+  // Cargar configuración pública desde el servidor (una sola vez al inicio)
   fetch('/api/config')
     .then(r => r.json())
-    .then(cfg => { window.__ANALYTICS_KEY__ = cfg.analyticsKey || ''; })
+    .then(cfg => {
+      window.__ANALYTICS_KEY__ = cfg.analyticsKey || '';
+      // CASUX_CONFIG expone configuración pública al resto de módulos del cliente
+      window.CASUX_CONFIG = {
+        b2PublicUrl: cfg.b2PublicUrl || '',
+        appOrigin:   cfg.appOrigin   || '',
+      };
+    })
     .catch(() => {});
 
   // ── Sesión ────────────────────────────────────────────────────
