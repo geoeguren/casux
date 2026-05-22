@@ -52,13 +52,17 @@ window._SPATIAL_INTERSECT = (() => {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
-        exclude:    isExclude,
-        typename:   layerDef.typename,
-        wfsBase:    wfsOpts.wfsBase,
-        wfsVersion: wfsOpts.wfsVersion,
-        cqlFilter:  cql || undefined,
+        exclude:      isExclude,
+        typename:     layerDef.typename,
+        // WFS
+        wfsBase:      wfsOpts.wfsBase    || undefined,
+        wfsVersion:   wfsOpts.wfsVersion || undefined,
+        cqlFilter:    !wfsOpts.restBase ? (cql || undefined) : undefined,
+        // REST
+        restBase:     wfsOpts.restBase   || undefined,
+        whereClause:  wfsOpts.restBase   ? (cql || undefined) : undefined,
         // intersect_exclude necesita todos los features — no mandar bbox
-        bbox:       isExclude ? undefined : bbox,
+        bbox:         isExclude ? undefined : bbox,
         ...maskPayload,
       }),
       signal: AbortSignal.timeout(25000),
