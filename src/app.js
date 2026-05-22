@@ -665,7 +665,7 @@ window.APP = (() => {
         if (!layerDef) throw new Error(`Capa desconocida: ${inst.layerKey}`);
 
         if (!window.SPATIAL) {
-          const faltan = ['_SPATIAL_CLIP','_SPATIAL_INTERSECT','_SPATIAL_BUFFER','SPATIAL']
+          const faltan = ['_SPATIAL_CLIP','_SPATIAL_INTERSECT','_SPATIAL_WITHIN_LAYER','_SPATIAL_DISSOLVE','_SPATIAL_ADJACENT','_SPATIAL_NEAREST','SPATIAL']
             .filter(m => !window[m]).join(', ');
           throw new Error(`Módulo SPATIAL no disponible. Faltan: ${faltan || 'desconocido'}. Recargá la página.`);
         }
