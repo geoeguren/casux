@@ -465,7 +465,13 @@ window.REST = (() => {
         if (snapshot) {
           await cacheSet(key, snapshot);
           console.log(`[REST] Snapshot R2 usado como fallback: ${typename}`);
-          window.TOAST?.warning(t('toast_cache_warning'));
+          // Si había whereClause activo, avisarle al usuario que el snapshot
+          // devuelve la capa completa sin filtrar
+          if (whereClause && whereClause !== '1=1') {
+            window.TOAST?.warning(t('toast_snapshot_unfiltered'));
+          } else {
+            window.TOAST?.warning(t('toast_cache_warning'));
+          }
           return snapshot;
         }
 
