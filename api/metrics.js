@@ -8,7 +8,7 @@
  * Estrategia de lectura:
  *   1. Si existe un snapshot precalculado en metrics_snapshots → devolverlo (rápido)
  *   2. Si no hay snapshot todavía → calcular en tiempo real desde la tabla events
- *      (igual que hacía la versión original con Firestore)
+ *      (igual que hacía la versión original con Firestore — migrado a Turso)
  *
  * Página pública — no requiere autenticación.
  * No expone PII — solo conteos y agregados.
