@@ -29,7 +29,7 @@ Guardar como `src/workers/turf.min.js`.
 |--------|-------------|-------------|
 | `clip-worker.js` | clip, clip_exclude | union, lineSplit, booleanPointInPolygon, intersect, area |
 | `intersect-worker.js` | intersect, intersect_exclude | booleanPointInPolygon, intersect |
-| `buffer-worker.js` | buffer, buffer_exclude (deprecado → within_layer) | booleanPointInPolygon, intersect |
+| ~~`buffer-worker.js`~~ | ELIMINADO — reemplazado por `within_layer-worker.js` | — |
 | `dissolve-worker.js` | dissolve, dissolve_exclude | union, booleanPointInPolygon |
 | `within_layer-worker.js` | within_layer, within_layer_exclude | booleanPointInPolygon, distance, centroid |
 | `adjacent-worker.js` | adjacent, adjacent_exclude | booleanTouches, intersect, booleanPointInPolygon |
