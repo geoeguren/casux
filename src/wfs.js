@@ -293,7 +293,13 @@ window.WFS = (() => {
         if (snapshot) {
           await cacheSet(key, snapshot);
           console.log(`[WFS] Snapshot R2 usado como fallback: ${typename}`);
-          window.TOAST?.warning(t('toast_cache_warning'));
+          // Si había cqlFilter activo, avisarle al usuario que el snapshot
+          // devuelve la capa completa sin filtrar
+          if (cqlFilter) {
+            window.TOAST?.warning(t('toast_snapshot_unfiltered'));
+          } else {
+            window.TOAST?.warning(t('toast_cache_warning'));
+          }
           return snapshot;
         }
 
