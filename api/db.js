@@ -1,7 +1,7 @@
 /**
  * api/db.js — Operaciones de base de datos con Turso/SQLite
  *
- * Reemplaza la versión anterior que usaba Firebase Admin SDK.
+ * Reemplaza la versión anterior que usaba Firestore (Firebase Admin SDK).
  * La lógica de autenticación HMAC-SHA256 es idéntica — no cambia nada
  * en el frontend ni en los demás endpoints.
  */
