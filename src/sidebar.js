@@ -49,7 +49,7 @@ window.SIDEBAR = (() => {
       </div>
 
       <div class="sidebar-mid">
-        ${currentUser ? '<div class="sb-forum-icon"><span class="material-icons">forum</span></div>' : ''}
+        ${currentUser && chats.length ? '<div class="sb-forum-icon"><span class="material-icons">forum</span></div>' : ''}
         ${currentUser ? '<span class="sb-section-title">' + t('sidebar_recent') + '</span>' : ''}
         ${buildChatsList()}
       </div>
@@ -263,7 +263,7 @@ window.SIDEBAR = (() => {
       // Si llamáramos a render() completo, se recrearía el elemento y el browser
       // resetearía scrollTop a 0 — perdiendo la posición del usuario.
       const newMidContent = `
-        ${currentUser ? '<div class="sb-forum-icon"><span class="material-icons">forum</span></div>' : ''}
+        ${currentUser && chats.length ? '<div class="sb-forum-icon"><span class="material-icons">forum</span></div>' : ''}
         ${currentUser ? '<span class="sb-section-title">' + t('sidebar_recent') + '</span>' : ''}
         ${buildChatsList()}
       `;
