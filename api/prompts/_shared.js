@@ -194,8 +194,7 @@ function buildReglasOperaciones() {
                        Use for: "rivers of Córdoba", "localities of Mendoza".
 
   "clip_exclude"     → inverse clip. Excludes what falls INSIDE the area, keeps what's outside.
-                       Use for: "ports outside Santa Cruz", "routes not passing through Catamarca",
-                       "all airports except those in Buenos Aires".
+                       Use for: "ports outside Santa Cruz", "all airports except those in Buenos Aires".
                        Uses clipArea the same way as "clip".
 
   "intersect"        → full features that touch the area, without clipping them.
@@ -210,17 +209,70 @@ function buildReglasOperaciones() {
                         Use for: "routes that do NOT pass through Catamarca", "rivers not crossing Chaco".
                         Uses intersectArea the same way as "intersect".
 
-  "buffer"           → influence area. Filters features within a radius around a point or polygon.
-                       Examples: "localities within 50km of Rosario", "airports within 100km of Córdoba".
+  "within_layer"     → features within a radius around a reference point or polygon.
+                       Examples: "localities within 50km of Rosario", "airports within 100km of Córdoba",
+                                 "routes within 30km of a river".
                        Instead of clipArea, use:
-                       "bufferArea": { "layerKey": "...", "field": "...", "value": "...", "distanceKm": 50 }
+                       "withinArea": { "layerKey": "...", "field": "...", "value": "..." }
+                       or for a coordinate point:
+                       "withinPoint": { "lat": -34.6, "lng": -58.4 }
+                       Always include: "withinDistance": <number in km>
+
+  "within_layer_exclude" → features MORE than X km away from the reference.
+                           Examples: "airports more than 300km from Buenos Aires".
+                           Same structure as within_layer.
+
+  "dissolve"         → merges features into a single polygon.
+                       Examples: "merge the Patagonian provinces", "combine all departments of Córdoba".
+                       Use a CQL filter (filtro) to dissolve a subset:
+                         "unite the provinces of NOA" → filtro: "nom_region='NOA'" (if field exists)
+                       Structure: { "op": "dissolve", "layerKey": "...", "filtro": "..." }
+                       No clipArea or area key needed — filtro handles the subset.
+
+  "dissolve_exclude" → merges features that fall OUTSIDE a given area.
+                       Examples: "unite all provinces except Patagonia".
+                       Structure: { "op": "dissolve_exclude", "layerKey": "...",
+                                    "dissolveArea": { "layerKey": "...", "field": "...", "value": "..." } }
+
+  "adjacent"         → features that share a border with the reference area.
+                       Examples: "provinces bordering Uruguay", "departments adjacent to Río Paraná",
+                                 "countries neighboring Argentina".
+                       Structure: { "op": "adjacent", "layerKey": "...",
+                                    "adjacentArea": { "layerKey": "...", "field": "...", "value": "..." } }
+
+  "adjacent_exclude" → features that do NOT share a border with the reference area.
+                       Examples: "provinces that do not border Chile".
+                       Same structure as adjacent.
+
+  "nearest"          → the N closest features to a reference point or area.
+                       Examples: "the 5 nearest airports to Mendoza", "the closest hospital to San Juan",
+                                 "the 3 nearest border crossings to Salta".
+                       Structure: { "op": "nearest", "layerKey": "...",
+                                    "nearestArea": { "layerKey": "...", "field": "...", "value": "..." },
+                                    "nearestCount": 1 }
+                       or with a coordinate point:
+                       { "op": "nearest", "layerKey": "...",
+                         "nearestPoint": { "lat": -32.9, "lng": -68.8 },
+                         "nearestCount": 3 }
+                       nearestCount defaults to 1 if not specified.
+
+  "nearest_exclude"  → the N farthest features from the reference.
+                       Examples: "the 3 municipalities farthest from Buenos Aires".
+                       Same structure as nearest.
 
 OPERATION SELECTION RULE:
-- "of", "in", "within" + area → "clip"
-- "outside", "except those in", "beyond" + area → "clip_exclude"
+- "of", "in", "within" + area (no distance) → "clip"
+- "outside", "except those in", "beyond" + area (no distance) → "clip_exclude"
 - "passing through", "crossing", "traversing" → "intersect"
 - "NOT passing through", "not crossing", "avoiding" → "intersect_exclude"
-- "within N km", "less than N km", "near" + distance → "buffer"
+- "within N km", "less than N km", "near" + distance → "within_layer"
+- "more than N km from", "farther than N km" → "within_layer_exclude"
+- "merge", "unite", "combine", "dissolve" → "dissolve"
+- "merge everything except", "all except" + dissolve verb → "dissolve_exclude"
+- "borders", "adjacent to", "shares border with" → "adjacent"
+- "does not border", "not adjacent to" → "adjacent_exclude"
+- "closest to", "nearest to", "the N nearest" → "nearest"
+- "farthest from", "most distant from", "the N farthest" → "nearest_exclude"
 - For line layers (routes, rivers) with area reference, prefer "intersect"/"intersect_exclude".
 
 INVERSE FILTER (without spatial operation):
@@ -253,8 +305,8 @@ QUERIES NOT POSSIBLE WITH THE CURRENT SYSTEM:
   - Simultaneous temporal comparison: "difference between current and historical boundaries"
 For these cases, explain the limitation and suggest the closest alternative.
 
-NOTE: Spatial intersection operations ("routes passing through X") and buffer areas
-("localities within N km of Y") ARE available — use op "intersect" and "buffer".`;
+NOTE: Spatial intersection operations ("routes passing through X") and proximity filters
+("localities within N km of Y") ARE available — use op "intersect" and "within_layer".`;
 }
 
 function buildReglasExport() {
