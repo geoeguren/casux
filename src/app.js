@@ -311,7 +311,7 @@ window.APP = (() => {
       }
     });
 
-    // Función interna para persistir currentPlan en Firestore.
+    // Función interna para persistir currentPlan en Turso.
     // Usa debounce de 1.5s para colapsar ráfagas de cambios rápidos
     // (drag de capas, sliders de estilo) en una sola escritura.
     // Llamadas con toastMsg siempre se ejecutan inmediatamente — son
@@ -347,7 +347,7 @@ window.APP = (() => {
       }, 1500);
     }
 
-    // Persistir preferencias del popup en Firestore
+    // Persistir preferencias del popup en Turso
     window.MAP.onPopupPrefsSave((prefs) => {
       const user   = window.AUTH?.currentUser();
       const chatId = window.CHAT?.getChatId?.();
@@ -642,7 +642,7 @@ window.APP = (() => {
       const inst = plan.instrucciones[i];
 
       // Saltear capas que ya fallaron en un intento anterior.
-      // _failed se persiste en Firestore para que no se reintenten al restaurar el chat.
+      // _failed se persiste en Turso para que no se reintenten al restaurar el chat.
       // El usuario puede volver a pedirlas explícitamente en el chat.
       if (inst._failed) {
         console.log(`[APP] Saltando capa fallida: ${inst.layerKey}`);
@@ -746,7 +746,7 @@ window.APP = (() => {
         // Marcar como fallida para no reintentar automáticamente
         inst._failed = true;
 
-        // Persistir el flag en Firestore
+        // Persistir el flag en Turso
         const plan2  = window.APP?.getCurrentPlan?.() || plan;
         const user   = window.AUTH?.currentUser();
         const chatId = window.CHAT?.getChatId?.();
