@@ -85,7 +85,6 @@ window.I18N_EN = {
   style_color:             'Color',
   style_opacity:           'Opacity',
   style_weight:            'Width',
-  style_dash:              'Line pattern',
   style_dash:              'Line style',
 
   // ── Popup ────────────────────────────────────────────────────
@@ -104,6 +103,7 @@ window.I18N_EN = {
   export_done_geojson:     'Vector layer (geojson) generated successfully.',
   export_area_too_large:   "The area you're trying to export is too large. Zoom in and try again.",
   export_jpeg_mobile_unsupported: 'Image (jpeg) export is not available on mobile devices. Use portable file (pdf) export or open Casux from a desktop browser.',
+  export_mobile_unsupported: 'Not available on mobile devices. Open Casux from a desktop browser to use this option.',
   export_error_jpeg:       'Error generating image (jpeg): {msg}.',
   export_error_pdf:        'Error generating portable file (pdf): {msg}.',
   export_pdf_too_many_features: 'The map has {n} features (max. {max} for pdf). Reduce active layers and try again.',
@@ -128,6 +128,7 @@ window.I18N_EN = {
   toast_n_many: 'Several',
   toast_auth_error:        'Authentication error: {msg}.',
   toast_cache_warning:     'No server connection. Using cached data.',
+  toast_snapshot_unfiltered: 'No server connection. Showing the full layer without active filters.',
   toast_server_unavailable: '{org} server is unavailable. Please try again in a few minutes.',
   toast_layer_fetch_error:  'Could not fetch "{typename}": {msg}.',
   toast_layer_truncated:    '{titulo} is too large to load without a filter. Try specifying a department or region.',
@@ -274,8 +275,7 @@ window.I18N_EN = {
   adv_border_color:        'Border color',
   adv_fill_color:          'Fill color',
   adv_color:               'Color',
-  adv_line_pattern:        'Line pattern',
-  adv_classes:             'Classes',
+  adv_line_pattern:        'Line style',
 
   // ── Style buttons ─────────────────────────────────────────────
   style_what_to_change:    'What would you like to change?',
