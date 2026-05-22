@@ -1329,7 +1329,7 @@ window.MAP = (() => {
   // style.shape     → 'circle' | 'square' (default: 'circle')
   // Sin icon ni shape → circleMarker (comportamiento original)
 
-  const MAKI_BASE = '/api/maki?icon=';
+  const MAKI_BASE = 'https://casux-maki.geoeguren.workers.dev/?icon=';
 
   // Caché en memoria: key → SVG string con fill reemplazado
   // Estructura: { iconKey: { svgRaw: '...', byColor: { '#fff': '<svg...>' } } }
