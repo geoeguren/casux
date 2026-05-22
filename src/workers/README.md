@@ -25,9 +25,13 @@ Guardar como `src/workers/turf.min.js`.
 
 ### Archivos
 
-| Worker | Operaciones Turf usadas |
-|--------|------------------------|
-| `clip-worker.js` | union, lineSplit, booleanPointInPolygon, intersect, area |
-| `intersect-worker.js` | booleanPointInPolygon, intersect |
-| `buffer-worker.js` | booleanPointInPolygon, intersect |
-| `classify-worker.js` | ninguna (no usa Turf) |
+| Worker | Operaciones | Turf usadas |
+|--------|-------------|-------------|
+| `clip-worker.js` | clip, clip_exclude | union, lineSplit, booleanPointInPolygon, intersect, area |
+| `intersect-worker.js` | intersect, intersect_exclude | booleanPointInPolygon, intersect |
+| `buffer-worker.js` | buffer, buffer_exclude (deprecado → within_layer) | booleanPointInPolygon, intersect |
+| `dissolve-worker.js` | dissolve, dissolve_exclude | union, booleanPointInPolygon |
+| `within_layer-worker.js` | within_layer, within_layer_exclude | booleanPointInPolygon, distance, centroid |
+| `adjacent-worker.js` | adjacent, adjacent_exclude | booleanTouches, intersect, booleanPointInPolygon |
+| `nearest-worker.js` | nearest, nearest_exclude | distance, centroid |
+| `classify-worker.js` | clasificación de features por campo | ninguna (no usa Turf) |
