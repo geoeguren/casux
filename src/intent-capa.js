@@ -14,8 +14,8 @@
  *        completo con filtros de atributo, área de clip/intersect/buffer.
  *
  *   3. Detección de operación espacial:
- *        Determinar si el usuario pide clip (contenido dentro de),
- *        intersect (features que atraviesan) o buffer (features a X km).
+ *        Determinar si el usuario pide clip, intersect, within_layer,
+ *        dissolve, adjacent o nearest.
  *
  * Notas de diseño:
  *   - detectarCapaDirecta es la versión sin guardia de historial,
@@ -46,48 +46,88 @@ window.INTENT_CAPA = (() => {
 
   // ── Detección de operación espacial ──────────────────────────
   //
-  // Dado el texto del usuario, determina qué operación espacial aplica:
+  // Dado el texto del usuario, determina qué operación espacial aplica.
+  // El orden de evaluación importa: los exclude SIEMPRE antes que los
+  // de inclusión para evitar falsos positivos por substring.
   //
-  //   'buffer'    → "a X km de", "cerca de", "dentro de X km"
-  //                 Genera un buffer alrededor del área de referencia.
-  //
-  //   'intersect' → "pasan por", "cruzan", "atraviesan"
-  //                 Devuelve features que tocan/cruzan el área.
-  //
-  //   'clip'      → (default) "de Córdoba", "en la provincia de..."
-  //                 Devuelve features contenidos dentro del área.
+  // Operaciones soportadas:
+  //   'within_layer'       → "a X km de", "cerca de", "dentro de X km"
+  //   'within_layer_exclude' → "a más de X km de", "lejos de"
+  //   'intersect'          → "pasan por", "cruzan", "atraviesan"
+  //   'intersect_exclude'  → "no pasan por", "evitan"
+  //   'clip_exclude'       → "fuera de", "excepto los de"
+  //   'dissolve'           → "uní", "juntá", "fusioná", "merge"
+  //   'dissolve_exclude'   → "uní todo menos", "todo excepto"
+  //   'adjacent'           → "limita con", "adyacente a", "comparte borde"
+  //   'adjacent_exclude'   → "no limita con", "no es adyacente"
+  //   'nearest'            → "más cercano a", "los N más cercanos"
+  //   'nearest_exclude'    → "más lejano de", "los N más distantes"
+  //   'clip'               → (default) "de Córdoba", "en la provincia de..."
 
   const PATRON_INTERSECT = /\b(pasan?\s+por|tocan?|atraviesan?|cruzan?|intersectan?|que\s+recorren?|que\s+bordean?|pass\s+(through|by)|cross(es)?|go\s+through|traverse|intersect|run\s+through|border|passam?\s+por|cruzam?|atravessam?|intersectam?|percorrem?|margeiam?)\b/;
-  const PATRON_BUFFER    = /\b(a\s+\d[\d.,]*\s*km|cerca\s+de|distancia\s+de|radio\s+de|a\s+menos\s+de|within\s+\d[\d.,]*\s*km|near|within\s+distance|less\s+than\s+\d[\d.,]*\s*km|around|close\s+to|a\s+\d[\d.,]*\s*km|perto\s+de|distância\s+de|raio\s+de|a\s+menos\s+de)\b/;
+
+  const PATRON_WITHIN    = /\b(a\s+\d[\d.,]*\s*km|cerca\s+de|distancia\s+de|radio\s+de|a\s+menos\s+de|within\s+\d[\d.,]*\s*km|near|within\s+distance|less\s+than\s+\d[\d.,]*\s*km|around|close\s+to|perto\s+de|distância\s+de|raio\s+de)\b/;
+
   const PATRON_DISTANCIA = /(\d[\d.,]*)\s*km/;
 
-  // Patrones de exclusión — se evalúan ANTES que los de inclusión para que
-  // "rutas que no pasan por Mendoza" no matchee primero el PATRON_INTERSECT.
-  // Capturan las tres variantes (ES, EN, PT) de cada operación inversa.
+  // dissolve: unir/fusionar features en uno solo
+  const PATRON_DISSOLVE = /\b(un[ií](r|los?|las?|se)?|junt[aá](r|los?|las?)?|combin[aá](r|los?|las?)?|fusion[aá](r|los?|las?)?|une\s+todas?|dissolve|merge|fundir|agrupa[r]?|merg[ei]|dissolver|combinar|fusionar)\b/i;
 
+  // dissolve_exclude: unir todo menos X — se evalúa ANTES que dissolve
+  const PATRON_DISSOLVE_EXCLUDE = /\b(un[ií](r|los?|las?)?\s+(todo|todas?|todos?)\s+(menos|excepto|salvo)|todo\s+excepto|todo\s+salvo|todos?\s+menos|merge\s+(all\s+)?(except|but)|dissolve\s+(all\s+)?(except|but)|combina[r]?\s+(todo\s+)?(menos|excepto)|juntar?\s+(todo\s+)?(menos|excepto))\b/i;
+
+  // adjacent: comparte borde/límite con un área
+  const PATRON_ADJACENT = /\b(adyacente|adyacentes?|limita\s+con|limitan\s+con|bordea\s+a?|bordean\s+a?|fronterizo\s+(con|a)|comparte\s+borde|comparten\s+borde|toca\s+a?|tocan\s+a?|adjacent|adjoins?|borders?|shares?\s+border|abuts?|côté|contiguos?)\b/i;
+
+  // adjacent_exclude — se evalúa ANTES que adjacent
+  const PATRON_ADJACENT_EXCLUDE = /\b(no\s+limita\s+con|no\s+limitan\s+con|no\s+es\s+adyacente|no\s+son\s+adyacentes?|no\s+bordea|no\s+bordan?|no\s+comparte\s+borde|not\s+adjacent|not\s+bordering|doesn'?t?\s+border|don'?t?\s+border|não\s+faz\s+fronteira|não\s+limita)\b/i;
+
+  // nearest: los N más cercanos / el más cercano a
+  const PATRON_NEAREST = /\b(m[aá]s\s+cercano|m[aá]s\s+pr[oó]ximo|los\s+\d+\s+m[aá]s\s+cercanos?|las\s+\d+\s+m[aá]s\s+cercanas?|nearest|closest|cerca\s+de\b|el\s+m[aá]s\s+cercano|la\s+m[aá]s\s+cercana|o\s+mais\s+pr[oó]ximo|os\s+\d+\s+mais\s+pr[oó]ximos?)\b/i;
+
+  // nearest_exclude: los N más lejanos — se evalúa ANTES que nearest
+  const PATRON_NEAREST_EXCLUDE = /\b(m[aá]s\s+lejano|m[aá]s\s+distante|los\s+\d+\s+m[aá]s\s+lejanos?|las\s+\d+\s+m[aá]s\s+lejanas?|furthest|farthest|most\s+distant|el\s+m[aá]s\s+lejano|la\s+m[aá]s\s+lejana|o\s+mais\s+distante|mais\s+afastado)\b/i;
+
+  // Patrones de exclusión de las ops clásicas
   const PATRON_CLIP_EXCLUDE = /\b(fuera\s+de|excepto\s+(los?|las?)\s+de|salvo\s+(los?|las?)\s+de|todos?\s+menos\s+(los?|las?)\s+de|que\s+no\s+est[aá]n?\s+en|outside(\s+of)?|except(\s+those)?\s+(in|from)|all\s+except|excluding|fora\s+de|exceto\s+(os?|as?)\s+de|salvo\s+(os?|as?)\s+de|todos?\s+exceto)\b/i;
 
   const PATRON_INTERSECT_EXCLUDE = /\b(no\s+pasan?\s+por|no\s+tocan?|no\s+atraviesan?|no\s+cruzan?|que\s+evitan?|que\s+no\s+recorren?|not\s+pass(ing)?\s+through|not\s+cross(ing)?|not\s+go(ing)?\s+through|avoid(ing)?|that\s+don'?t?\s+(pass|cross|go\s+through)|não\s+passam?\s+por|não\s+cruzam?|não\s+atravessam?|evitam?)\b/i;
 
-  const PATRON_BUFFER_EXCLUDE = /\b(a\s+m[aá]s\s+de\s+\d[\d.,]*\s*km|lejos\s+de|fuera\s+del?\s+radio|m[aá]s\s+de\s+\d[\d.,]*\s*km|more\s+than\s+\d[\d.,]*\s*km\s+(from|away)|outside\s+(a\s+)?\d[\d.,]*\s*km|far\s+(from|away)|beyond\s+\d[\d.,]*\s*km|a\s+mais\s+de\s+\d[\d.,]*\s*km|longe\s+de|fora\s+do\s+raio)\b/i;
+  const PATRON_WITHIN_EXCLUDE = /\b(a\s+m[aá]s\s+de\s+\d[\d.,]*\s*km|lejos\s+de|fuera\s+del?\s+radio|m[aá]s\s+de\s+\d[\d.,]*\s*km|more\s+than\s+\d[\d.,]*\s*km\s+(from|away)|outside\s+(a\s+)?\d[\d.,]*\s*km|far\s+(from|away)|beyond\s+\d[\d.,]*\s*km|a\s+mais\s+de\s+\d[\d.,]*\s*km|longe\s+de|fora\s+do\s+raio)\b/i;
 
   function detectarOpEspacial(textoNorm) {
-    // Los exclude se evalúan primero para evitar que los patrones
-    // de inclusión ganen por substring (ej: "no pasan por" contiene "pasan por").
-    if (PATRON_BUFFER_EXCLUDE.test(textoNorm))    return 'buffer_exclude';
-    if (PATRON_INTERSECT_EXCLUDE.test(textoNorm)) return 'intersect_exclude';
-    if (PATRON_CLIP_EXCLUDE.test(textoNorm))      return 'clip_exclude';
-    if (PATRON_BUFFER.test(textoNorm))            return 'buffer';
-    if (PATRON_INTERSECT.test(textoNorm))         return 'intersect';
+    // Exclude siempre antes que su par de inclusión para evitar falsos positivos.
+    if (PATRON_WITHIN_EXCLUDE.test(textoNorm))       return 'within_layer_exclude';
+    if (PATRON_INTERSECT_EXCLUDE.test(textoNorm))    return 'intersect_exclude';
+    if (PATRON_DISSOLVE_EXCLUDE.test(textoNorm))     return 'dissolve_exclude';
+    if (PATRON_ADJACENT_EXCLUDE.test(textoNorm))     return 'adjacent_exclude';
+    if (PATRON_NEAREST_EXCLUDE.test(textoNorm))      return 'nearest_exclude';
+    if (PATRON_CLIP_EXCLUDE.test(textoNorm))         return 'clip_exclude';
+    if (PATRON_WITHIN.test(textoNorm))               return 'within_layer';
+    if (PATRON_INTERSECT.test(textoNorm))            return 'intersect';
+    if (PATRON_DISSOLVE.test(textoNorm))             return 'dissolve';
+    if (PATRON_ADJACENT.test(textoNorm))             return 'adjacent';
+    if (PATRON_NEAREST.test(textoNorm))              return 'nearest';
     return 'clip';
   }
 
-  // Extrae la distancia en km del texto para operaciones de buffer.
+  // Extrae la distancia en km del texto para operaciones within_layer.
   // Si no se menciona distancia, devuelve 50 km como valor razonable por defecto.
   function extraerDistanciaKm(textoNorm) {
     const match = textoNorm.match(PATRON_DISTANCIA);
     if (!match) return 50;
     return parseFloat(match[1].replace(',', '.'));
+  }
+
+  // Extrae el número N de features para nearest ("los 5 más cercanos").
+  // Si no se menciona N, devuelve 1 (el más cercano).
+  function extraerNearestCount(textoNorm) {
+    const match = textoNorm.match(/\b(?:los?|las?|os?|as?)\s+(\d+)\s+m[aá]s\b/i)
+               || textoNorm.match(/\b(\d+)\s+m[aá]s\s+(?:cercanos?|pr[oó]ximos?|lejanos?|distantes?)\b/i)
+               || textoNorm.match(/\bthe\s+(\d+)\s+(?:nearest|closest|furthest|farthest)\b/i)
+               || textoNorm.match(/\b(\d+)\s+(?:nearest|closest|furthest|farthest)\b/i);
+    if (!match) return 1;
+    return parseInt(match[1], 10);
   }
 
   // ── _detectarFiltroAtributo ───────────────────────────────────
@@ -156,7 +196,8 @@ window.INTENT_CAPA = (() => {
   // de mapa para cargar y filtrar la capa.
   //
   // Estructura de la instrucción:
-  //   { layerKey, filtro, clipArea?, op?, bufferArea?, intersectArea?, descripcion }
+  //   { layerKey, filtro, clipArea?, op?, withinArea?, intersectArea?,
+  //     dissolveArea?, adjacentArea?, nearestArea?, nearestPoint?, descripcion }
   //
   // El campo `op` solo aparece cuando la operación no es 'clip' (default).
   // `filtro` puede estar vacío o contener CQL/SQL (atributo + área combinados).
@@ -210,16 +251,67 @@ window.INTENT_CAPA = (() => {
 
     const strategy = capa.clipStrategy;
 
-    // ── Buffer ────────────────────────────────────────────────────
-    if (op === 'buffer' || op === 'buffer_exclude') {
+    // ── Within layer / within_layer_exclude ──────────────────────
+    if (op === 'within_layer' || op === 'within_layer_exclude') {
       instruccion.op = op;
-      instruccion.bufferArea = {
+      instruccion.withinArea = {
         layerKey:   area.layerKey,
         field:      area.field,
         value:      area.valorOriginal,
-        distanceKm: extraerDistanciaKm(textoNorm),
       };
-      // Con buffer se busca por proximidad, no por pertenencia → limpiar filtro de atributo
+      instruccion.withinDistance = extraerDistanciaKm(textoNorm);
+      // Búsqueda por proximidad, no por pertenencia → limpiar filtro de atributo
+      instruccion.filtro = '';
+      return instruccion;
+    }
+
+    // ── Dissolve / dissolve_exclude ───────────────────────────────
+    //
+    // dissolve sin área: une todos los features de la capa (con filtro si aplica).
+    // dissolve_exclude: une los features que quedan FUERA del área.
+    //
+    // Nota: dissolve puede no necesitar área (ej: "uní todas las provincias
+    // patagónicas" → el filtro CQL lo maneja). Si el scorer detectó un área
+    // es porque el usuario la mencionó explícitamente.
+    if (op === 'dissolve') {
+      instruccion.op = 'dissolve';
+      // No se setea dissolveArea — el filtro CQL (si existe) es suficiente.
+      // Si hay área, la usamos como filtro de atributo cuando la capa lo soporte.
+      return instruccion;
+    }
+
+    if (op === 'dissolve_exclude') {
+      instruccion.op = 'dissolve_exclude';
+      instruccion.dissolveArea = {
+        layerKey: area.layerKey,
+        field:    area.field,
+        value:    area.valorOriginal,
+      };
+      instruccion.filtro = '';
+      return instruccion;
+    }
+
+    // ── Adjacent / adjacent_exclude ───────────────────────────────
+    if (op === 'adjacent' || op === 'adjacent_exclude') {
+      instruccion.op = op;
+      instruccion.adjacentArea = {
+        layerKey: area.layerKey,
+        field:    area.field,
+        value:    area.valorOriginal,
+      };
+      instruccion.filtro = '';
+      return instruccion;
+    }
+
+    // ── Nearest / nearest_exclude ────────────────────────────────
+    if (op === 'nearest' || op === 'nearest_exclude') {
+      instruccion.op = op;
+      instruccion.nearestArea = {
+        layerKey: area.layerKey,
+        field:    area.field,
+        value:    area.valorOriginal,
+      };
+      instruccion.nearestCount = extraerNearestCount(textoNorm);
       instruccion.filtro = '';
       return instruccion;
     }
