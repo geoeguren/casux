@@ -63,8 +63,13 @@ const SOURCES = {
 };
 
 // Capas con error conocido no recuperable del lado del servidor
+// ArcGIS "Error performing query operation" = restricción del servidor, no recuperable
 const SKIP_LIST = new Set([
-  'bosques_otbn_nacional_ar', // respuesta >500MB, rompe Node
+  'DGA_Decretos_Escasez_Hidrica_MapServer_0_cl',  // ArcGIS query error
+  'IDE_MOP_INFRA_MOP_ONEMI_MapServer_7_cl',        // ArcGIS query error
+  'MAPA_BASE_LIMITES_MapServer_0_cl',              // timeout recurrente
+  'MAPA_BASE_LIMITES_MapServer_1_cl',              // ArcGIS query error
+  'MAPA_BASE_LIMITES_MapServer_2_cl',              // ArcGIS query error
 ]);
 
 // ── Catálogo ──────────────────────────────────────────────────────
@@ -144,14 +149,26 @@ async function fetchWFS(source, typename, featureCount) {
   }
 
   // Paginación: fetch en páginas de WFS_PAGE_SIZE
-  const pages     = Math.ceil(featureCount / WFS_PAGE_SIZE);
-  const allFeats  = [];
+  // Si el servidor no soporta startIndex devuelve XML — en ese caso
+  // caemos a fetch directo sin paginación (algunos servidores WFS 1.1.0
+  // no implementan startIndex correctamente).
+  const pages    = Math.ceil(featureCount / WFS_PAGE_SIZE);
+  const allFeats = [];
 
   for (let i = 0; i < pages; i++) {
     const startIndex = i * WFS_PAGE_SIZE;
-    const page = await fetchWFSPage(src.wfsBase, src.wfsVersion, typename, startIndex, WFS_PAGE_SIZE);
+    let page;
+    try {
+      page = await fetchWFSPage(src.wfsBase, src.wfsVersion, typename, startIndex, WFS_PAGE_SIZE);
+    } catch (err) {
+      if (i === 0 && err.message.includes('XML')) {
+        // El servidor no soporta startIndex — fetch directo sin paginación
+        console.warn(`[WFS] ${typename}: startIndex no soportado, fetch directo`);
+        return fetchWFSPage(src.wfsBase, src.wfsVersion, typename, 0, featureCount + 1000);
+      }
+      throw err;
+    }
     allFeats.push(...page.features);
-    // Si el servidor devuelve menos features de los pedidos, terminamos
     if (page.features.length < WFS_PAGE_SIZE) break;
   }
 
