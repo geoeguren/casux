@@ -494,3 +494,8 @@ html.day .suggested-prompt-btn:hover {
   font-family: var(--font-sans);
 }
 body.day, html.day .mode-selector-label { color: #6a6560; }
+
+/* ── Prompts sugeridos — ocultos en móvil ────────────────────── */
+@media (max-width: 1024px) {
+  .suggested-prompts { display: none; }
+}
