@@ -4,7 +4,7 @@
  * Acepta dos formas de request:
  *
  *   Forma nueva (camino principal — el servidor busca los datos y genera el buffer):
- *     { typename, wfsBase, wfsVersion?, cqlFilter?,
+ *     { typename, wfsBase?, wfsVersion?, restBase?, cqlFilter?, whereClause?,
  *       bufferFeature: GeoJSON,   ← feature central (ej: punto de Rosario)
  *       distanceKm: number,
  *       exclude?: boolean }
@@ -15,12 +15,13 @@
  * exclude: false (default) → features DENTRO del área de influencia (buffer)
  * exclude: true            → features FUERA del área de influencia (buffer_exclude)
  *
- * Con exclude:false el servidor usa el bbox del círculo como pre-filtro WFS.
+ * Con exclude:false el servidor usa el bbox del círculo como pre-filtro WFS/REST.
  * Con exclude:true el bbox no se usa — se necesitan todos los features para
  * poder devolver los que quedan fuera.
  */
 
 const { fetchWFS } = require('./_wfs');
+const { fetchREST } = require('./_rest');
 const { checkOrigin } = require('./_cors');
 const { booleanPointInPolygon, intersect, union, turfBuffer, bbox: turfBbox } = require('./_turf');
 
@@ -93,7 +94,7 @@ module.exports = async function handler(req, res) {
 
   try {
 
-  const { layer, buffer, typename, wfsBase, wfsVersion, cqlFilter, bufferFeature, distanceKm, exclude } = req.body || {};
+  const { layer, buffer, typename, wfsBase, wfsVersion, restBase, whereClause, cqlFilter, bufferFeature, distanceKm, exclude } = req.body || {};
   const isExclude = !!exclude;
 
   // ── Resolver el polígono de área de influencia ────────────────
@@ -127,7 +128,11 @@ module.exports = async function handler(req, res) {
       const [minX, minY, maxX, maxY] = turfBbox(bufferPolygon);
       fetchBbox = { minX, minY, maxX, maxY };
     }
-    layerGeoJSON = await fetchWFS({ typename, wfsBase, wfsVersion, cqlFilter, bbox: fetchBbox });
+    if (restBase) {
+      layerGeoJSON = await fetchREST({ typename, restBase, whereClause, bbox: fetchBbox });
+    } else {
+      layerGeoJSON = await fetchWFS({ typename, wfsBase, wfsVersion, cqlFilter, bbox: fetchBbox });
+    }
   }
 
   const bufferFeatureResolved = bufferPolygon.features?.[0] || bufferPolygon;
