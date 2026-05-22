@@ -3,18 +3,18 @@
  *
  * POST /api/analytics  → registra un evento (requiere X-Analytics-Key)
  * GET  /api/analytics  → genera snapshot de métricas (requiere X-Cron-Key,
- *                        llamado por Vercel Cron Jobs cada 6 horas)
+ *                        llamado por Vercel Cron Jobs cada 24 horas)
  *
- * El snapshot se guarda en Firestore: metrics/{period} (7d, 30d, 90d, all)
- * api/metrics.js solo lee esos 4 documentos → 4 reads por request
- * en vez de recorrer toda la colección events.
+ * El snapshot se guarda en la tabla metrics_snapshots: una fila por period.
+ * api/metrics.js solo lee esas 4 filas → mínimas lecturas por request.
  *
- * Colección eventos: events/{autoId}
- * Cada documento tiene: event, userId, sessionId, ts, props
+ * Tabla eventos: events
+ * Cada fila tiene: event, user_id, session_id, ts, props (JSON)
  */
 
-const { getDb, FieldValue } = require('./_firebase');
-const { checkOrigin }       = require('./_cors');
+const crypto          = require('crypto');
+const { checkOrigin } = require('./_cors');
+const { getDb }       = require('./_turso');
 
 // ── Eventos permitidos ────────────────────────────────────────────
 
@@ -31,29 +31,31 @@ const ALLOWED_EVENTS = new Set([
 
 function getCutoff(period) {
   const now = Date.now();
-  if (period === '7d')  return new Date(now - 7  * 24 * 60 * 60 * 1000);
-  if (period === '30d') return new Date(now - 30 * 24 * 60 * 60 * 1000);
-  if (period === '90d') return new Date(now - 90 * 24 * 60 * 60 * 1000);
+  if (period === '7d')  return new Date(now - 7  * 24 * 60 * 60 * 1000).toISOString();
+  if (period === '30d') return new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
+  if (period === '90d') return new Date(now - 90 * 24 * 60 * 60 * 1000).toISOString();
   return null; // 'all'
 }
 
 function dateKey(ts) {
-  const d = ts?.toDate ? ts.toDate() : new Date(ts);
-  return d.toISOString().slice(0, 10);
+  return String(ts).slice(0, 10); // YYYY-MM-DD
 }
 
 async function computeMetrics(period) {
   const db     = getDb();
   const cutoff = getCutoff(period);
 
-  let query = db.collection('events');
-  if (cutoff) {
-    const { Timestamp } = require('firebase-admin/firestore');
-    query = query.where('ts', '>=', Timestamp.fromDate(cutoff));
-  }
+  const result = cutoff
+    ? await db.execute({ sql: `SELECT * FROM events WHERE ts >= ?`, args: [cutoff] })
+    : await db.execute({ sql: `SELECT * FROM events`, args: [] });
 
-  const snap = await query.get();
-  const docs  = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const docs = result.rows.map(r => ({
+    event:     r.event,
+    userId:    r.user_id,
+    sessionId: r.session_id,
+    ts:        r.ts,
+    props:     safeJson(r.props, {}),
+  }));
 
   const sessions      = new Set();
   const users         = new Set();
@@ -82,7 +84,7 @@ async function computeMetrics(period) {
   const sessionsPerDay = {};
 
   for (const doc of docs) {
-    const { event, userId, sessionId, ts, props = {} } = doc;
+    const { event, userId, sessionId, ts, props } = doc;
 
     if (sessionId) {
       sessions.add(sessionId);
@@ -182,7 +184,11 @@ async function generateSnapshots() {
   const periods = ['7d', '30d', '90d', 'all'];
   for (const period of periods) {
     const data = await computeMetrics(period);
-    await db.collection('metrics').doc(period).set(data);
+    await db.execute({
+      sql:  `INSERT OR REPLACE INTO metrics_snapshots (period, data, computed_at)
+             VALUES (?, ?, datetime('now'))`,
+      args: [period, JSON.stringify(data)],
+    });
   }
   return periods;
 }
@@ -225,12 +231,16 @@ module.exports = async function handler(req, res) {
 
   try {
     const db = getDb();
-    await db.collection('events').add({
-      event,
-      userId:    userId || 'anonymous',
-      sessionId: sessionId || null,
-      ts:        FieldValue.serverTimestamp(),
-      props,
+    await db.execute({
+      sql:  `INSERT INTO events (id, event, user_id, session_id, ts, props)
+             VALUES (?, ?, ?, ?, datetime('now'), ?)`,
+      args: [
+        crypto.randomUUID(),
+        event,
+        userId    || 'anonymous',
+        sessionId || null,
+        JSON.stringify(props),
+      ],
     });
     return res.status(200).json({ ok: true });
   } catch (err) {
@@ -238,3 +248,10 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 };
+
+// ── Helpers ───────────────────────────────────────────────────────
+
+function safeJson(val, fallback) {
+  if (!val) return fallback;
+  try { return JSON.parse(val); } catch { return fallback; }
+}
