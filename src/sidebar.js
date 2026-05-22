@@ -150,6 +150,18 @@ window.SIDEBAR = (() => {
       }
     });
 
+    // Click en el logo → en móvil colapsar sidebar antes de navegar
+    document.addEventListener('click', e => {
+      const logo = e.target.closest('.sb-logo');
+      if (!logo) return;
+      if (window.innerWidth <= 1024 && expanded) {
+        expanded = false;
+        localStorage.setItem(EXPANDED_KEY, 'false');
+        document.querySelectorAll('.sidebar').forEach(el => el.classList.remove('expanded'));
+        document.getElementById('screen-home')?.classList.remove('sidebar-expanded');
+      }
+    });
+
     // Doble click en el label del chat → activar input inline
     document.addEventListener('dblclick', e => {
       const item = e.target.closest('.sb-chat-item');
