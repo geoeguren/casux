@@ -148,7 +148,7 @@ function isSoonCountry(sourceKey) {
 }
 
 function buildCheckUrl(sourceKey) {
-  return `/api/status?health=${encodeURIComponent(sourceKey)}`;
+  return `https://casux-status.geoeguren.workers.dev/?health=${encodeURIComponent(sourceKey)}`;
 }
 
 async function checkSource(sourceKey) {
