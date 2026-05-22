@@ -365,6 +365,22 @@ window.SPATIAL = (() => {
 
   // ── Operación: buffer ─────────────────────────────────────────
 
+  // ── Operación: dissolve ──────────────────────────────────────
+
+  async function ejecutarDissolve(instruccion, layerDef, wfsOpts, cql) {
+    // dissolve sin área — une todos los features (con filtro si aplica vía cql)
+    return window._SPATIAL_DISSOLVE.ejecutar(instruccion, layerDef, wfsOpts, cql, null);
+  }
+
+  async function ejecutarDissolveExclude(instruccion, layerDef, wfsOpts, cql) {
+    const { dissolveArea } = instruccion;
+    if (!dissolveArea) {
+      throw new Error('[SPATIAL:dissolve_exclude] La instrucción no tiene dissolveArea.');
+    }
+    const maskFeature = await resolverAreaFeature(dissolveArea, 'dissolve_exclude');
+    return window._SPATIAL_DISSOLVE.ejecutar(instruccion, layerDef, wfsOpts, cql, maskFeature);
+  }
+
   async function ejecutarBuffer(instruccion, layerDef, wfsOpts, cql) {
     const { bufferArea } = instruccion;
 
@@ -462,6 +478,12 @@ window.SPATIAL = (() => {
       case 'buffer':
       case 'buffer_exclude':
         return ejecutarBuffer(instruccion, layerDef, wfsOpts, cql);
+
+      case 'dissolve':
+        return ejecutarDissolve(instruccion, layerDef, wfsOpts, cql);
+
+      case 'dissolve_exclude':
+        return ejecutarDissolveExclude(instruccion, layerDef, wfsOpts, cql);
 
       default:
         throw new Error(`[SPATIAL] Operación desconocida: "${op}"`);
