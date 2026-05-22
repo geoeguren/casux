@@ -11,7 +11,7 @@
 window.ANALYTICS = (() => {
 
   // Cargar configuración pública desde el servidor (una sola vez al inicio)
-  fetch('/api/config')
+  fetch('https://casux-config.geoeguren.workers.dev/')
     .then(r => r.json())
     .then(cfg => {
       window.__ANALYTICS_KEY__ = cfg.analyticsKey || '';
