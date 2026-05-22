@@ -28,7 +28,7 @@ window.AUTH = (() => {
   let _redirectUri  = REDIRECT_FALLBACK;
   let _appOrigin    = 'https://casux.vercel.app';
 
-  fetch('/api/config')
+  fetch('https://casux-config.geoeguren.workers.dev/')
     .then(r => r.json())
     .then(cfg => {
       if (cfg.redirectUri) _redirectUri = cfg.redirectUri;
