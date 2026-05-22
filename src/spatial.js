@@ -5,25 +5,71 @@
  * Reemplaza a src/clip.js y se expone como window.SPATIAL.
  *
  * Lee el campo `op` de la instrucción y delega al módulo correcto:
- *   'clip'      → src/spatial-clip.js      (recorte geométrico)
- *   'intersect' → src/spatial-intersect.js (features completas que tocan el área)
- *   'buffer'    → src/spatial-buffer.js    (área de influencia)
- *   undefined   → 'clip' por retrocompatibilidad (instrucciones de INTENT o LLM antiguo)
+ *
+ *   Operaciones existentes:
+ *   'clip'               → src/spatial-clip.js       (recorte geométrico dentro de un área)
+ *   'clip_exclude'       → src/spatial-clip.js       (recorte geométrico fuera de un área)
+ *   'intersect'          → src/spatial-intersect.js  (features completas que tocan el área)
+ *   'intersect_exclude'  → src/spatial-intersect.js  (features completas que NO tocan el área)
+ *   'buffer'             → src/spatial-buffer.js     (área de influencia — DEPRECADO, usar within_layer)
+ *   'buffer_exclude'     → src/spatial-buffer.js     (idem — DEPRECADO)
+ *   undefined            → 'clip' (retrocompatibilidad con instrucciones antiguas)
+ *
+ *   Operaciones nuevas:
+ *   'dissolve'           → src/spatial-dissolve.js   (une features en un único polígono)
+ *   'dissolve_exclude'   → src/spatial-dissolve.js   (une features fuera de un área)
+ *   'within_layer'       → src/spatial-within_layer.js (features a ≤ X km de referencia)
+ *   'within_layer_exclude' → src/spatial-within_layer.js (features a > X km)
+ *   'adjacent'           → src/spatial-adjacent.js   (features que comparten borde)
+ *   'adjacent_exclude'   → src/spatial-adjacent.js   (features que NO comparten borde)
+ *   'nearest'            → src/spatial-nearest.js    (los N features más cercanos)
+ *   'nearest_exclude'    → src/spatial-nearest.js    (los N más lejanos)
  *
  * Estructura de la instrucción según op:
  *
- *   clip / (sin op):
+ *   clip / clip_exclude / (sin op):
  *     { layerKey, filtro, clipArea: { layerKey, field, value } | null, descripcion }
  *
- *   intersect:
- *     { op: 'intersect', layerKey, filtro, intersectArea: { layerKey, field, value }, descripcion }
+ *   intersect / intersect_exclude:
+ *     { op, layerKey, filtro, intersectArea: { layerKey, field, value }, descripcion }
  *
- *   buffer:
- *     { op: 'buffer', layerKey, filtro, bufferArea: { layerKey, field, value, distanceKm }, descripcion }
+ *   buffer / buffer_exclude (DEPRECADO — usar within_layer):
+ *     { op, layerKey, filtro, bufferArea: { layerKey, field, value, distanceKm }, descripcion }
+ *
+ *   dissolve:
+ *     { op: 'dissolve', layerKey, filtro }
+ *     filtro (cqlFilter/whereClause) permite disolver un subconjunto:
+ *     ej: "une las provincias patagónicas" → filtro: "region='Patagonia'"
+ *
+ *   dissolve_exclude:
+ *     { op: 'dissolve_exclude', layerKey, filtro,
+ *       dissolveArea: { layerKey, field, value } }
+ *     → une los features que quedan FUERA del área
+ *
+ *   within_layer / within_layer_exclude:
+ *     { op, layerKey, filtro,
+ *       withinArea?: { layerKey, field?, value? },  ← capa/área de referencia
+ *       withinPoint?: { lat, lng },                  ← punto de referencia
+ *       withinDistance: number }                     ← km
+ *
+ *   adjacent / adjacent_exclude:
+ *     { op, layerKey, filtro,
+ *       adjacentArea: { layerKey, field, value } }
+ *
+ *   nearest / nearest_exclude:
+ *     { op, layerKey, filtro,
+ *       nearestArea?: { layerKey, field?, value? },
+ *       nearestPoint?: { lat, lng },
+ *       nearestCount?: number }                      ← default: 1
  *
  * Dependencias (deben cargarse antes en index.html):
  *   window.WFS, window.LAYERS, window.SOURCES, window.TOAST, window.t
+ *   window._SPATIAL_UTILS
  *   window._SPATIAL_CLIP, window._SPATIAL_INTERSECT, window._SPATIAL_BUFFER
+ *   window._SPATIAL_DISSOLVE
+ *   window._SPATIAL_WITHIN_LAYER (próximamente)
+ *   window._SPATIAL_ADJACENT     (próximamente)
+ *   window._SPATIAL_NEAREST      (próximamente)
  */
 
 window.SPATIAL = (() => {
@@ -365,6 +411,47 @@ window.SPATIAL = (() => {
 
   // ── Operación: buffer ─────────────────────────────────────────
 
+  // ── Operación: within_layer (absorbe buffer) ────────────────
+  //
+  // buffer y buffer_exclude se redirigen acá para retrocompatibilidad.
+  // La instrucción puede llegar con bufferArea.distanceKm (formato buffer antiguo)
+  // o con withinDistance (formato within_layer nuevo).
+
+  async function ejecutarWithinLayer(instruccion, layerDef, wfsOpts, cql) {
+    const { withinArea, withinPoint, refLayerKey } = instruccion;
+
+    // Resolver la referencia según el tipo
+    let areaFeature = null;
+
+    if (withinPoint) {
+      // Punto explícito — no hay feature que resolver
+      areaFeature = null;
+    } else if (refLayerKey) {
+      // Capa de referencia — fetchear y adjuntar al instruccion
+      const refLayerDef = window.LAYERS[refLayerKey];
+      if (!refLayerDef) throw new Error(`[SPATIAL:within_layer] Capa de referencia desconocida: "${refLayerKey}"`);
+      const refSource  = resolverFuente(refLayerDef, refLayerKey);
+      const refFetcher = fetcher(refSource);
+      const refWfsOpts = buildWfsOpts(refSource, refLayerDef);
+      const refGeoJSON = await refFetcher.fetch(refLayerDef.typename, refWfsOpts);
+      instruccion.refLayerGeoJSON = refGeoJSON;
+    } else if (withinArea) {
+      // Área/división administrativa
+      areaFeature = await resolverAreaFeature(withinArea, 'within_layer');
+    } else {
+      // Compatibilidad con buffer: bufferArea tiene { layerKey, field, value, distanceKm }
+      const bufferArea = instruccion.bufferArea;
+      if (bufferArea) {
+        instruccion.withinDistance = bufferArea.distanceKm;
+        if (bufferArea.layerKey) {
+          areaFeature = await resolverAreaFeature(bufferArea, 'within_layer');
+        }
+      }
+    }
+
+    return window._SPATIAL_WITHIN_LAYER.ejecutar(instruccion, layerDef, wfsOpts, cql, areaFeature);
+  }
+
   // ── Operación: dissolve ──────────────────────────────────────
 
   async function ejecutarDissolve(instruccion, layerDef, wfsOpts, cql) {
@@ -421,6 +508,33 @@ window.SPATIAL = (() => {
     return window._SPATIAL_INTERSECT.ejecutar(instruccion, layerDef, wfsOpts, cql, maskFeature);
   }
 
+  // ── Operación: adjacent ─────────────────────────────────────
+
+  async function ejecutarAdjacent(instruccion, layerDef, wfsOpts, cql) {
+    const { adjacentArea } = instruccion;
+    if (!adjacentArea) throw new Error('[SPATIAL:adjacent] La instrucción no tiene adjacentArea.');
+    const maskFeature = await resolverAreaFeature(adjacentArea, 'adjacent');
+    return window._SPATIAL_ADJACENT.ejecutar(instruccion, layerDef, wfsOpts, cql, maskFeature);
+  }
+
+  async function ejecutarAdjacentExclude(instruccion, layerDef, wfsOpts, cql) {
+    const { adjacentArea } = instruccion;
+    if (!adjacentArea) throw new Error('[SPATIAL:adjacent_exclude] La instrucción no tiene adjacentArea.');
+    const maskFeature = await resolverAreaFeature(adjacentArea, 'adjacent_exclude');
+    return window._SPATIAL_ADJACENT.ejecutar(instruccion, layerDef, wfsOpts, cql, maskFeature);
+  }
+
+  // ── Operación: nearest ────────────────────────────────────────
+
+  async function ejecutarNearest(instruccion, layerDef, wfsOpts, cql) {
+    const { nearestArea, nearestPoint } = instruccion;
+    let areaFeature = null;
+    if (nearestArea?.layerKey) {
+      areaFeature = await resolverAreaFeature(nearestArea, 'nearest');
+    }
+    return window._SPATIAL_NEAREST.ejecutar(instruccion, layerDef, wfsOpts, cql, areaFeature);
+  }
+
   // ── Punto de entrada principal ────────────────────────────────
 
   /**
@@ -475,15 +589,34 @@ window.SPATIAL = (() => {
       case 'intersect_exclude':
         return ejecutarIntersectExclude(instruccion, layerDef, wfsOpts, cql);
 
+      // buffer y buffer_exclude redirigen a within_layer (retrocompatibilidad)
       case 'buffer':
       case 'buffer_exclude':
-        return ejecutarBuffer(instruccion, layerDef, wfsOpts, cql);
+        instruccion = {
+          ...instruccion,
+          op: instruccion.op === 'buffer_exclude' ? 'within_layer_exclude' : 'within_layer',
+        };
+        return ejecutarWithinLayer(instruccion, layerDef, wfsOpts, cql);
 
       case 'dissolve':
         return ejecutarDissolve(instruccion, layerDef, wfsOpts, cql);
 
       case 'dissolve_exclude':
         return ejecutarDissolveExclude(instruccion, layerDef, wfsOpts, cql);
+
+      case 'within_layer':
+      case 'within_layer_exclude':
+        return ejecutarWithinLayer(instruccion, layerDef, wfsOpts, cql);
+
+      case 'adjacent':
+        return ejecutarAdjacent(instruccion, layerDef, wfsOpts, cql);
+
+      case 'adjacent_exclude':
+        return ejecutarAdjacentExclude(instruccion, layerDef, wfsOpts, cql);
+
+      case 'nearest':
+      case 'nearest_exclude':
+        return ejecutarNearest(instruccion, layerDef, wfsOpts, cql);
 
       default:
         throw new Error(`[SPATIAL] Operación desconocida: "${op}"`);
