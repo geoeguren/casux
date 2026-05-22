@@ -382,6 +382,36 @@ window.REST = (() => {
     }
   }
 
+  // ── Snapshot B2 ──────────────────────────────────────────────
+  // Intenta leer el snapshot pre-generado desde Backblaze B2.
+  // Solo cuando no hay whereClause (el snapshot tiene la capa completa).
+  // Si B2_PUBLIC_URL no está configurado, falla silenciosamente.
+
+  function b2SnapshotUrl(typename) {
+    const base = window.CASUX_CONFIG?.b2PublicUrl || '';
+    if (!base) return null;
+    const safe = typename.replace(/[\/\\]/g, '__');
+    return `${base.replace(/\/$/, '')}/mop_cl/${safe}.geojson`;
+  }
+
+  async function fetchFromB2(typename) {
+    const url = b2SnapshotUrl(typename);
+    if (!url) return null;
+    try {
+      const ctrl  = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 3000);
+      const resp  = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(timer);
+      if (!resp.ok) return null;
+      const geojson = await resp.json();
+      if (!geojson?.features) return null;
+      console.log(`[REST] Snapshot B2: ${typename} (${geojson.features.length} features)`);
+      return geojson;
+    } catch {
+      return null;
+    }
+  }
+
   // ── Fetch principal (interfaz idéntica a wfs.js) ──────────────
 
   async function fetchLayer(typename, options = {}) {
