@@ -1,4 +1,4 @@
-name: Refresh WFS Snapshots
+name: refresh wfs/rest snapshots
 
 on:
   schedule:
