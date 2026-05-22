@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "dependencies": {
-    "firebase-admin": "^12.0.0",
+    "@libsql/client": "^0.14.0",
     "@turf/boolean-point-in-polygon": "^6.5.0",
     "@turf/bbox": "^6.5.0",
     "@turf/buffer": "^6.5.0",
