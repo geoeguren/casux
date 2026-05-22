@@ -169,8 +169,18 @@ window._SPATIAL_UTILS = (() => {
     if (op === 'buffer_exclude')     return false;
     // dissolve siempre va al servidor — necesita union de Turf
     // dissolve_exclude también (necesita todos los features + unión)
-    if (op === 'dissolve')           return true;
-    if (op === 'dissolve_exclude')   return true;
+    if (op === 'dissolve')               return true;
+    if (op === 'dissolve_exclude')       return true;
+    // within_layer siempre va al servidor — buffer + filtrado más eficiente allá
+    // within_layer_exclude también (necesita todos los features)
+    if (op === 'within_layer')           return true;
+    if (op === 'within_layer_exclude')   return true;
+    // adjacent siempre va al servidor — booleanTouches requiere Turf server-side
+    if (op === 'adjacent')               return true;
+    if (op === 'adjacent_exclude')       return true;
+    // nearest siempre va al servidor — necesita todos los features para ordenar
+    if (op === 'nearest')                return true;
+    if (op === 'nearest_exclude')        return true;
     const fc = layerDef?.featureCount;
     if (fc !== undefined && fc <= EDGE_FN_UMBRAL) return false;
     return true;
