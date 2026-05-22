@@ -85,7 +85,6 @@ window.I18N_PT = {
   style_color:             'Cor',
   style_opacity:           'Opacidade',
   style_weight:            'Espessura',
-  style_dash:              'Padrão de linha',
   style_dash:              'Estilo de linha',
 
   // ── Popup ────────────────────────────────────────────────────
@@ -104,6 +103,7 @@ window.I18N_PT = {
   export_done_geojson:     'Camada vetorial (geojson) gerada com sucesso.',
   export_area_too_large:   "A área que você está tentando exportar é grande demais. Aproxime o zoom e tente novamente.",
   export_jpeg_mobile_unsupported: 'A exportação de imagem (jpeg) não está disponível em dispositivos móveis. Use a exportação de arquivo portátil (pdf) ou abra o Casux em um navegador de computador.',
+  export_mobile_unsupported: 'Não disponível em dispositivos móveis. Abra o Casux em um navegador de computador para usar esta opção.',
   export_error_jpeg:       'Erro ao gerar imagem (jpeg): {msg}.',
   export_error_pdf:        'Erro ao gerar arquivo portátil (pdf): {msg}.',
   export_pdf_too_many_features: 'O mapa tem {n} geometrias (máx. {max} para pdf). Reduza as camadas ativas e tente novamente.',
@@ -128,6 +128,7 @@ window.I18N_PT = {
   toast_n_many: 'Várias',
   toast_auth_error:        'Erro de autenticação: {msg}.',
   toast_cache_warning:     'Sem conexão ao servidor. Usando dados em cache.',
+  toast_snapshot_unfiltered: 'Sem conexão ao servidor. Exibindo a camada completa sem filtros aplicados.',
   toast_server_unavailable: 'O servidor de {org} está indisponível. Tente novamente em alguns minutos.',
   toast_layer_fetch_error:  'Não foi possível obter "{typename}": {msg}.',
   toast_layer_truncated:    '{titulo} é grande demais para carregar sem filtro. Tente especificar um departamento ou região.',
@@ -274,8 +275,7 @@ window.I18N_PT = {
   adv_border_color:        'Cor da borda',
   adv_fill_color:          'Cor do preenchimento',
   adv_color:               'Cor',
-  adv_line_pattern:        'Padrão de linha',
-  adv_classes:             'Classes',
+  adv_line_pattern:        'Estilo de linha',
 
   // ── Botões de estilo ──────────────────────────────────────────
   style_what_to_change:    'O que você quer mudar?',
