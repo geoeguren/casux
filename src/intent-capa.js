@@ -197,10 +197,28 @@ window.INTENT_CAPA = (() => {
   //
   // Estructura de la instrucción:
   //   { layerKey, filtro, clipArea?, op?, withinArea?, intersectArea?,
-  //     dissolveArea?, adjacentArea?, nearestArea?, nearestPoint?, descripcion }
+  //     dissolveArea?, adjacentArea?, nearestArea?, nearestPoint?,
+  //     refLayerKey?, descripcion }
   //
   // El campo `op` solo aparece cuando la operación no es 'clip' (default).
   // `filtro` puede estar vacío o contener CQL/SQL (atributo + área combinados).
+
+  // ── Helper: construir filtro de área para capas con geoFields ─
+  //
+  // Maneja tanto valorOriginal string como array (regiones).
+  //   Array  → campo IN ('v1','v2') / campo NOT IN ('v1','v2')
+  //   String → campo='v' / campo!='v'
+  function _buildFiltroArea(campo, valorOriginal, excluir) {
+    if (Array.isArray(valorOriginal)) {
+      const lista = valorOriginal.map(v => `'${v}'`).join(',');
+      return excluir
+        ? `${campo} NOT IN (${lista})`
+        : `${campo} IN (${lista})`;
+    }
+    return excluir
+      ? `${campo}!='${valorOriginal}'`
+      : `${campo}='${valorOriginal}'`;
+  }
 
   function construirInstruccion(layerKey, capa, area, textoOriginal) {
     const textoNorm   = normalizar(textoOriginal);
@@ -250,6 +268,7 @@ window.INTENT_CAPA = (() => {
     if (area.ambiguo || !area.valorOriginal) return instruccion;
 
     const strategy = capa.clipStrategy;
+    const isArcgis = window.SOURCES?.[capa.source]?.tipo === 'arcgis';
 
     // ── Within layer / within_layer_exclude ──────────────────────
     if (op === 'within_layer' || op === 'within_layer_exclude') {
@@ -267,16 +286,23 @@ window.INTENT_CAPA = (() => {
 
     // ── Dissolve / dissolve_exclude ───────────────────────────────
     //
-    // dissolve sin área: une todos los features de la capa (con filtro si aplica).
-    // dissolve_exclude: une los features que quedan FUERA del área.
-    //
-    // Nota: dissolve puede no necesitar área (ej: "uní todas las provincias
-    // patagónicas" → el filtro CQL lo maneja). Si el scorer detectó un área
-    // es porque el usuario la mencionó explícitamente.
+    // Paso C: dissolve con área y geoFields resuelto por intent.
+    // Si la capa tiene geoFields para el tipo del área detectada, se construye
+    // el filtro CQL directamente sin necesitar al LLM.
+    // Ej: "uní los departamentos de Córdoba"
+    //     → geoFields.provincia='nom_pcia' → filtro: nom_pcia='Córdoba'
+    // Con regiones (valorOriginal array):
+    //     → filtro: nom_pcia IN ('Neuquén','Río Negro',...)
     if (op === 'dissolve') {
       instruccion.op = 'dissolve';
-      // No se setea dissolveArea — el filtro CQL (si existe) es suficiente.
-      // Si hay área, la usamos como filtro de atributo cuando la capa lo soporte.
+      const campo = (capa.geoFields || {})[area.tipo];
+      if (campo) {
+        const filtroArea = _buildFiltroArea(campo, area.valorOriginal, false);
+        instruccion.filtro = instruccion.filtro
+          ? `${instruccion.filtro} AND ${filtroArea}`
+          : filtroArea;
+      }
+      // Sin geoFields para el tipo del área: dissolve sin filtro de área.
       return instruccion;
     }
 
@@ -320,12 +346,10 @@ window.INTENT_CAPA = (() => {
     if (op === 'intersect' || op === 'intersect_exclude') {
       if (strategy === 'attribute') {
         // Para capas de atributo, "pasa por" / "no pasa por" se resuelve con filtro CQL.
-        // intersect_exclude → NOT IN / != (más eficiente que clip geométrico inverso).
+        // Usa _buildFiltroArea para manejar correctamente arrays (regiones).
         const campo = (capa.geoFields || {})[area.tipo] || capa.clipField;
         if (campo) {
-          const filtroArea = op === 'intersect_exclude'
-            ? `${campo}!='${area.valorOriginal}'`
-            : `${campo}='${area.valorOriginal}'`;
+          const filtroArea = _buildFiltroArea(campo, area.valorOriginal, op === 'intersect_exclude');
           instruccion.filtro = instruccion.filtro
             ? `${instruccion.filtro} AND ${filtroArea}`
             : filtroArea;
@@ -344,12 +368,10 @@ window.INTENT_CAPA = (() => {
     // ── Clip / clip_exclude ───────────────────────────────────────
     if (strategy === 'attribute') {
       // Filtro por campo de atributo del WFS (más eficiente que clip geométrico).
-      // clip_exclude → NOT IN / != en lugar de = .
+      // Usa _buildFiltroArea para manejar correctamente arrays (regiones).
       const campo = (capa.geoFields || {})[area.tipo] || capa.clipField;
       if (campo) {
-        const filtroArea = op === 'clip_exclude'
-          ? `${campo}!='${area.valorOriginal}'`
-          : `${campo}='${area.valorOriginal}'`;
+        const filtroArea = _buildFiltroArea(campo, area.valorOriginal, op === 'clip_exclude');
         instruccion.filtro = instruccion.filtro
           ? `${instruccion.filtro} AND ${filtroArea}`
           : filtroArea;
@@ -357,12 +379,9 @@ window.INTENT_CAPA = (() => {
     } else if (strategy === 'spatial') {
       // Para fuentes ArcGIS REST con geoFields: filtro SQL (más eficiente).
       // Para WFS (IGN/IGM): clip espacial en el servidor.
-      const isArcgis = window.SOURCES?.[capa.source]?.tipo === 'arcgis';
       const campoGeo = isArcgis && (capa.geoFields || {})[area.tipo];
       if (campoGeo) {
-        const filtroArea = op === 'clip_exclude'
-          ? `${campoGeo}!='${area.valorOriginal}'`
-          : `${campoGeo}='${area.valorOriginal}'`;
+        const filtroArea = _buildFiltroArea(campoGeo, area.valorOriginal, op === 'clip_exclude');
         instruccion.filtro = instruccion.filtro
           ? `${instruccion.filtro} AND ${filtroArea}`
           : filtroArea;
@@ -388,18 +407,124 @@ window.INTENT_CAPA = (() => {
   // debe funcionar incluso si ya hubo conversación con el LLM.
   //
   // Flujo:
-  //   1. Guardias básicas (PATRON_NO_CAPA, PATRON_MULTIPLE).
+  //   1. Guardias básicas (PATRON_NO_CAPA, PATRON_MULTIPLE refinado).
   //   2. Detectar área y país explícito en el texto.
   //   3. Scorer → mejor capa.
   //   4. Guardia de país ambiguo.
   //   5. Construir instrucción.
 
+  // ── Paso D: _intentarResolverMultiple ─────────────────────────
+  //
+  // Si PATRON_MULTIPLE matcheó, intenta verificar si el "y"/"and"/"e" conecta
+  // dos o más áreas del mismo tipo en GEO_MAPS (ej: "rutas de Córdoba y Mendoza").
+  // En ese caso resuelve con un area.valorOriginal array en lugar de derivar al LLM.
+  //
+  // Solo actúa cuando:
+  //   a) Hay exactamente un conector (y/and/e/o) en el texto.
+  //   b) Las partes a ambos lados son áreas del mismo tipo y país.
+  //   c) El scorer puede identificar la capa a partir del texto sin las áreas.
+  //
+  // Devuelve el area modificada con valorOriginal:[v1,v2,...] o null si no puede resolver.
+
+  function _intentarResolverMultiple(textoNorm) {
+    // Splitear por conectores de lista: "y", "and", "e", comas + "y", etc.
+    // Separar el texto en candidatos: "Córdoba y Mendoza" → ['córdoba','mendoza']
+    const partes = textoNorm
+      .split(/\b(?:y|and|e|ou)\b/i)
+      .map(p => p.replace(/,\s*$/, '').trim())
+      .filter(p => p.length > 1);
+
+    if (partes.length < 2) return null;
+
+    // Intentar detectar área en cada parte por separado
+    const areas = partes.map(p => detectarArea(p)).filter(Boolean);
+
+    // Todos tienen que ser áreas no ambiguas del mismo tipo y país
+    if (areas.length < 2) return null;
+    if (areas.some(a => a.ambiguo)) return null;
+    if (new Set(areas.map(a => a.tipo)).size > 1) return null;
+    if (new Set(areas.map(a => a.pais)).size > 1) return null;
+
+    // Todas usan el mismo layerKey y field
+    if (new Set(areas.map(a => a.layerKey)).size > 1) return null;
+    if (new Set(areas.map(a => a.field)).size > 1) return null;
+
+    // Construir area combinada con valorOriginal como array
+    const valores = areas.map(a => a.valorOriginal);
+    return {
+      tipo:          areas[0].tipo,
+      nivel:         areas[0].nivel,
+      pais:          areas[0].pais,
+      // valorNorm: concatenar para el log (no se usa en filtros)
+      valorNorm:     areas.map(a => a.valorNorm).join(' y '),
+      ambiguo:       false,
+      valorOriginal: valores,
+      layerKey:      areas[0].layerKey,
+      field:         areas[0].field,
+    };
+  }
+
+  // ── Paso E: _detectarRefCapa ──────────────────────────────────
+  //
+  // Para within_layer y nearest: cuando detectarArea no encontró un área
+  // administrativa conocida, intenta identificar si la referencia es una
+  // capa del catálogo (ej: "aeropuertos a 100km de una ruta nacional").
+  //
+  // Estrategia:
+  //   1. Extraer el fragmento del texto DESPUÉS del separador de proximidad
+  //      ("a X km de", "cerca de", "más cercano a", etc.)
+  //   2. Scorear ese fragmento como si fuera una capa pedida.
+  //   3. Si el scorer devuelve un resultado con score suficiente → refLayerKey.
+  //
+  // Solo actúa cuando detectarArea devuelve null y la op es within_layer o nearest.
+  // Si falla, devuelve null y el flujo normal sigue (→ LLM).
+
+  const PATRON_SEPARADOR_PROX = /\b(?:a\s+[\d.,]+\s*km\s+de|cerca\s+de|distancia\s+de|radio\s+de|a\s+menos\s+de|within\s+[\d.,]+\s*km\s+of|near(?:est)?\s+(?:to\s+)?(?:a\s+)?|m[aá]s\s+cercano\s+a|m[aá]s\s+pr[oó]ximo\s+a|los\s+\d+\s+m[aá]s\s+cercanos?\s+a|closest\s+to|nearest\s+to)\b/i;
+
+  function _detectarRefCapa(textoNorm, op) {
+    if (!['within_layer','within_layer_exclude','nearest','nearest_exclude'].includes(op)) return null;
+
+    const match = textoNorm.match(PATRON_SEPARADOR_PROX);
+    if (!match) return null;
+
+    const idxFin      = match.index + match[0].length;
+    const fragmentoRef = textoNorm.slice(idxFin).trim();
+    if (fragmentoRef.length < 3) return null;
+
+    // Scorear el fragmento de referencia como capa
+    const resultadoRef = buscarCapa(fragmentoRef, null);
+    if (!resultadoRef) return null;
+
+    // El fragmento de la capa pedida está ANTES del separador
+    const fragmentoCapa = textoNorm.slice(0, match.index).trim();
+    if (fragmentoCapa.length < 3) return null;
+
+    // Scorear la capa pedida sobre el fragmento anterior al separador
+    // (quitando el layerKey de referencia para no contaminar)
+    const resultadoCapa = buscarCapa(fragmentoCapa, null);
+    if (!resultadoCapa) return null;
+
+    // No usar la misma capa como pedida y como referencia
+    if (resultadoCapa.key === resultadoRef.key) return null;
+
+    console.log(`[CAPA] Paso E: capa="${resultadoCapa.key}" refLayerKey="${resultadoRef.key}"`);
+    return { layerKey: resultadoCapa.key, capa: resultadoCapa.capa, refLayerKey: resultadoRef.key };
+  }
+
   function detectarCapaDirecta(textoUsuario) {
     if (PATRON_NO_CAPA.test(textoUsuario))  return null;
-    if (PATRON_MULTIPLE.test(textoUsuario)) return null;
 
     const textoNorm = normalizar(textoUsuario);
-    const area      = detectarArea(textoNorm);
+
+    // Paso D: si PATRON_MULTIPLE matchea, intentar resolver como array de áreas
+    // antes de derivar al LLM.
+    let areaMultiple = null;
+    if (PATRON_MULTIPLE.test(textoUsuario)) {
+      areaMultiple = _intentarResolverMultiple(textoNorm);
+      if (!areaMultiple) return null; // no se pudo resolver → LLM
+    }
+
+    const area = areaMultiple || detectarArea(textoNorm);
     if (area?.ambiguo) return null;
 
     const paises = buildPaisesMap();
@@ -416,6 +541,24 @@ window.INTENT_CAPA = (() => {
       if (!contextoAdmin.test(textoNorm)) areaFinal = { pais: paisExplicito };
     } else if (paisExplicito && !area) {
       areaFinal = { pais: paisExplicito };
+    }
+
+    // Paso E: si no hay área y la op es within_layer/nearest, intentar refLayerKey
+    const op = detectarOpEspacial(textoNorm);
+    if (!areaFinal?.valorOriginal && ['within_layer','within_layer_exclude','nearest','nearest_exclude'].includes(op)) {
+      const refResult = _detectarRefCapa(textoNorm, op);
+      if (refResult) {
+        const instruccion = construirInstruccion(refResult.layerKey, refResult.capa, null, textoUsuario);
+        instruccion.op          = op;
+        instruccion.refLayerKey = refResult.refLayerKey;
+        if (op === 'within_layer' || op === 'within_layer_exclude') {
+          instruccion.withinDistance = extraerDistanciaKm(textoNorm);
+        }
+        if (op === 'nearest' || op === 'nearest_exclude') {
+          instruccion.nearestCount = extraerNearestCount(textoNorm);
+        }
+        return { tipo: 'capa', parametros: { instruccion } };
+      }
     }
 
     const resultado = buscarCapa(textoNorm, areaFinal);
@@ -459,13 +602,21 @@ window.INTENT_CAPA = (() => {
       console.log(`[CAPA] → LLM | palabra excluida en: "${textoUsuario.slice(0, 60)}"`);
       return null;
     }
-    if (PATRON_MULTIPLE.test(textoUsuario)) {
-      console.log(`[CAPA] → LLM | pedido múltiple: "${textoUsuario.slice(0, 60)}"`);
-      return null;
-    }
 
     const textoNorm = normalizar(textoUsuario);
-    const area      = detectarArea(textoNorm);
+
+    // Paso D: si PATRON_MULTIPLE matchea, intentar resolver como array de áreas
+    // antes de derivar al LLM.
+    let areaMultiple = null;
+    if (PATRON_MULTIPLE.test(textoUsuario)) {
+      areaMultiple = _intentarResolverMultiple(textoNorm);
+      if (!areaMultiple) {
+        console.log(`[CAPA] → LLM | pedido múltiple no resolvible: "${textoUsuario.slice(0, 60)}"`);
+        return null;
+      }
+    }
+
+    const area = areaMultiple || detectarArea(textoNorm);
 
     if (area?.ambiguo) {
       console.log(`[CAPA] → LLM | área ambigua: "${area.valorNorm}" en ${area.candidatos?.length} unidades`);
@@ -484,6 +635,25 @@ window.INTENT_CAPA = (() => {
       if (!contextoAdmin.test(textoNorm)) areaFinal = { pais: paisExplicito };
     } else if (paisExplicito && !area) {
       areaFinal = { pais: paisExplicito };
+    }
+
+    // Paso E: si no hay área y la op es within_layer/nearest, intentar refLayerKey
+    const op = detectarOpEspacial(textoNorm);
+    if (!areaFinal?.valorOriginal && ['within_layer','within_layer_exclude','nearest','nearest_exclude'].includes(op)) {
+      const refResult = _detectarRefCapa(textoNorm, op);
+      if (refResult) {
+        const instruccion = construirInstruccion(refResult.layerKey, refResult.capa, null, textoUsuario);
+        instruccion.op          = op;
+        instruccion.refLayerKey = refResult.refLayerKey;
+        if (op === 'within_layer' || op === 'within_layer_exclude') {
+          instruccion.withinDistance = extraerDistanciaKm(textoNorm);
+        }
+        if (op === 'nearest' || op === 'nearest_exclude') {
+          instruccion.nearestCount = extraerNearestCount(textoNorm);
+        }
+        console.log(`[CAPA] ✓ ${refResult.layerKey} + refLayerKey=${refResult.refLayerKey} (score: ${refResult.capa ? 'ok' : '?'})`);
+        return { tipo: 'capa', parametros: { instruccion } };
+      }
     }
 
     const resultado = buscarCapa(textoNorm, areaFinal);
@@ -507,7 +677,7 @@ window.INTENT_CAPA = (() => {
     }
 
     const instruccion = construirInstruccion(resultado.key, resultado.capa, areaFinal, textoUsuario);
-    console.log(`[CAPA] ✓ ${resultado.key}${areaFinal?.valorOriginal ? ' + ' + areaFinal.valorOriginal : ''} (score: ${resultado.score.toFixed(2)})`);
+    console.log(`[CAPA] ✓ ${resultado.key}${areaFinal?.valorOriginal ? ' + ' + (Array.isArray(areaFinal.valorOriginal) ? areaFinal.valorOriginal.join(', ') : areaFinal.valorOriginal) : ''} (score: ${resultado.score.toFixed(2)})`);
     return { tipo: 'capa', parametros: { instruccion } };
   }
 
