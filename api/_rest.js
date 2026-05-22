@@ -120,6 +120,35 @@ async function _getServerPageSize(restBase, typename) {
   return 1000;
 }
 
+// Caché por restBase: true = soporta geojson, false = solo json (ArcGIS < 10.3)
+// Promise = verificación en curso (evita race condition en paginación paralela)
+const _geojsonSupport = new Map();
+
+async function _resolveGeoJSONSupport(restBase, typename) {
+  const cached = _geojsonSupport.get(restBase);
+  if (cached === true)           return true;
+  if (cached === false)          return false;
+  if (cached instanceof Promise) return cached;
+
+  let resolve;
+  const probe = new Promise(r => { resolve = r; });
+  _geojsonSupport.set(restBase, probe);
+
+  try {
+    const url  = buildUrl(restBase, typename, { where: '1=1', outFields: 'OBJECTID', outSR: '4326', resultOffset: 0, resultRecordCount: 1, f: 'geojson' });
+    const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    const supports = resp.status !== 400 && resp.ok;
+    _geojsonSupport.set(restBase, supports);
+    resolve(supports);
+    if (!supports) console.warn(`[_rest] ${restBase} no soporta f=geojson, usando f=json`);
+    return supports;
+  } catch {
+    _geojsonSupport.set(restBase, true);
+    resolve(true);
+    return true;
+  }
+}
+
 // ── Conversión Esri JSON → GeoJSON ───────────────────────────────────────────
 // Necesaria para ArcGIS Server < 10.3 que no soporta f=geojson.
 
@@ -163,35 +192,26 @@ async function fetchPage(restBase, typename, where, offset, recordCount = PAGE_S
     resultRecordCount: recordCount,
   };
 
-  // Intentar geojson si no sabemos que el servidor no lo soporta
-  const supportsGeoJSON = _geojsonSupport.get(restBase);
+  const supportsGeoJSON = await _resolveGeoJSONSupport(restBase, typename);
 
-  if (supportsGeoJSON !== false) {
+  if (supportsGeoJSON) {
     const url  = buildUrl(restBase, typename, { ...baseParams, f: 'geojson' });
     const resp = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
 
     if (resp.status === 502 || resp.status === 503 || resp.status === 504)
       throw new Error(`HTTP ${resp.status}`);
-
-    // 400 con geojson → servidor antiguo (< 10.3), marcar y reintentar con f=json
-    if (resp.status === 400) {
-      console.warn(`[_rest] ${restBase} no soporta f=geojson, reintentando con f=json`);
-      _geojsonSupport.set(restBase, false);
-    } else {
-      if (!resp.ok)
-        throw new Error(`HTTP ${resp.status} (sin reintentos)`);
-      const text = await resp.text();
-      let json;
-      try { json = JSON.parse(text); } catch {
-        throw new Error('Respuesta ArcGIS REST inválida (sin reintentos)');
-      }
-      if (json.error)
-        throw new Error(`ArcGIS error ${json.error.code}: ${json.error.message} (sin reintentos)`);
-      if (!Array.isArray(json.features))
-        throw new Error('Respuesta ArcGIS REST sin features (sin reintentos)');
-      _geojsonSupport.set(restBase, true);
-      return json;
+    if (!resp.ok)
+      throw new Error(`HTTP ${resp.status} (sin reintentos)`);
+    const text = await resp.text();
+    let json;
+    try { json = JSON.parse(text); } catch {
+      throw new Error('Respuesta ArcGIS REST inválida (sin reintentos)');
     }
+    if (json.error)
+      throw new Error(`ArcGIS error ${json.error.code}: ${json.error.message} (sin reintentos)`);
+    if (!Array.isArray(json.features))
+      throw new Error('Respuesta ArcGIS REST sin features (sin reintentos)');
+    return json;
   }
 
   // Fallback: f=json (Esri JSON) → convertir a GeoJSON
