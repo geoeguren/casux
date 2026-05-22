@@ -128,6 +128,7 @@ window.I18N_EN = {
   toast_n_many: 'Several',
   toast_auth_error:        'Authentication error: {msg}.',
   toast_cache_warning:     'No server connection. Using cached data.',
+  toast_snapshot_unfiltered: 'No server connection. Showing all layer records — the applied filter could not be executed.',
   toast_server_unavailable: '{org} server is unavailable. Please try again in a few minutes.',
   toast_layer_fetch_error:  'Could not fetch "{typename}": {msg}.',
   toast_layer_truncated:    '{titulo} is too large to load without a filter. Try specifying a department or region.',
