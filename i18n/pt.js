@@ -128,7 +128,6 @@ window.I18N_PT = {
   toast_n_many: 'Várias',
   toast_auth_error:        'Erro de autenticação: {msg}.',
   toast_cache_warning:     'Sem conexão ao servidor. Usando dados em cache.',
-  toast_snapshot_unfiltered: 'Sem conexão ao servidor. Exibindo todos os registros da camada — o filtro aplicado não pôde ser executado.',
   toast_server_unavailable: 'O servidor de {org} está indisponível. Tente novamente em alguns minutos.',
   toast_layer_fetch_error:  'Não foi possível obter "{typename}": {msg}.',
   toast_layer_truncated:    '{titulo} é grande demais para carregar sem filtro. Tente especificar um departamento ou região.',
@@ -138,6 +137,10 @@ window.I18N_PT = {
   toast_spatial_none:      '{titulo} não pode ser recortada. Exibindo completa.',
   toast_spatial_limit:     '{titulo} tem {n} elementos — exibindo completa sem recorte.',
   toast_spatial_fallback:  'O servidor demorou demais. Processando no dispositivo…',
+  toast_dissolve_empty: 'Nenhum elemento para unir com os filtros aplicados.',
+  toast_within_layer_empty: 'Nenhum elemento encontrado nessa distância.',
+  toast_adjacent_empty: 'Nenhum elemento adjacente encontrado.',
+  toast_nearest_empty: 'Nenhum elemento próximo encontrado.',
 
   // ── Sidebar / Auth ───────────────────────────────────────────
   toast_auth_login_error:  'Erro ao fazer login.',
