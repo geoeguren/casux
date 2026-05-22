@@ -44,9 +44,13 @@ window._SPATIAL_BUFFER = (() => {
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
         typename:      layerDef.typename,
-        wfsBase:       wfsOpts.wfsBase,
-        wfsVersion:    wfsOpts.wfsVersion,
-        cqlFilter:     cql || undefined,
+        // WFS
+        wfsBase:       wfsOpts.wfsBase    || undefined,
+        wfsVersion:    wfsOpts.wfsVersion || undefined,
+        cqlFilter:     !wfsOpts.restBase ? (cql || undefined) : undefined,
+        // REST
+        restBase:      wfsOpts.restBase   || undefined,
+        whereClause:   wfsOpts.restBase   ? (cql || undefined) : undefined,
         bufferFeature: areaFeature,
         distanceKm,
         exclude:       isExclude || undefined,
