@@ -125,7 +125,7 @@ module.exports = async function handler(req, res) {
 
   try {
 
-  const { layer, mask, maskInstructions, typename, wfsBase, wfsVersion, cqlFilter, bbox: bboxParam, exclude } = req.body || {};
+  const { layer, mask, maskInstructions, typename, wfsBase, wfsVersion, restBase, whereClause, cqlFilter, bbox: bboxParam, exclude } = req.body || {};
   const isExclude = !!exclude;
 
   if (!mask && !maskInstructions) return res.status(400).json({ error: 'Se requiere "mask" o "maskInstructions"' });
@@ -135,10 +135,11 @@ module.exports = async function handler(req, res) {
   // exactamente lo que queremos conservar, así que no lo usamos como pre-filtro.
   let layerGeoJSON = layer;
   if (!layerGeoJSON) {
-    layerGeoJSON = await fetchWFS({
-      typename, wfsBase, wfsVersion, cqlFilter,
-      bbox: isExclude ? undefined : bboxParam,
-    });
+    if (restBase) {
+      layerGeoJSON = await fetchREST({ typename, restBase, whereClause, bbox: isExclude ? undefined : bboxParam });
+    } else {
+      layerGeoJSON = await fetchWFS({ typename, wfsBase, wfsVersion, cqlFilter, bbox: isExclude ? undefined : bboxParam });
+    }
   }
 
   let maskFeatureRaw;
