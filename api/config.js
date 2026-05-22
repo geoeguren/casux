@@ -18,5 +18,6 @@ module.exports = async function handler(req, res) {
     analyticsKey: process.env.ANALYTICS_KEY || '',
     redirectUri:  process.env.REDIRECT_URI  || '',
     appOrigin:    process.env.APP_ORIGIN    || 'https://casux.vercel.app',
+    b2PublicUrl:  process.env.B2_PUBLIC_URL || '',
   });
 };
