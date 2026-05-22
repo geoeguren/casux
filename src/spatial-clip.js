@@ -45,6 +45,30 @@ window._SPATIAL_CLIP = (() => {
         };
       }
     }
+  // ── TODO: Migrar máscara al Camino A (maskInstructions) ────────────────
+  //
+  // HOY: el cliente resuelve el polígono de la máscara en el browser y lo
+  // manda completo como GeoJSON en el body del POST. Para provincias complejas
+  // (Buenos Aires, Santa Cruz) este polígono puede pesar varios MB y causar:
+  //   - HTTP 413 (body demasiado grande, límite 4.5MB de Vercel)
+  //   - Timeouts de procesamiento en el servidor (clip de líneas con 50.000+ vértices)
+  //
+  // WORKAROUND ACTIVO: el servidor simplifica la máscara en normalizarMascara()
+  // (_geo.js) con tolerancia ~1km antes de procesarla. Resuelve los timeouts
+  // pero no el 413 para polígonos muy grandes.
+  //
+  // SOLUCIÓN DEFINITIVA: mandar solo maskInstructions ({ layerKey, field, value })
+  // en lugar del GeoJSON completo, y que el servidor resuelva el polígono él mismo.
+  // Bloqueantes actuales:
+  //   1. El servidor solo soporta un value único — no arrays (múltiples provincias)
+  //   2. El servidor no tiene la lógica de búsqueda en cascada (6 intentos con
+  //      tildes/sin tildes) que tiene resolverAreaFeature() en spatial.js
+  //   3. El intent local resuelve la máscara antes de llamar a ejecutar() y
+  //      no pasa clipArea/intersectArea/bufferArea en la instrucción
+  //
+  // Cuando se resuelvan estos tres bloqueantes, eliminar el workaround de
+  // simplificación en _geo.js y este comentario.
+  // ──────────────────────────────────────────────────────────────────────────
     if (!maskPayload) {
       maskPayload = { mask: { type: 'FeatureCollection', features: [maskFeature] } };
     }
@@ -61,7 +85,7 @@ window._SPATIAL_CLIP = (() => {
         bbox:       isExclude ? undefined : bbox,
         ...maskPayload,
       }),
-      signal: AbortSignal.timeout(90000),
+      signal: AbortSignal.timeout(25000),
     });
     if (!resp.ok) throw new Error(`Edge Function HTTP ${resp.status}`);
     return resp.json();
