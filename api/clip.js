@@ -22,6 +22,7 @@
  */
 
 const { fetchWFS }                                 = require('./_wfs');
+const { fetchREST }                                = require('./_rest');
 const { checkOrigin }                              = require('./_cors');
 const { normalizarMascara, areaRing, areaFeature } = require('./_geo');
 const { booleanPointInPolygon, bbox, intersect, lineSplit } = require('./_turf');
