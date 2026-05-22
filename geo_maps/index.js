@@ -41,6 +41,16 @@ window.GEO_MAPS = {
       tipo:     'provincia',
       nivel:    2,
     },
+    // nivel 2: regiones informales de Argentina (agrupan provincias)
+    // Cada entrada tiene value:[...] con las provincias que componen la región.
+    // El scorer las prefiere sobre localidades (nivel 4) pero no sobre provincias
+    // cuando el hint de tipo dice 'provincia'.
+    regiones: {
+      valores:  AR_GEO_MAPS.regiones,
+      layerKey: 'provincia_ar',
+      tipo:     'region',
+      nivel:    2,
+    },
     // nivel 3: segunda subdivisión de Argentina (departamentos/partidos)
     departamentos: {
       valores:  AR_GEO_MAPS.departamentos,
@@ -73,6 +83,13 @@ window.GEO_MAPS = {
       tipo:     'departamento',
       nivel:    2,
     },
+    // nivel 2: regiones informales de Uruguay (agrupan departamentos)
+    regiones: {
+      valores:  UY_GEO_MAPS.regiones,
+      layerKey: 'departamentos_uy',
+      tipo:     'region',
+      nivel:    2,
+    },
     // nivel 3: municipios de Uruguay
     municipios: {
       valores:  UY_GEO_MAPS.municipios,
@@ -87,6 +104,13 @@ window.GEO_MAPS = {
       valores:  CL_GEO_MAPS.regiones,
       layerKey: 'MAPA_BASE_LIMITES_MapServer_0_cl',
       tipo:     'region',
+      nivel:    2,
+    },
+    // nivel 2: macroregiones informales de Chile (agrupan regiones)
+    macroregiones: {
+      valores:  CL_GEO_MAPS.macroregiones,
+      layerKey: 'MAPA_BASE_LIMITES_MapServer_0_cl',
+      tipo:     'macroregion',
       nivel:    2,
     },
     // nivel 3: comunas de Chile
