@@ -350,10 +350,10 @@ window.REST = (() => {
 
   const _inFlight = new Map();
 
-  // ── Snapshot B2 ──────────────────────────────────────────────
-  // Intenta leer el snapshot pre-generado desde Backblaze B2.
+  // ── Snapshot R2 ──────────────────────────────────────────────
+  // Intenta leer el snapshot pre-generado desde Cloudflare R2.
   // Solo cuando no hay whereClause (el snapshot tiene la capa completa).
-  // Si B2_PUBLIC_URL no está configurado, falla silenciosamente.
+  // Si b2PublicUrl no está configurado en CASUX_CONFIG, falla silenciosamente.
 
   function b2SnapshotUrl(typename) {
     const base = window.CASUX_CONFIG?.b2PublicUrl || '';
@@ -373,7 +373,7 @@ window.REST = (() => {
       if (!resp.ok) return null;
       const geojson = await resp.json();
       if (!geojson?.features) return null;
-      console.log(`[REST] Snapshot B2: ${typename} (${geojson.features.length} features)`);
+      console.log(`[REST] Snapshot R2: ${typename} (${geojson.features.length} features)`);
       return geojson;
     } catch {
       return null;
@@ -398,7 +398,7 @@ window.REST = (() => {
     const where = sanitizedWhere || '1=1';
     const key   = cacheKey(restBase, typename, where);
 
-    // 1. Snapshot B2 — solo cuando no hay filtro dinámico
+    // 1. Snapshot R2 — solo cuando no hay filtro dinámico
     const canUseSnapshot = !forceRefresh && where === '1=1';
     if (canUseSnapshot) {
       const snapshot = await fetchFromB2(typename);
@@ -418,7 +418,7 @@ window.REST = (() => {
       }
     }
 
-    // 3. Deduplicación
+    // 2. Deduplicación
     if (_inFlight.has(key)) {
       console.log(`[REST] Reutilizando fetch en vuelo: ${typename}`);
       return _inFlight.get(key);
