@@ -38,6 +38,20 @@ window._SPATIAL_BUFFER = (() => {
 
   // ── Edge Function ─────────────────────────────────────────────
 
+  // ── TODO: El bufferFeature (punto/área central) se manda como GeoJSON ──────
+  //
+  // A diferencia de clip/intersect, buffer no tiene el problema del 413 porque
+  // el bufferFeature es el punto o área DESDE el que se genera el radio, no la
+  // máscara de miles de vértices. El polígono complejo se genera en el servidor
+  // con @turf/buffer y siempre es un círculo — liviano por naturaleza.
+  //
+  // Sin embargo, cuando el buffer_exclude necesita todos los features de la capa,
+  // el servidor los procesa contra ese círculo. Ese procesamiento es rápido porque
+  // el círculo tiene pocos vértices (Turf genera ~64 segmentos).
+  //
+  // No hay deuda técnica urgente aquí, pero se documenta para consistencia con
+  // spatial-clip.js y spatial-intersect.js donde sí hay bloqueantes.
+  // ──────────────────────────────────────────────────────────────────────────
   async function bufferViaEdgeFunction(layerDef, wfsOpts, cql, areaFeature, distanceKm, isExclude) {
     const resp = await fetch(EDGE_FN_URL, {
       method:  'POST',
@@ -51,7 +65,7 @@ window._SPATIAL_BUFFER = (() => {
         distanceKm,
         exclude:       isExclude || undefined,
       }),
-      signal: AbortSignal.timeout(90000),
+      signal: AbortSignal.timeout(25000),
     });
     if (!resp.ok) throw new Error(`Edge Function HTTP ${resp.status}`);
     return resp.json();
