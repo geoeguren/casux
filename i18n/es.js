@@ -129,6 +129,7 @@ window.I18N_ES = {
   toast_n_many: 'Varias',
   toast_auth_error:        'Error de autenticación: {msg}.',
   toast_cache_warning:     'Sin conexión al servidor. Usando datos en caché.',
+  toast_snapshot_unfiltered: 'Sin conexión al servidor. Mostrando todos los registros de la capa — el filtro aplicado no pudo ejecutarse.',
   toast_server_unavailable: 'El servidor de {org} no está disponible. Intentá de nuevo en unos minutos.',
   toast_layer_fetch_error:  'No se pudo obtener "{typename}": {msg}.',
   toast_layer_truncated:    '{titulo} es demasiado grande para cargar sin filtro. Pedí un departamento o región específica.',
