@@ -285,20 +285,37 @@ Only use clip_exclude when the layer does NOT have geoFields for the requested a
 
 function buildReglasRegiones() {
   return `INFORMAL GEOGRAPHIC REGIONS:
-The catalog has provinces and departments, but not regions like Patagonia, NEA, NOA, Cuyo, Mesopotamia, Litoral, Puna, nor Uruguayan regions.
-When the user asks for an informal region:
-  1. Explain that you don't have that region as a geographic unit
-  2. Break it down into provinces/departments from the catalog
-  3. Offer to load them as a concrete alternative
+The catalog does not have informal regions (Patagonia, NOA, NEA, etc.) as single geographic units.
+However, the intent system can resolve them directly into province/department arrays — so you may
+receive instructions that already include value as an array (e.g. value: ["Neuquén","Río Negro",...]).
+When you need to generate the breakdown yourself, use the tables below and produce a single instruction
+with value as an array — never multiple instructions for the same layer.
 
-Breakdowns:
-  Patagonia → Neuquén, Río Negro, Chubut, Santa Cruz, Tierra del Fuego
-  NEA → Misiones, Corrientes, Entre Ríos, Chaco, Formosa
-  NOA → Jujuy, Salta, Tucumán, Santiago del Estero, Catamarca, La Rioja
-  Cuyo → Mendoza, San Juan, San Luis
-  Mesopotamia → Entre Ríos, Corrientes, Misiones
+ARGENTINA — informal regions (use exact province names from the catalog):
+  Patagonia     → Neuquén, Río Negro, Chubut, Santa Cruz, Tierra del Fuego, Antártida e Islas del Atlántico Sur
+  NOA           → Jujuy, Salta, Tucumán, Santiago del Estero, Catamarca, La Rioja
+  NEA           → Misiones, Corrientes, Entre Ríos, Chaco, Formosa
+  Cuyo          → Mendoza, San Juan, San Luis
+  Mesopotamia   → Entre Ríos, Corrientes, Misiones
+  Litoral       → Entre Ríos, Corrientes, Misiones, Chaco, Formosa, Santa Fe
+  Pampeana      → Buenos Aires, Córdoba, Santa Fe, La Pampa, Entre Ríos
+  Puna          → Jujuy, Salta, Catamarca
+  Centro        → Córdoba, Santa Fe, Entre Ríos
 
-If the user confirms, generate a single instruction with value as an array of provinces — not multiple instructions.
+URUGUAY — informal regions (use exact department names in UPPERCASE as in the catalog):
+  Sur           → MONTEVIDEO, CANELONES, MALDONADO, SAN JOSÉ, COLONIA, SORIANO, FLORES, FLORIDA
+  Norte         → ARTIGAS, RIVERA, SALTO, PAYSANDÚ, TACUAREMBÓ
+  Litoral       → SALTO, PAYSANDÚ, RÍO NEGRO, SORIANO, COLONIA
+  Este          → ROCHA, TREINTA Y TRES, CERRO LARGO, LAVALLEJA, MALDONADO
+  Centro        → DURAZNO, TACUAREMBÓ, FLORIDA, FLORES
+  Gran Montevideo / Metropolitana → MONTEVIDEO, CANELONES
+
+CHILE — macroregions (use exact region names in UPPERCASE as in the catalog):
+  Norte Grande  → ARICA Y PARINACOTA, TARAPACÁ, ANTOFAGASTA
+  Norte Chico   → ATACAMA, COQUIMBO
+  Zona Central  → VALPARAÍSO, METROPOLITANA DE SANTIAGO, LIBERTADOR GENERAL BERNARDO O'HIGGINS, MAULE
+  Sur           → ÑUBLE, BIOBÍO, LA ARAUCANÍA, LOS RÍOS, LOS LAGOS
+  Austral / Patagonia chilena → AISÉN DEL GENERAL CARLOS IBAÑEZ DEL CAMPO, MAGALLANES Y DE LA ANTÁRTICA CHILENA
 
 QUERIES NOT POSSIBLE WITH THE CURRENT SYSTEM:
   - Ranking by attribute: "largest provinces", "most populous cities"
@@ -306,7 +323,15 @@ QUERIES NOT POSSIBLE WITH THE CURRENT SYSTEM:
 For these cases, explain the limitation and suggest the closest alternative.
 
 NOTE: Spatial intersection operations ("routes passing through X") and proximity filters
-("localities within N km of Y") ARE available — use op "intersect" and "within_layer".`;
+("localities within N km of Y") ARE available — use op "intersect" and "within_layer".
+
+// TODO (deuda técnica): buildReglasRegiones() duplica datos que ya viven en
+// geo_maps/ar/regiones.js, geo_maps/uy/regiones.js y geo_maps/cl/macroregiones.js.
+// Si los valores del WFS cambian, hay que actualizarlos en ambos lugares.
+// Solución futura: extraer los diccionarios de regiones a un módulo compartido
+// (ej: geo_maps/regiones-shared.json o similar) que pueda ser importado tanto
+// por el cliente (ES module) como por el servidor (require/fs.readFileSync).
+// Esto eliminaría la redundancia sin cambiar la arquitectura de prompts.`;
 }
 
 function buildReglasExport() {
