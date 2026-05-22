@@ -5,65 +5,70 @@
  * GET /api/metrics?period=7d    → últimos 7 días
  * GET /api/metrics?period=all   → histórico completo
  *
+ * Estrategia de lectura:
+ *   1. Si existe un snapshot precalculado en metrics_snapshots → devolverlo (rápido)
+ *   2. Si no hay snapshot todavía → calcular en tiempo real desde la tabla events
+ *      (igual que hacía la versión original con Firestore)
+ *
  * Página pública — no requiere autenticación.
  * No expone PII — solo conteos y agregados.
  *
  * Métricas devueltas:
- *   - sessions:      total de sesiones únicas
- *   - users:         usuarios únicos (userId)
- *   - mapsGenerated: mapas generados
- *   - mapsExported:  mapas exportados
- *   - messages:      mensajes enviados
+ *   - sessions:        total de sesiones únicas
+ *   - users:           usuarios únicos (userId)
+ *   - mapsGenerated:   mapas generados
+ *   - mapsExported:    mapas exportados
+ *   - messages:        mensajes enviados
  *   - avgLayersPerMap: promedio de capas por mapa
  *   - avgMsToFirstMap: tiempo promedio hasta primer mapa (ms)
- *   - avgRefinements: promedio de mensajes de refinamiento por sesión
- *   - topLayers:     top 10 capas más usadas (layerKey → count)
- *   - byLanguage:    distribución por idioma
- *   - byDevice:      % mobile vs desktop
- *   - mapsPerDay:    serie temporal de mapas por día (últimos 30d)
- *   - sessionsPerDay: serie temporal de sesiones por día (últimos 30d)
+ *   - avgRefinements:  promedio de mensajes de refinamiento por sesión
+ *   - topLayers:       top 10 capas más usadas (layerKey → count)
+ *   - byLanguage:      distribución por idioma
+ *   - byDevice:        % mobile vs desktop
+ *   - mapsPerDay:      serie temporal de mapas por día (últimos 30d)
+ *   - sessionsPerDay:  serie temporal de sesiones por día (últimos 30d)
  *   - sessionToMapRate: % de sesiones que generaron al menos un mapa
- *
- * Métricas implementadas en esta versión:
- *   - byQueryType:  distribución por tipo de operación (clip, intersect, buffer...)
- *   - byUserType:   anónimo vs registrado
- *   - bySource:     distribución por país de fuente (ar, uy, cl...)
+ *   - byQueryType:     distribución por tipo de operación (clip, intersect, buffer...)
+ *   - byUserType:      anónimo vs registrado
+ *   - bySource:        distribución por país de fuente (ar, uy, cl...)
  */
 
-const { getDb } = require('./_firebase');
 const { checkOrigin } = require('./_cors');
+const { getDb }       = require('./_turso');
 
-// Caché en memoria — evita leer Firestore en cada request de la página
+// Caché en memoria — evita leer la DB en cada request de la página
 // TTL de 5 minutos: las métricas no necesitan ser en tiempo real
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const _cache = {};
 
 function getCutoff(period) {
   const now = Date.now();
-  if (period === '7d')  return new Date(now - 7  * 24 * 60 * 60 * 1000);
-  if (period === '30d') return new Date(now - 30 * 24 * 60 * 60 * 1000);
-  if (period === '90d') return new Date(now - 90 * 24 * 60 * 60 * 1000);
+  if (period === '7d')  return new Date(now - 7  * 24 * 60 * 60 * 1000).toISOString();
+  if (period === '30d') return new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
+  if (period === '90d') return new Date(now - 90 * 24 * 60 * 60 * 1000).toISOString();
   return null; // 'all'
 }
 
 function dateKey(ts) {
-  // YYYY-MM-DD en UTC
-  const d = ts?.toDate ? ts.toDate() : new Date(ts);
-  return d.toISOString().slice(0, 10);
+  // YYYY-MM-DD — ts ya es un string ISO en SQLite
+  return String(ts).slice(0, 10);
 }
 
 async function computeMetrics(period) {
   const db     = getDb();
   const cutoff = getCutoff(period);
 
-  let query = db.collection('events');
-  if (cutoff) {
-    const { Timestamp } = require('firebase-admin/firestore');
-    query = query.where('ts', '>=', Timestamp.fromDate(cutoff));
-  }
+  const result = cutoff
+    ? await db.execute({ sql: `SELECT * FROM events WHERE ts >= ?`, args: [cutoff] })
+    : await db.execute({ sql: `SELECT * FROM events`, args: [] });
 
-  const snap = await query.get();
-  const docs  = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const docs = result.rows.map(r => ({
+    event:     r.event,
+    userId:    r.user_id,
+    sessionId: r.session_id,
+    ts:        r.ts,
+    props:     safeJson(r.props, {}),
+  }));
 
   // ── Acumuladores ───────────────────────────────────────────────
 
@@ -72,23 +77,23 @@ async function computeMetrics(period) {
   const sessionDates  = {}; // sessionId → fecha del primer evento
   const sessionHasMap = new Set(); // sessionIds que generaron mapa
 
-  let mapsGenerated  = 0;
-  let mapsExported   = 0;
-  let messages       = 0;
-  let totalLayers    = 0;
-  let mapLayerCount  = 0; // cuántos maps aportaron layerCount
-  let totalMsToFirst = 0;
-  let msToFirstCount = 0;
+  let mapsGenerated       = 0;
+  let mapsExported        = 0;
+  let messages            = 0;
+  let totalLayers         = 0;
+  let mapLayerCount       = 0; // cuántos maps aportaron layerCount
+  let totalMsToFirst      = 0;
+  let msToFirstCount      = 0;
   let totalRefinements    = 0;
   let refinementsCount    = 0;
 
-  const layerCounts   = {}; // layerKey → count
-  const langCounts    = {}; // language → count
+  const layerCounts     = {}; // layerKey → count
+  const langCounts      = {}; // language → count
   const queryTypeCounts = {}; // op → count
-  const sourceCounts  = {}; // country → count
-  const userTypeCounts = { anon: 0, registered: 0 };
-  let   mobileCount   = 0;
-  let   desktopCount  = 0;
+  const sourceCounts    = {}; // country → count
+  const userTypeCounts  = { anon: 0, registered: 0 };
+  let   mobileCount     = 0;
+  let   desktopCount    = 0;
 
   const mapsPerDay     = {}; // YYYY-MM-DD → count
   const sessionsPerDay = {}; // YYYY-MM-DD → Set de sessionIds
@@ -96,7 +101,7 @@ async function computeMetrics(period) {
   // ── Procesar eventos ───────────────────────────────────────────
 
   for (const doc of docs) {
-    const { event, userId, sessionId, ts, props = {} } = doc;
+    const { event, userId, sessionId, ts, props } = doc;
 
     if (sessionId) {
       sessions.add(sessionId);
@@ -240,21 +245,42 @@ module.exports = async function handler(req, res) {
     : '30d';
 
   // Caché en memoria
-  const cacheKey = period;
-  const cached   = _cache[cacheKey];
+  const cached = _cache[period];
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
     res.setHeader('X-Cache', 'HIT');
     return res.status(200).json(cached.data);
   }
 
   try {
-    const data = await computeMetrics(period);
-    _cache[cacheKey] = { ts: Date.now(), data };
+    const db     = getDb();
+    const result = await db.execute({
+      sql:  `SELECT data FROM metrics_snapshots WHERE period = ?`,
+      args: [period],
+    });
+
+    let data;
+    if (result.rows.length) {
+      // Snapshot disponible — camino rápido
+      data = JSON.parse(result.rows[0].data);
+    } else {
+      // Sin snapshot todavía — calcular en tiempo real igual que antes
+      data = await computeMetrics(period);
+    }
+
+    _cache[period] = { ts: Date.now(), data };
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Cache', 'MISS');
     return res.status(200).json(data);
+
   } catch (err) {
     console.error('[api/metrics]', err.message);
     return res.status(500).json({ error: err.message });
   }
 };
+
+// ── Helpers ───────────────────────────────────────────────────────
+
+function safeJson(val, fallback) {
+  if (!val) return fallback;
+  try { return JSON.parse(val); } catch { return fallback; }
+}
