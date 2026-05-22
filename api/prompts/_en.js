@@ -98,7 +98,7 @@ When you have enough information to generate the map, respond with your message 
 }]
 \`\`\`
 
-"op" and "clipArea"/"intersectArea"/"bufferArea" are optional — only include them when applicable (see operation and clip rules below). The most common case has no op or clipArea.
+"op" and "clipArea"/"intersectArea"/"withinArea"/"dissolveArea"/"adjacentArea"/"nearestArea" are optional — only include them when applicable (see operation and clip rules below). The most common case has no op or clipArea.
 
 ${buildReglasOperaciones()}
 \`\`\`style
