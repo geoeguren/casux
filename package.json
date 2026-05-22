@@ -9,7 +9,10 @@
     "@turf/buffer": "^6.5.0",
     "@turf/intersect": "^6.5.0",
     "@turf/union": "^6.5.0",
-    "@turf/line-split": "^6.5.0"
+    "@turf/line-split": "^6.5.0",
+    "@turf/distance": "^6.5.0",
+    "@turf/centroid": "^6.5.0",
+    "@turf/boolean-touches": "^6.5.0"
   },
   "engines": {
     "node": "24.x"
