@@ -120,6 +120,38 @@ async function _getServerPageSize(restBase, typename) {
   return 1000;
 }
 
+// ── Conversión Esri JSON → GeoJSON ───────────────────────────────────────────
+// Necesaria para ArcGIS Server < 10.3 que no soporta f=geojson.
+
+function esriGeomToGeoJSON(esriGeom, geomType) {
+  if (!esriGeom) return null;
+  if (geomType === 'esriGeometryPoint')
+    return { type: 'Point', coordinates: [esriGeom.x, esriGeom.y] };
+  if (geomType === 'esriGeometryPolyline') {
+    const paths = esriGeom.paths || [];
+    return paths.length === 1
+      ? { type: 'LineString',      coordinates: paths[0] }
+      : { type: 'MultiLineString', coordinates: paths };
+  }
+  if (geomType === 'esriGeometryPolygon') {
+    const rings = esriGeom.rings || [];
+    return rings.length === 1
+      ? { type: 'Polygon',      coordinates: rings }
+      : { type: 'MultiPolygon', coordinates: rings.map(r => [r]) };
+  }
+  return null;
+}
+
+function esriResponseToGeoJSON(json) {
+  const geomType = json.geometryType;
+  const features = (json.features || []).map(f => ({
+    type:       'Feature',
+    geometry:   esriGeomToGeoJSON(f.geometry, geomType),
+    properties: f.attributes || {},
+  }));
+  return { type: 'FeatureCollection', features, exceededTransferLimit: json.exceededTransferLimit || false };
+}
+
 // ── Fetch de una página ───────────────────────────────────────────
 
 async function fetchPage(restBase, typename, where, offset, recordCount = PAGE_SIZE) {
@@ -129,10 +161,41 @@ async function fetchPage(restBase, typename, where, offset, recordCount = PAGE_S
     outSR:             '4326',
     resultOffset:      offset,
     resultRecordCount: recordCount,
-    f:                 'geojson',
   };
 
-  const url  = buildUrl(restBase, typename, baseParams);
+  // Intentar geojson si no sabemos que el servidor no lo soporta
+  const supportsGeoJSON = _geojsonSupport.get(restBase);
+
+  if (supportsGeoJSON !== false) {
+    const url  = buildUrl(restBase, typename, { ...baseParams, f: 'geojson' });
+    const resp = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+
+    if (resp.status === 502 || resp.status === 503 || resp.status === 504)
+      throw new Error(`HTTP ${resp.status}`);
+
+    // 400 con geojson → servidor antiguo (< 10.3), marcar y reintentar con f=json
+    if (resp.status === 400) {
+      console.warn(`[_rest] ${restBase} no soporta f=geojson, reintentando con f=json`);
+      _geojsonSupport.set(restBase, false);
+    } else {
+      if (!resp.ok)
+        throw new Error(`HTTP ${resp.status} (sin reintentos)`);
+      const text = await resp.text();
+      let json;
+      try { json = JSON.parse(text); } catch {
+        throw new Error('Respuesta ArcGIS REST inválida (sin reintentos)');
+      }
+      if (json.error)
+        throw new Error(`ArcGIS error ${json.error.code}: ${json.error.message} (sin reintentos)`);
+      if (!Array.isArray(json.features))
+        throw new Error('Respuesta ArcGIS REST sin features (sin reintentos)');
+      _geojsonSupport.set(restBase, true);
+      return json;
+    }
+  }
+
+  // Fallback: f=json (Esri JSON) → convertir a GeoJSON
+  const url  = buildUrl(restBase, typename, { ...baseParams, f: 'json' });
   const resp = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
 
   if (resp.status === 502 || resp.status === 503 || resp.status === 504)
@@ -150,7 +213,7 @@ async function fetchPage(restBase, typename, where, offset, recordCount = PAGE_S
   if (!Array.isArray(json.features))
     throw new Error('Respuesta ArcGIS REST sin features (sin reintentos)');
 
-  return json;
+  return esriResponseToGeoJSON(json);
 }
 
 // ── Fetch con paginación paralela → secuencial ───────────────────
