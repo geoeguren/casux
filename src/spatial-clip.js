@@ -53,12 +53,16 @@ window._SPATIAL_CLIP = (() => {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
-        exclude:    isExclude,
-        typename:   layerDef.typename,
-        wfsBase:    wfsOpts.wfsBase,
-        wfsVersion: wfsOpts.wfsVersion,
-        cqlFilter:  cql || undefined,
-        bbox:       isExclude ? undefined : bbox,
+        exclude:      isExclude,
+        typename:     layerDef.typename,
+        // WFS
+        wfsBase:      wfsOpts.wfsBase    || undefined,
+        wfsVersion:   wfsOpts.wfsVersion || undefined,
+        cqlFilter:    !wfsOpts.restBase ? (cql || undefined) : undefined,
+        // REST
+        restBase:     wfsOpts.restBase   || undefined,
+        whereClause:  wfsOpts.restBase   ? (cql || undefined) : undefined,
+        bbox:         isExclude ? undefined : bbox,
         ...maskPayload,
       }),
       signal: AbortSignal.timeout(25000),
@@ -203,7 +207,7 @@ window._SPATIAL_CLIP = (() => {
       }
     } else {
       if (isArcgis) {
-        console.log('[SPATIAL:clip] Fuente ArcGIS REST — procesando en cliente directamente.');
+        console.log(`[SPATIAL:clip] Capa pequeña ArcGIS REST (${layerDef.featureCount ?? '?'} features) — procesando en cliente directamente.`);
       } else if (isExclude) {
         console.log(`[SPATIAL:clip] clip_exclude — fetch directo sin bbox (${layerDef.featureCount ?? '?'} features esperados).`);
       } else {
