@@ -4,15 +4,15 @@
  * El prefijo _ impide que Vercel lo exponga como endpoint HTTP.
  * Importado por api/clip.js, api/intersect.js y api/buffer.js.
  *
- * Flujo con cache B2:
- *   1. Si existe snapshot en Backblaze B2 → devolverlo directamente
+ * Flujo con cache R2:
+ *   1. Si existe snapshot en Cloudflare R2 → devolverlo directamente
  *   2. Si no → fetchear el WFS externo como siempre
  *
  * El snapshot se genera por scripts/generate-snapshots.js (cron mensual).
  * La key en B2 es: {source}/{typename}.geojson
  * Ej: ign_ar/ign:provincia.geojson
  *
- * Si B2 no está configurado (variables de entorno ausentes), el cache
+ * Si B2_PUBLIC_URL no está configurado (variables de entorno ausentes), el cache
  * se omite silenciosamente y el fetch WFS funciona como antes.
  *
  * Timeout WFS: 7 segundos (3s de margen para procesamiento posterior).
@@ -20,7 +20,7 @@
 
 const FETCH_TIMEOUT_MS = 7000;
 
-// Mapa host → fuente B2 y campo de geometría.
+// Mapa host → fuente R2 y campo de geometría.
 // También actúa como whitelist SSRF — hosts no listados son rechazados.
 const HOST_META = {
   'wms.ign.gob.ar':               { source: 'ign_ar',  geomField: 'the_geom' },
@@ -39,7 +39,7 @@ function _metaForUrl(wfsBase) {
   }
 }
 
-// ── Cache B2 ──────────────────────────────────────────────────────
+// ── Cache R2 ──────────────────────────────────────────────────────
 
 const B2_PUBLIC_URL = process.env.B2_PUBLIC_URL; // ej: https://pub-xxx.r2.dev o URL pública B2
 
