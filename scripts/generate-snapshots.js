@@ -29,19 +29,18 @@ const FORCE       = args.includes('--force');
 const sourceIdx   = args.indexOf('--source');
 const ONLY_SOURCE = sourceIdx !== -1 ? args[sourceIdx + 1] : null;
 
-// ── B2 ────────────────────────────────────────────────────────────
+// ── R2 ────────────────────────────────────────────────────────────
 
 const B2 = new S3Client({
-  endpoint:    `https://${process.env.B2_ENDPOINT}`,
-  region:      process.env.B2_REGION,
+  endpoint:    process.env.R2_ENDPOINT,
+  region:      process.env.R2_REGION || 'auto',
   credentials: {
-    accessKeyId:     process.env.B2_KEY_ID,
-    secretAccessKey: process.env.B2_APP_KEY,
+    accessKeyId:     process.env.R2_KEY_ID,
+    secretAccessKey: process.env.R2_APP_KEY,
   },
-  forcePathStyle: true,
 });
 
-const BUCKET = process.env.B2_BUCKET;
+const BUCKET = process.env.R2_BUCKET;
 
 // ── Límites ───────────────────────────────────────────────────────
 
@@ -371,15 +370,15 @@ async function runWithConcurrency(tasks, concurrency) {
 
 async function main() {
   console.log('\n══════════════════════════════════════════════════════');
-  console.log('  Casux — Generación de snapshots WFS/REST → B2');
+  console.log('  Casux — Generación de snapshots WFS/REST → R2');
   console.log(`  Bucket: ${BUCKET}`);
   if (DRY_RUN)     console.log('  Modo: DRY-RUN');
   if (FORCE)       console.log('  Modo: FORCE (re-genera todo)');
   if (ONLY_SOURCE) console.log(`  Fuente: ${ONLY_SOURCE}`);
   console.log('══════════════════════════════════════════════════════\n');
 
-  if (!process.env.B2_KEY_ID || !process.env.B2_APP_KEY) {
-    console.error('❌ Faltan variables B2_KEY_ID o B2_APP_KEY'); process.exit(1);
+  if (!process.env.R2_KEY_ID || !process.env.R2_APP_KEY) {
+    console.error('❌ Faltan variables R2_KEY_ID o R2_APP_KEY'); process.exit(1);
   }
 
   console.log('📋 Cargando catálogo…');
