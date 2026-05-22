@@ -25,6 +25,7 @@
  */
 
 const { fetchWFS }                              = require('./_wfs');
+const { fetchREST }                             = require('./_rest');
 const { checkOrigin }                           = require('./_cors');
 const { normalizarMascara, areaGeometria }      = require('./_geo');
 const { booleanPointInPolygon, bbox, intersect } = require('./_turf');
@@ -145,7 +146,7 @@ module.exports = async function handler(req, res) {
 
   try {
 
-  const { layer, mask, maskInstructions, typename, wfsBase, wfsVersion, cqlFilter, bbox: bboxParam, exclude } = req.body || {};
+  const { layer, mask, maskInstructions, typename, wfsBase, wfsVersion, restBase, whereClause, cqlFilter, bbox: bboxParam, exclude } = req.body || {};
   const isExclude = !!exclude;
 
   if (!mask && !maskInstructions) return res.status(400).json({ error: 'Se requiere "mask" o "maskInstructions"' });
@@ -154,10 +155,11 @@ module.exports = async function handler(req, res) {
   // En exclude:true no usar bbox — se necesitan TODOS los features.
   let layerGeoJSON = layer;
   if (!layerGeoJSON) {
-    layerGeoJSON = await fetchWFS({
-      typename, wfsBase, wfsVersion, cqlFilter,
-      bbox: isExclude ? undefined : bboxParam,
-    });
+    if (restBase) {
+      layerGeoJSON = await fetchREST({ typename, restBase, whereClause, bbox: isExclude ? undefined : bboxParam });
+    } else {
+      layerGeoJSON = await fetchWFS({ typename, wfsBase, wfsVersion, cqlFilter, bbox: isExclude ? undefined : bboxParam });
+    }
   }
 
   let maskFeatureRaw;
