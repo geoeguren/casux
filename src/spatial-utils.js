@@ -153,7 +153,6 @@ window._SPATIAL_UTILS = (() => {
   // Decide si el procesamiento va al servidor (edge function) o al cliente.
   //
   // Casos en que siempre procesa en cliente:
-  //   - ArcGIS REST: la edge function solo soporta WFS
   //   - Operaciones _exclude: necesitan TODOS los features, el bbox las rompe
   //   - Capas pequeñas (≤ EDGE_FN_UMBRAL): overhead del roundtrip supera al ahorro
   //
@@ -163,7 +162,6 @@ window._SPATIAL_UTILS = (() => {
   const EDGE_FN_UMBRAL = 500;
 
   function deberiaUsarEdgeFunction(layerDef, op, isArcgis) {
-    if (isArcgis)                    return false;
     if (op === 'clip_exclude')       return false;
     if (op === 'intersect_exclude')  return false;
     if (op === 'buffer_exclude')     return false;
