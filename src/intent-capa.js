@@ -83,7 +83,10 @@ window.INTENT_CAPA = (() => {
   const PATRON_ADJACENT_EXCLUDE = /\b(no\s+limita\s+con|no\s+limitan\s+con|no\s+es\s+adyacente|no\s+son\s+adyacentes?|no\s+bordea|no\s+bordan?|no\s+comparte\s+borde|not\s+adjacent|not\s+bordering|doesn'?t?\s+border|don'?t?\s+border|não\s+faz\s+fronteira|não\s+limita)\b/i;
 
   // nearest: los N más cercanos / el más cercano a
-  const PATRON_NEAREST = /\b(m[aá]s\s+cercano|m[aá]s\s+pr[oó]ximo|los\s+\d+\s+m[aá]s\s+cercanos?|las\s+\d+\s+m[aá]s\s+cercanas?|nearest|closest|cerca\s+de\b|el\s+m[aá]s\s+cercano|la\s+m[aá]s\s+cercana|o\s+mais\s+pr[oó]ximo|os\s+\d+\s+mais\s+pr[oó]ximos?)\b/i;
+  // Admite sustantivo entre el N y "más cercanos":
+  //   "los 5 aeropuertos más cercanos a Mendoza" → \d+ \w+ más cercanos
+  //   "el aeropuerto más cercano a Mendoza"      → el más cercano
+  const PATRON_NEAREST = /\b(m[aá]s\s+cercano|m[aá]s\s+pr[oó]ximo|los\s+\d+(?:\s+\w+)?\s+m[aá]s\s+cercanos?|las\s+\d+(?:\s+\w+)?\s+m[aá]s\s+cercanas?|nearest|closest|cerca\s+de\b|el\s+m[aá]s\s+cercano|la\s+m[aá]s\s+cercana|o\s+mais\s+pr[oó]ximo|os\s+\d+(?:\s+\w+)?\s+mais\s+pr[oó]ximos?)\b/i;
 
   // nearest_exclude: los N más lejanos — se evalúa ANTES que nearest
   const PATRON_NEAREST_EXCLUDE = /\b(m[aá]s\s+lejano|m[aá]s\s+distante|los\s+\d+\s+m[aá]s\s+lejanos?|las\s+\d+\s+m[aá]s\s+lejanas?|furthest|farthest|most\s+distant|el\s+m[aá]s\s+lejano|la\s+m[aá]s\s+lejana|o\s+mais\s+distante|mais\s+afastado)\b/i;
@@ -122,7 +125,8 @@ window.INTENT_CAPA = (() => {
   // Extrae el número N de features para nearest ("los 5 más cercanos").
   // Si no se menciona N, devuelve 1 (el más cercano).
   function extraerNearestCount(textoNorm) {
-    const match = textoNorm.match(/\b(?:los?|las?|os?|as?)\s+(\d+)\s+m[aá]s\b/i)
+    const match = textoNorm.match(/\b(?:los?|las?|os?|as?)\s+(\d+)\s+\w+\s+m[aá]s\b/i)
+               || textoNorm.match(/\b(?:los?|las?|os?|as?)\s+(\d+)\s+m[aá]s\b/i)
                || textoNorm.match(/\b(\d+)\s+m[aá]s\s+(?:cercanos?|pr[oó]ximos?|lejanos?|distantes?)\b/i)
                || textoNorm.match(/\bthe\s+(\d+)\s+(?:nearest|closest|furthest|farthest)\b/i)
                || textoNorm.match(/\b(\d+)\s+(?:nearest|closest|furthest|farthest)\b/i);
@@ -293,16 +297,28 @@ window.INTENT_CAPA = (() => {
     //     → geoFields.provincia='nom_pcia' → filtro: nom_pcia='Córdoba'
     // Con regiones (valorOriginal array):
     //     → filtro: nom_pcia IN ('Neuquén','Río Negro',...)
+    //
+    // Si la capa NO tiene geoFields para el tipo del área (ej: departamento_ar
+    // no tiene 'nom_pcia'), se usa clipArea para que la edge function primero
+    // recorte espacialmente y luego dissolva los features resultantes.
     if (op === 'dissolve') {
       instruccion.op = 'dissolve';
       const campo = (capa.geoFields || {})[area.tipo];
       if (campo) {
+        // Tiene geoFields → filtro CQL (más eficiente, sin fetch extra)
         const filtroArea = _buildFiltroArea(campo, area.valorOriginal, false);
         instruccion.filtro = instruccion.filtro
           ? `${instruccion.filtro} AND ${filtroArea}`
           : filtroArea;
+      } else if (area.valorOriginal) {
+        // Sin geoFields → clip espacial previo al dissolve
+        // El filtro de atributo (si existe) sigue siendo válido como pre-filtro adicional
+        instruccion.clipArea = {
+          layerKey: area.layerKey,
+          field:    area.field,
+          value:    area.valorOriginal,
+        };
       }
-      // Sin geoFields para el tipo del área: dissolve sin filtro de área.
       return instruccion;
     }
 
