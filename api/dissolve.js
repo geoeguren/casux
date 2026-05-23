@@ -1,7 +1,11 @@
 /**
  * api/dissolve.js — Serverless Function de Vercel
  *
- * Une features de una capa en un único polígono (dissolve / dissolve_exclude).
+ * Une features de una capa en un único feature (dissolve / dissolve_exclude).
+ * Soporta las tres familias de geometría:
+ *   - Polígonos  → un único Polygon o MultiPolygon (via turf.union)
+ *   - Líneas     → una única MultiLineString (todos los segmentos recopilados)
+ *   - Puntos     → un único MultiPoint (todas las coordenadas recopiladas)
  *
  * Formas de request:
  *
@@ -83,33 +87,86 @@ function featuresEnMascara(features, maskNormalizada) {
 
 /**
  * dissolverFeatures(features) → Feature | null
- * Une todos los features en uno solo usando union iterado.
- * Solo opera sobre polígonos — líneas y puntos se devuelven sin unir.
+ *
+ * Une todos los features en uno solo según su tipo de geometría:
+ *
+ *   Polígono / MultiPolígono
+ *     → turf.union iterado → un único Polygon o MultiPolygon.
+ *       (comportamiento original)
+ *
+ *   LineString / MultiLineString
+ *     → MultiLineString con todos los segmentos recopilados.
+ *       Útil para: "dissolve los tramos de la Ruta 40" → una sola
+ *       MultiLineString con todos los tramos como un único feature.
+ *
+ *   Point / MultiPoint
+ *     → MultiPoint con todas las coordenadas recopiladas.
+ *
  * Devuelve null si no hay features válidos.
  */
 function dissolverFeatures(features) {
-  // Filtrar solo polígonos — dissolve tiene sentido para áreas
-  const poligonos = features.filter(f => {
+  const poligonos = [];
+  const lineas    = [];
+  const puntos    = [];
+
+  for (const f of features) {
     const t = f.geometry?.type;
-    return t === 'Polygon' || t === 'MultiPolygon';
-  });
-
-  if (!poligonos.length) {
-    // Si no hay polígonos, devolver los features tal cual (líneas, puntos)
-    // El dissolve de puntos/líneas no tiene sentido geométrico pero no bloqueamos
-    return null;
+    if (!t) continue;
+    if (t === 'Polygon'     || t === 'MultiPolygon')    poligonos.push(f);
+    else if (t === 'LineString'  || t === 'MultiLineString') lineas.push(f);
+    else if (t === 'Point'       || t === 'MultiPoint')      puntos.push(f);
   }
 
-  if (poligonos.length === 1) return poligonos[0];
-
-  try {
-    return poligonos.reduce((acc, feat) => {
-      try { return union(acc, feat); }
-      catch { return acc; } // si un feature es inválido, ignorarlo
-    });
-  } catch (err) {
-    throw new Error(`Error al unir features: ${err.message}`);
+  // Polígonos → turf.union iterado
+  if (poligonos.length) {
+    if (poligonos.length === 1) return poligonos[0];
+    try {
+      return poligonos.reduce((acc, feat) => {
+        try { return union(acc, feat); }
+        catch { return acc; }
+      });
+    } catch (err) {
+      throw new Error(`Error al unir features: ${err.message}`);
+    }
   }
+
+  // Líneas → MultiLineString
+  if (lineas.length) {
+    if (lineas.length === 1) return lineas[0];
+    const coords = [];
+    for (const f of lineas) {
+      if (f.geometry.type === 'LineString') {
+        coords.push(f.geometry.coordinates);
+      } else {
+        for (const sub of f.geometry.coordinates) coords.push(sub);
+      }
+    }
+    return {
+      type:       'Feature',
+      geometry:   { type: 'MultiLineString', coordinates: coords },
+      properties: lineas[0]?.properties || {},
+    };
+  }
+
+  // Puntos → MultiPoint
+  if (puntos.length) {
+    if (puntos.length === 1) return puntos[0];
+    const coords = [];
+    for (const f of puntos) {
+      if (f.geometry.type === 'Point') {
+        coords.push(f.geometry.coordinates);
+      } else {
+        for (const coord of f.geometry.coordinates) coords.push(coord);
+      }
+    }
+    return {
+      type:       'Feature',
+      geometry:   { type: 'MultiPoint', coordinates: coords },
+      properties: puntos[0]?.properties || {},
+    };
+  }
+
+  return null;
 }
 
 // ── Handler ───────────────────────────────────────────────────────
@@ -237,7 +294,7 @@ module.exports = async function handler(req, res) {
     const resultado = dissolverFeatures(featuresADisolver);
 
     if (!resultado) {
-      // No había polígonos — devolver features sin unir
+      // No había geometrías reconocidas — devolver sin modificar
       return res.status(200).json({
         type:     'FeatureCollection',
         features: featuresADisolver,
@@ -249,7 +306,8 @@ module.exports = async function handler(req, res) {
       resultado.properties = featuresADisolver[0]?.properties || {};
     }
 
-    console.log(`[api/dissolve] OK: ${features.length} features → 1 feature disuelto (exclude: ${isExclude})`);
+    const tipoResultado = resultado.geometry?.type || 'unknown';
+    console.log(`[api/dissolve] OK: ${features.length} features → 1 ${tipoResultado} disuelto (exclude: ${isExclude})`);
 
     return res.status(200).json({
       type:     'FeatureCollection',
