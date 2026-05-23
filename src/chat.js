@@ -387,6 +387,15 @@ window.CHAT = (() => {
           isStreaming = false;
           UI.setSendEnabled(true);
           const { mapKey, layerKey, field, label, type, palette } = intencion.parametros;
+
+          if (!field) {
+            // Campo no identificado → mostrar selector de campo clasificable
+            const msgEl = UI.addMessage('assistant', t('classify_which_field'));
+            UI.showFieldSelectorForClassify(msgEl, mapKey, layerKey);
+            history.push({ role: 'assistant', content: t('classify_which_field'), time: new Date().toISOString() });
+            return;
+          }
+
           const paletteColors = window.PALETTES?.[palette] || window.PALETTES?.qualitative;
           const classifyPlan = [{ layerKey, field, type, palette, paletteColors }];
           window.APP?.applyClassifyPlan?.(classifyPlan);
@@ -2158,6 +2167,55 @@ window.UI = (() => {
     scrollBottom();
   }
 
-    return { addMessage, setMessageText, setMessageMeta, showThinking, hideThinking, showMapReady, showViewMapBtn, showErrorCard, showModeSelector, showExportChoice, showStyleButtons, showStyleFlow, showStyleFlowForLayer, showBasemapButtons, showLayerSelectorForAction, showRenameInput, setSendEnabled };
+  // ── showFieldSelectorForClassify ─────────────────────────────
+  //
+  // Muestra los campos clasificables de la capa para que el usuario elija.
+  // Solo muestra atributos con label no vacío o classifiable:true.
+
+  function showFieldSelectorForClassify(msgEl, mapKey, layerKey) {
+    const layerDef = window.LAYERS?.[layerKey];
+    if (!layerDef?.attributes?.length) return;
+
+    const attrs = layerDef.attributes.filter(a =>
+      (a.label && a.label.trim()) || a.classifiable === true
+    );
+    if (!attrs.length) return;
+
+    const card = document.createElement('div');
+    card.className = 'msg-export-choice';
+
+    card.innerHTML = attrs.map(a => {
+      const displayLabel = a.label || a.campo;
+      const tipoClasif = /num|area|longitud|pobla|cant|total|valor|porc|dens|super/i.test(a.campo || '')
+        ? 'graduated' : 'categorized';
+      return `<button class="export-choice-btn"
+        data-campo="${a.campo}"
+        data-label="${displayLabel}"
+        data-type="${tipoClasif}">
+        <span class="export-choice-label">${displayLabel}</span>
+        <span class="export-choice-sub">${a.tipo || ''}</span>
+      </button>`;
+    }).join('');
+
+    card.querySelectorAll('.export-choice-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const field   = btn.dataset.campo;
+        const label   = btn.dataset.label;
+        const type    = btn.dataset.type;
+        const palette = type === 'graduated' ? 'seq_blues' : 'qualitative';
+        const paletteColors = window.PALETTES?.[palette] || window.PALETTES?.qualitative;
+        card.remove();
+        window.APP?.applyClassifyPlan?.([{ layerKey, field, type, palette, paletteColors }]);
+        addMessage('assistant', t('classify_done', { label }));
+        scrollBottom();
+      });
+    });
+
+    if (msgEl) msgEl.after(card);
+    else $msgs()?.appendChild(card);
+    scrollBottom();
+  }
+
+    return { addMessage, setMessageText, setMessageMeta, showThinking, hideThinking, showMapReady, showViewMapBtn, showErrorCard, showModeSelector, showExportChoice, showStyleButtons, showStyleFlow, showStyleFlowForLayer, showBasemapButtons, showLayerSelectorForAction, showRenameInput, showFieldSelectorForClassify, setSendEnabled };
 
 })();
