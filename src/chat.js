@@ -39,6 +39,91 @@ window.CHAT = (() => {
       });
   }
 
+  // ── Helpers privados de intención ────────────────────────────
+
+  // Aplica toggle de visibilidad y persiste en el plan
+  function _toggleVisibilidad(mapKey, visible) {
+    const activeLayers = window.MAP?.getActiveLayers?.() || {};
+    const entry = activeLayers[mapKey];
+    if (!entry) return;
+
+    const estadoActual = entry.visible !== false; // true si visible
+    const nuevoVisible = (visible === null || visible === undefined) ? !estadoActual : visible;
+
+    if (nuevoVisible === estadoActual) return; // ya está en el estado deseado
+
+    window.MAP?.toggleLayerVisibility?.(mapKey);
+
+    // Persistir en el plan
+    const planActual = window.APP?.getCurrentPlan?.();
+    if (planActual?.instrucciones) {
+      const inst = planActual.instrucciones.find(i => i.mapKey === mapKey);
+      if (inst) inst.visible = nuevoVisible;
+    }
+    const user   = window.AUTH?.currentUser?.();
+    const chatId = window.CHAT?.getChatId?.();
+    if (user && chatId && planActual) {
+      window.FB?.updateChat?.(user.uid, chatId, { lastMap: planActual }).catch(() => {});
+    }
+  }
+
+  // Aplica un cambio de estilo por propiedad y valor ya resueltos
+  function _applyStyleProp(mapKey, prop, value) {
+    const activeLayers = window.MAP?.getActiveLayers?.() || {};
+    const entry = activeLayers[mapKey];
+    if (!entry) return;
+
+    let styleChanges;
+    if (prop === 'color') {
+      const geom = entry.geomType || 'polygon';
+      // _darkenHex está definido dentro del módulo UI — accedemos desde fuera
+      // a través de un helper local equivalente
+      const darken = (hex, amt = 0.12) => {
+        const n = parseInt(hex.replace('#',''), 16);
+        const r = Math.max(0, Math.round(((n >> 16)       ) * (1 - amt)));
+        const g = Math.max(0, Math.round(((n >>  8) & 0xff) * (1 - amt)));
+        const b = Math.max(0, Math.round(((n      ) & 0xff) * (1 - amt)));
+        return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+      };
+      if (geom === 'line') {
+        styleChanges = { color: value };
+      } else {
+        styleChanges = { fillColor: value, color: darken(value) };
+      }
+    } else if (prop === 'opacity') {
+      const geom = entry.geomType || 'polygon';
+      styleChanges = geom === 'line'
+        ? { opacity: value }
+        : { fillOpacity: value, opacity: value };
+    } else {
+      // radius, weight
+      styleChanges = { [prop]: value };
+    }
+
+    const newStyle = { ...entry.style, ...styleChanges };
+    window.MAP?.updateLayerStyle?.(mapKey, newStyle);
+    window.MAP?.updateLegend?.();
+    window.ANALYTICS?.styleChanged?.('intent');
+
+    // Persistir
+    const planActual = window.APP?.getCurrentPlan?.();
+    if (planActual?.instrucciones) {
+      const inst = planActual.instrucciones.find(i => i.mapKey === mapKey);
+      if (inst) inst.style = { ...newStyle };
+    }
+    const user   = window.AUTH?.currentUser?.();
+    const chatId = window.CHAT?.getChatId?.();
+    if (user && chatId && planActual) {
+      window.FB?.updateChat?.(user.uid, chatId, { lastMap: planActual }).catch(() => {});
+    }
+
+    // En móvil: mostrar botón "Ver mapa" si el panel está oculto
+    if (window.MAP_CONTROLS?.isMobile?.()) {
+      const mapPanel = document.getElementById('map-panel');
+      if (mapPanel?.style.display === 'none') UI.showViewMapBtn?.();
+    }
+  }
+
   // ── Enviar mensaje ────────────────────────────────────────────
 
   async function send(userText) {
@@ -129,20 +214,58 @@ window.CHAT = (() => {
           return;
         }
 
-        // RENOMBRAR VAGO → dejar al LLM para que pregunte el nombre
+        // RENOMBRAR VAGO → mostrar input inline sin LLM
         else if (intencion.tipo === 'renombrar' && intencion.subtipo === 'vago') {
-          // pasa al LLM
+          isStreaming = false;
+          UI.setSendEnabled(true);
+          const msgEl = UI.addMessage('assistant', t('rename_ask'));
+          UI.showRenameInput(msgEl);
+          history.push({ role: 'assistant', content: t('rename_ask'), time: new Date().toISOString() });
+          return;
+        }
+
+        // ESTILO RESUELTO → aplicar directamente o mostrar selector de capa
+        else if (intencion.tipo === 'estilo' && intencion.subtipo === 'resuelto') {
+          isStreaming = false;
+          UI.setSendEnabled(true);
+          const { prop, value, mapKey } = intencion.parametros;
+          if (mapKey) {
+            // Una sola capa activa → aplicar directo
+            _applyStyleProp(mapKey, prop, value);
+            const msgEl = UI.addMessage('assistant', t('style_applied'));
+            history.push({ role: 'assistant', content: t('style_applied'), time: new Date().toISOString() });
+          } else {
+            // Varias capas → selector de capa, luego aplicar
+            const msgEl = UI.addMessage('assistant', t('style_which_layer'));
+            UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => {
+              _applyStyleProp(selectedMapKey, prop, value);
+            }, t('style_applied'));
+            history.push({ role: 'assistant', content: t('style_which_layer'), time: new Date().toISOString() });
+          }
+          return;
         }
 
         // ESTILO VAGO → mostrar botones contextuales
         else if (intencion.tipo === 'estilo' && intencion.subtipo === 'vago') {
           isStreaming = false;
           UI.setSendEnabled(true);
-          const msgEl = UI.showStyleFlow(intencion);
-          const histContent = intencion?.parametros?.param
-            ? t('style_ask_' + intencion.parametros.param) || t('style_what_to_change')
-            : t('style_what_to_change');
-          history.push({ role: 'assistant', content: histContent, time: new Date().toISOString() });
+          const activeLayers = window.MAP?.getActiveLayers?.() || {};
+          const layerEntries = Object.entries(activeLayers);
+          if (layerEntries.length > 1) {
+            // Varias capas → selector de capa primero, luego flujo de estilo
+            const msgEl = UI.addMessage('assistant', t('style_which_layer'));
+            UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => {
+              const intencionConCapa = { ...intencion, parametros: { ...intencion.parametros, _mapKey: selectedMapKey } };
+              UI.showStyleFlowForLayer(intencionConCapa, selectedMapKey);
+            });
+            history.push({ role: 'assistant', content: t('style_which_layer'), time: new Date().toISOString() });
+          } else {
+            const msgEl = UI.showStyleFlow(intencion);
+            const histContent = intencion?.parametros?.param
+              ? t('style_ask_' + intencion.parametros.param) || t('style_what_to_change')
+              : t('style_what_to_change');
+            history.push({ role: 'assistant', content: histContent, time: new Date().toISOString() });
+          }
           return;
         }
 
@@ -187,6 +310,36 @@ window.CHAT = (() => {
           return;
         }
 
+        // TOGGLE VISIBILIDAD → mostrar/ocultar capa activa
+        else if (intencion.tipo === 'toggle_visibilidad') {
+          isStreaming = false;
+          UI.setSendEnabled(true);
+          const { mapKey, visible } = intencion.parametros;
+
+          if (mapKey) {
+            // Capa identificada → ejecutar directo
+            _toggleVisibilidad(mapKey, visible);
+          } else {
+            // No identificada → selector de capa
+            const msgEl = UI.addMessage('assistant', t('toggle_which_layer'));
+            UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => {
+              _toggleVisibilidad(selectedMapKey, visible);
+            }, visible ? t('layer_shown', { titulo: '' }).trim() : t('layer_hidden', { titulo: '' }).trim());
+            history.push({ role: 'assistant', content: t('toggle_which_layer'), time: new Date().toISOString() });
+            return;
+          }
+
+          const activeLayers = window.MAP?.getActiveLayers?.() || {};
+          const entry = activeLayers[mapKey];
+          const tituloToggle = entry?.titulo || mapKey;
+          const msg = visible
+            ? t('layer_shown',  { titulo: tituloToggle })
+            : t('layer_hidden', { titulo: tituloToggle });
+          UI.addMessage('assistant', msg);
+          history.push({ role: 'assistant', content: `[intent] ${visible ? '+vis' : '-vis'} ${tituloToggle}`, time: new Date().toISOString(), model: 'pim' });
+          return;
+        }
+
         // QUITAR CAPA → eliminar una capa del mapa activo
         else if (intencion.tipo === 'quitar') {
           isStreaming = false;
@@ -214,6 +367,26 @@ window.CHAT = (() => {
           const msg = t('layer_removed', { titulo: tituloEliminada });
           const msgEl = UI.addMessage('assistant', msg);
           history.push({ role: 'assistant', content: `[intent] -${tituloEliminada}`, time: new Date().toISOString(), model: 'pim' });
+          return;
+        }
+
+        // CLASIFICAR → clasificación cromática de capa activa sin LLM
+        else if (intencion.tipo === 'clasificar') {
+          isStreaming = false;
+          UI.setSendEnabled(true);
+          const { mapKey, layerKey, field, label, type, palette } = intencion.parametros;
+          const paletteColors = window.PALETTES?.[palette] || window.PALETTES?.qualitative;
+          const classifyPlan = [{ layerKey, field, type, palette, paletteColors }];
+          window.APP?.applyClassifyPlan?.(classifyPlan);
+          const msg = t('classify_done', { label: label || field });
+          UI.addMessage('assistant', msg);
+          history.push({ role: 'assistant', content: `[intent] classify ${layerKey} by ${field}`, time: new Date().toISOString(), model: 'pim' });
+
+          // En móvil: mostrar botón "Ver mapa" si el panel está oculto
+          if (window.MAP_CONTROLS?.isMobile?.()) {
+            const mapPanel = document.getElementById('map-panel');
+            if (mapPanel?.style.display === 'none') UI.showViewMapBtn?.();
+          }
           return;
         }
 
@@ -1722,6 +1895,115 @@ window.UI = (() => {
     scrollBottom();
   }
 
-    return { addMessage, setMessageText, setMessageMeta, showThinking, hideThinking, showMapReady, showViewMapBtn, showErrorCard, showModeSelector, showExportChoice, showStyleButtons, showStyleFlow, showBasemapButtons, setSendEnabled };
+  // ── Selector de capa para acciones de intent ─────────────────
+  //
+  // Muestra botones con las capas activas para que el usuario elija
+  // a cuál aplicar la acción (estilo, visibilidad, clasificación, etc.)
+  // onSelect(mapKey) se llama cuando el usuario elige una capa.
+  // confirmMsg: mensaje opcional que se muestra después de la acción.
+
+  function showLayerSelectorForAction(msgEl, onSelect, confirmMsg) {
+    const activeLayers = window.MAP?.getActiveLayers?.() || {};
+    const entries = Object.entries(activeLayers);
+    if (!entries.length) return;
+
+    const card = document.createElement('div');
+    card.className = 'msg-export-choice';
+
+    card.innerHTML = entries.map(([mapKey, layer]) => `
+      <button class="export-choice-btn" data-mapkey="${mapKey}">
+        <span class="export-choice-label">${layer.titulo || layer.layerKey}</span>
+        <span class="export-choice-sub">${layer.geomType || ''}</span>
+      </button>`).join('');
+
+    card.querySelectorAll('.export-choice-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const mapKey = btn.dataset.mapkey;
+        card.remove();
+        onSelect(mapKey);
+        if (confirmMsg) {
+          addMessage('assistant', confirmMsg);
+          scrollBottom();
+        }
+      });
+    });
+
+    if (msgEl) msgEl.after(card);
+    else $msgs()?.appendChild(card);
+    scrollBottom();
+  }
+
+  // ── showStyleFlowForLayer ─────────────────────────────────────
+  //
+  // Igual que showStyleFlow pero opera sobre una capa ya elegida.
+  // Usado cuando hay varias capas y el usuario eligió una en el selector.
+
+  function showStyleFlowForLayer(intencion, mapKey) {
+    const activeLayers = window.MAP?.getActiveLayers?.() || {};
+    const layer = activeLayers[mapKey];
+    if (!layer) return;
+
+    const chatTitulo = window.APP?.getCurrentPlan?.()?.titulo || '';
+    const param = intencion?.parametros?.param || null;
+    const containerRef = { remove: () => {} }; // dummy — el card se gestiona solo
+
+    const msgEl = addMessage('assistant',
+      param ? t('style_ask_' + param) || t('style_what_to_change') : t('style_what_to_change')
+    );
+
+    if (param) {
+      _showParamControl(msgEl, mapKey, layer, param, chatTitulo, containerRef);
+    } else {
+      _showParamButtons(msgEl, mapKey, layer, chatTitulo, containerRef);
+    }
+    scrollBottom();
+  }
+
+  // ── showRenameInput ───────────────────────────────────────────
+  //
+  // Muestra un input inline para que el usuario escriba el nuevo nombre
+  // del chat/mapa, sin necesidad de pasar por el LLM.
+
+  function showRenameInput(msgEl) {
+    const wrap = document.createElement('div');
+    wrap.className = 'style-slider-wrap';
+    wrap.style.cssText = 'display:flex;gap:8px;align-items:center;margin-top:6px';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = t('rename_placeholder');
+    input.style.cssText = 'flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--border-md);background:var(--bg2);color:var(--cream1);font-family:var(--font-sans);font-size:13px;outline:none';
+
+    const btn = document.createElement('button');
+    btn.className = 'export-choice-btn style-confirm-btn';
+    btn.style.cssText = 'flex-shrink:0;padding:6px 14px';
+    btn.innerHTML = `<span class="export-choice-label">${t('rename_confirm')}</span>`;
+
+    const apply = () => {
+      const nombre = input.value.trim();
+      if (!nombre) return;
+      wrap.remove();
+      window.CHAT_HEADER?.startRename?.(nombre);
+      addMessage('assistant', t('chat_renamed', { nombre }));
+      scrollBottom();
+    };
+
+    btn.addEventListener('click', apply);
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); apply(); }
+      if (e.key === 'Escape') wrap.remove();
+    });
+
+    wrap.appendChild(input);
+    wrap.appendChild(btn);
+
+    if (msgEl) msgEl.after(wrap);
+    else $msgs()?.appendChild(wrap);
+
+    setTimeout(() => input.focus(), 80);
+    scrollBottom();
+  }
+
+    return { addMessage, setMessageText, setMessageMeta, showThinking, hideThinking, showMapReady, showViewMapBtn, showErrorCard, showModeSelector, showExportChoice, showStyleButtons, showStyleFlow, showStyleFlowForLayer, showBasemapButtons, showLayerSelectorForAction, showRenameInput, setSendEnabled };
 
 })();
