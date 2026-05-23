@@ -65,7 +65,10 @@ window._SPATIAL_ADJACENT = (() => {
         bbox:        isExclude ? undefined : bbox,
         ...maskPayload,
       }),
-      signal: AbortSignal.timeout(90000),
+      // 55s: Vercel Hobby corta la función serverless a los 60s.
+      // El cliente no debe esperar más que eso — de lo contrario aguarda
+      // en silencio 30s extra después de que el servidor ya murió.
+      signal: AbortSignal.timeout(55000),
     });
     if (!resp.ok) throw new Error(`Edge Function HTTP ${resp.status}`);
     return resp.json();
@@ -116,7 +119,6 @@ window._SPATIAL_ADJACENT = (() => {
       }
     } else {
       console.log(`[SPATIAL:adjacent] Capa pequeña (${layerDef.featureCount ?? '?'} feat) — cliente.`);
-      U().toastFallbackOnce();
     }
 
     // Fallback cliente
