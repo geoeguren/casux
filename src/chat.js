@@ -315,28 +315,36 @@ window.CHAT = (() => {
           isStreaming = false;
           UI.setSendEnabled(true);
           const { mapKey, visible } = intencion.parametros;
+          const activeLayers = window.MAP?.getActiveLayers?.() || {};
+
+          // Sin capas en el mapa → mensaje informativo
+          if (!Object.keys(activeLayers).length) {
+            UI.addMessage('assistant', t('layer_not_found'));
+            history.push({ role: 'assistant', content: t('layer_not_found'), time: new Date().toISOString() });
+            return;
+          }
 
           if (mapKey) {
             // Capa identificada → ejecutar directo
             _toggleVisibilidad(mapKey, visible);
+            const entry = activeLayers[mapKey];
+            const tituloToggle = entry?.titulo || mapKey;
+            const msg = visible
+              ? t('layer_shown',  { titulo: tituloToggle })
+              : t('layer_hidden', { titulo: tituloToggle });
+            UI.addMessage('assistant', msg);
+            history.push({ role: 'assistant', content: `[intent] ${visible ? '+vis' : '-vis'} ${tituloToggle}`, time: new Date().toISOString(), model: 'pim' });
           } else {
-            // No identificada → selector de capa
+            // mapKey null → varias capas, mostrar selector
             const msgEl = UI.addMessage('assistant', t('toggle_which_layer'));
             UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => {
               _toggleVisibilidad(selectedMapKey, visible);
-            }, visible ? t('layer_shown', { titulo: '' }).trim() : t('layer_hidden', { titulo: '' }).trim());
+              const entry2 = window.MAP?.getActiveLayers?.()[selectedMapKey];
+              const titulo2 = entry2?.titulo || selectedMapKey;
+              UI.addMessage('assistant', visible ? t('layer_shown', { titulo: titulo2 }) : t('layer_hidden', { titulo: titulo2 }));
+            });
             history.push({ role: 'assistant', content: t('toggle_which_layer'), time: new Date().toISOString() });
-            return;
           }
-
-          const activeLayers = window.MAP?.getActiveLayers?.() || {};
-          const entry = activeLayers[mapKey];
-          const tituloToggle = entry?.titulo || mapKey;
-          const msg = visible
-            ? t('layer_shown',  { titulo: tituloToggle })
-            : t('layer_hidden', { titulo: tituloToggle });
-          UI.addMessage('assistant', msg);
-          history.push({ role: 'assistant', content: `[intent] ${visible ? '+vis' : '-vis'} ${tituloToggle}`, time: new Date().toISOString(), model: 'pim' });
           return;
         }
 
