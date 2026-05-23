@@ -317,7 +317,7 @@ window.I18N_EN = {
   style_which_layer:         'Which layer do you want to change?',
   rename_ask:                'What do you want to call the map?',
   rename_placeholder:        'New name…',
-  rename_confirm:            'Rename',
+  rename_confirm:            'RENAME',
   classify_done:             'Done, classified the layer by {label}.',
   classify_which_field:      'Which field do you want to classify by?',
   chat_renamed:              'Renamed the map to "{nombre}".',
