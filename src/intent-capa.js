@@ -231,7 +231,13 @@ window.INTENT_CAPA = (() => {
   function construirInstruccion(layerKey, capa, area, textoOriginal) {
     const textoNorm   = normalizar(textoOriginal);
     const op          = detectarOpEspacial(textoNorm);
-    const instruccion = { layerKey, filtro: '', clipArea: null, descripcion: textoOriginal };
+    // Resolver tituloUI desde el catálogo según el idioma activo.
+    // Esto evita que renderMap use descripcion (texto crudo del usuario)
+    // como título de la capa en la leyenda.
+    const _lang     = window.I18N?.getLang?.() || 'es';
+    const _suf      = _lang === 'en' ? 'En' : _lang === 'pt' ? 'Pt' : 'Es';
+    const _tituloUI = capa[`tituloUI${_suf}`] || capa.tituloUI || capa.titulo || layerKey;
+    const instruccion = { layerKey, filtro: '', clipArea: null, tituloUI: _tituloUI, descripcion: textoOriginal };
 
     // ── Filtro por atributo ───────────────────────────────────────
     //
