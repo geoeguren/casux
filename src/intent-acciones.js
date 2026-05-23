@@ -568,56 +568,99 @@ window.INTENT_ACCIONES = (() => {
     const activeLayers = window.MAP?.getActiveLayers?.() || {};
     if (!Object.keys(activeLayers).length) return null;
 
-    // Texto sin el verbo de clasificación para buscar el campo
+    // Texto sin el verbo de clasificación para buscar el campo y la capa
     const textoSinVerbo = textoUsuario.replace(PATRON_CLASIFICAR, '').trim();
     const normSinVerbo  = normalizar(textoSinVerbo);
 
-    // Iterar capas activas buscando si alguna tiene un atributo que matchee
+    // ── Paso 1: identificar la capa objetivo ──────────────────
+    //
+    // Si hay una sola capa activa → usarla directamente.
+    // Si hay varias → intentar identificar cuál menciona el texto.
+    // Si no se puede → devolver { mapKey: null } para que chat.js muestre selector.
+    const keys = Object.keys(activeLayers);
+    let targetMapKey = keys.length === 1 ? keys[0] : null;
+
+    if (!targetMapKey && normSinVerbo) {
+      // Intentar match por nombre de capa en el texto residual
+      let mejorScore = 0;
+      for (const [mapKey, entry] of Object.entries(activeLayers)) {
+        const tituloNorm = normalizar(entry.titulo || entry.layerKey || '');
+        const layerKeyNorm = normalizar(entry.layerKey || '');
+        let score = 0;
+        for (const token of normSinVerbo.split(/\s+/).filter(t => t.length > 2)) {
+          if (tituloNorm.includes(token)) score += 2;
+          else if (layerKeyNorm.includes(token)) score += 1;
+        }
+        if (score > mejorScore) { mejorScore = score; targetMapKey = mapKey; }
+      }
+      if (mejorScore === 0) targetMapKey = null;
+    }
+
+    // ── Paso 2: buscar campo clasificable en la capa objetivo ─
+    //
+    // Solo busca en atributos con label no vacío Y que aparezcan en el texto.
+    // Si el usuario no especificó campo → candidatos vacíos → selector de campo.
+    // Atributos con classifiable:true tienen prioridad sobre los demás.
+    const capasABuscar = targetMapKey
+      ? [[targetMapKey, activeLayers[targetMapKey]]]
+      : Object.entries(activeLayers);
+
     const candidatos = [];
-    for (const [mapKey, entry] of Object.entries(activeLayers)) {
-      const layerDef  = window.LAYERS?.[entry.layerKey];
+    for (const [mapKey, entry] of capasABuscar) {
+      const layerDef = window.LAYERS?.[entry.layerKey];
       if (!layerDef?.attributes?.length) continue;
 
-      for (const attr of layerDef.attributes) {
+      // Atributos clasificables: los que tienen label no vacío o classifiable:true
+      const attrs = layerDef.attributes.filter(a =>
+        (a.label && a.label.trim()) || a.classifiable === true
+      );
+
+      for (const attr of attrs) {
         const labelNorm = normalizar(attr.label || '');
         const campoNorm = normalizar(attr.campo || '');
 
-        // Match: el texto menciona el label o el campo del atributo
-        const matchLabel = labelNorm && normSinVerbo.includes(labelNorm);
-        const matchCampo = campoNorm && normSinVerbo.includes(campoNorm);
-        if (!matchLabel && !matchCampo) continue;
+        // Solo matchear si el label/campo tiene contenido real (evita bug de '' siempre true)
+        const matchLabel = labelNorm.length > 0 && normSinVerbo.includes(labelNorm);
+        const matchCampo = campoNorm.length > 0 && normSinVerbo.includes(campoNorm);
+        // Bonus si el atributo está marcado como classifiable
+        const esClassifiable = attr.classifiable === true;
 
-        // Determinar tipo: si el campo parece numérico → graduado; si no → categorizado
+        if (!matchLabel && !matchCampo && !esClassifiable) continue;
+
+        // Excluir si el match es solo porque el texto es vacío o genérico
+        if (!matchLabel && !matchCampo && !normSinVerbo && !esClassifiable) continue;
+
         const tipoClasif = /num|area|longitud|pobla|cant|total|valor|porc|dens|super/i.test(attr.campo || '')
           ? 'graduated'
           : 'categorized';
 
         candidatos.push({
           mapKey,
-          layerKey: entry.layerKey,
-          field:    attr.campo,
-          label:    attr.label,
-          type:     tipoClasif,
-          score:    matchLabel ? 2 : 1,
+          layerKey:  entry.layerKey,
+          field:     attr.campo,
+          label:     attr.label || attr.campo,
+          type:      tipoClasif,
+          score:     (matchLabel ? 4 : 0) + (matchCampo ? 2 : 0) + (esClassifiable ? 1 : 0),
         });
       }
     }
 
-    if (!candidatos.length) return null;
+    // ── Paso 3: resolver ──────────────────────────────────────
 
-    // Si hay más de un candidato plausible → ambigüedad → LLM
-    if (candidatos.length > 1 && new Set(candidatos.map(c => c.mapKey + c.field)).size > 1) {
-      // Solo derivar al LLM si los candidatos son de distintas capas o campos distintos
-      const porCapa = {};
-      for (const c of candidatos) {
-        if (!porCapa[c.mapKey]) porCapa[c.mapKey] = [];
-        porCapa[c.mapKey].push(c);
-      }
-      // Si hay candidatos en varias capas → ambiguo
-      if (Object.keys(porCapa).length > 1) return null;
+    if (!candidatos.length) {
+      // No se identificó campo → devolver la intención sin campo para que
+      // chat.js muestre un selector de campo (o derive al LLM si targetMapKey es null)
+      if (!targetMapKey) return null;
+      return {
+        tipo:       'clasificar',
+        parametros: { mapKey: targetMapKey, layerKey: activeLayers[targetMapKey].layerKey, field: null, label: null, type: null, palette: null },
+      };
     }
 
-    // Tomar el candidato con mayor score
+    // Ambigüedad entre capas distintas → LLM
+    const capasCandidatas = new Set(candidatos.map(c => c.mapKey));
+    if (capasCandidatas.size > 1) return null;
+
     const mejor = candidatos.sort((a, b) => b.score - a.score)[0];
 
     return {
