@@ -318,7 +318,7 @@ window.I18N_ES = {
   rename_ask:                '¿Cómo querés llamar al mapa?',
   rename_placeholder:        'Nuevo nombre…',
   rename_confirm:            'RENOMBRAR',
-  classify_done:             'Listo, clasificué la capa por {label}.',
+  classify_done:             'Listo, clasifiqué la capa por {label}.',
   classify_which_field:      '¿Por qué campo querés clasificar?',
   chat_renamed:              'Renombré el mapa como "{nombre}".',
   basemap_gray:            'Positron',
