@@ -249,7 +249,6 @@ window._SPATIAL_INTERSECT = (() => {
       } else {
         console.log(`[SPATIAL:intersect] Capa pequeña (${layerDef.featureCount ?? '?'} features) — procesando en cliente directamente.`);
       }
-      U().toastFallbackOnce();
     }
 
     // ── Fallback cliente ─────────────────────────────────────
