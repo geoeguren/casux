@@ -318,6 +318,7 @@ window.I18N_EN = {
   rename_placeholder:        'New name…',
   rename_confirm:            'Rename',
   classify_done:             'Done, classified the layer by {label}.',
+  classify_which_field:      'Which field do you want to classify by?',
   chat_renamed:              'Renamed the map to "{nombre}".',
 
   // ── Basemaps ─────────────────────────────────────────────────
