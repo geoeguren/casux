@@ -640,20 +640,27 @@ window.INTENT_ACCIONES = (() => {
         // Bonus si el atributo está marcado como classifiable
         const esClassifiable = attr.classifiable === true;
 
-        if (!matchLabel && !matchCampo && !esClassifiable) continue;
+        // Si el usuario no especificó campo (normSinVerbo vacío), solo incluir
+        // atributos que matcheen por texto — nunca elegir automáticamente por
+        // classifiable:true solo. Eso se muestra en el selector de campo.
+        if (!normSinVerbo) continue;
 
-        // Excluir si el match es solo porque el texto es vacío o genérico
-        if (!matchLabel && !matchCampo && !normSinVerbo && !esClassifiable) continue;
+        if (!matchLabel && !matchCampo && !esClassifiable) continue;
 
         const tipoClasif = /num|area|longitud|pobla|cant|total|valor|porc|dens|super/i.test(attr.campo || '')
           ? 'graduated'
           : 'categorized';
 
+        // Resolver el label más legible disponible
+        const _lang   = window.I18N?.getLang?.() || 'es';
+        const labelI18n = _lang === 'en' ? (attr.labelEn || attr.label) : (attr.label || attr.labelEn);
+        const displayLabel = (labelI18n && labelI18n.trim()) ? labelI18n : attr.campo;
+
         candidatos.push({
           mapKey,
           layerKey:  entry.layerKey,
           field:     attr.campo,
-          label:     attr.label || attr.campo,
+          label:     displayLabel,
           type:      tipoClasif,
           score:     (matchLabel ? 4 : 0) + (matchCampo ? 2 : 0) + (esClassifiable ? 1 : 0),
         });
@@ -663,12 +670,17 @@ window.INTENT_ACCIONES = (() => {
     // ── Paso 3: resolver ──────────────────────────────────────
 
     if (!candidatos.length) {
-      // No se identificó campo → devolver la intención sin campo para que
-      // chat.js muestre un selector de campo (o derive al LLM si targetMapKey es null)
-      if (!targetMapKey) return null;
+      // No se identificó campo.
+      // Si hay una sola capa → selector de campo en chat.js.
+      // Si hay varias y targetMapKey es null → selector de capa primero, luego de campo.
+      // En ambos casos devolver la intención con field:null para que chat.js maneje.
       return {
         tipo:       'clasificar',
-        parametros: { mapKey: targetMapKey, layerKey: activeLayers[targetMapKey].layerKey, field: null, label: null, type: null, palette: null },
+        parametros: {
+          mapKey:   targetMapKey,
+          layerKey: targetMapKey ? activeLayers[targetMapKey].layerKey : null,
+          field: null, label: null, type: null, palette: null,
+        },
       };
     }
 
