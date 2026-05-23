@@ -585,14 +585,27 @@ window.INTENT_CAPA = (() => {
     if (!resultado) return null;
 
     // Guardia de país ambiguo: si hay capas de varios países y no se especificó
-    // ninguno, no asumir el del resultado → LLM pregunta
+    // ninguno, intentar inferirlo desde el mapa activo antes de derivar al LLM.
     if (!paisExplicito && !areaFinal?.pais && !areaFinal?.valorNorm) {
       const sourceCountry = window.SOURCES?.[resultado.capa.source]?.country;
       if (sourceCountry) {
         const paisesDisponibles = new Set(
           Object.values(window.SOURCES || {}).map(s => s.country).filter(Boolean)
         );
-        if (paisesDisponibles.size > 1) return null;
+        if (paisesDisponibles.size > 1) {
+          const activeLayers = window.MAP?.getActiveLayers?.() || {};
+          const paisesActivos = new Set(
+            Object.values(activeLayers)
+              .map(entry => window.SOURCES?.[window.LAYERS?.[entry.layerKey]?.source]?.country)
+              .filter(Boolean)
+          );
+          if (paisesActivos.size === 1) {
+            const paisInferido = [...paisesActivos][0];
+            if (sourceCountry !== paisInferido) return null;
+          } else {
+            return null;
+          }
+        }
       }
     }
 
@@ -682,7 +695,9 @@ window.INTENT_CAPA = (() => {
       return null;
     }
 
-    // Guardia de país ambiguo
+    // Guardia de país ambiguo: si hay capas de varios países y no se especificó
+    // ninguno, intentar inferirlo desde el mapa activo antes de derivar al LLM.
+    // Si todas las capas activas son de un solo país → usar ese como implícito.
     if (!paisExplicito && !areaFinal?.pais && !areaFinal?.valorNorm) {
       const sourceCountry = window.SOURCES?.[resultado.capa.source]?.country;
       if (sourceCountry) {
@@ -690,8 +705,27 @@ window.INTENT_CAPA = (() => {
           Object.values(window.SOURCES || {}).map(s => s.country).filter(Boolean)
         );
         if (paisesDisponibles.size > 1) {
-          console.log(`[CAPA] → LLM | país ambiguo: "${resultado.key}" es de ${sourceCountry} pero hay ${paisesDisponibles.size} países`);
-          return null;
+          // Intentar inferir el país desde las capas activas del mapa
+          const activeLayers = window.MAP?.getActiveLayers?.() || {};
+          const paisesActivos = new Set(
+            Object.values(activeLayers)
+              .map(entry => window.SOURCES?.[window.LAYERS?.[entry.layerKey]?.source]?.country)
+              .filter(Boolean)
+          );
+          if (paisesActivos.size === 1) {
+            const paisInferido = [...paisesActivos][0];
+            // Solo aplicar si la capa encontrada pertenece a ese país
+            if (sourceCountry === paisInferido) {
+              console.log(`[CAPA] País inferido del mapa activo: ${paisInferido}`);
+              // Continuar normalmente — el scorer ya eligió la capa correcta
+            } else {
+              console.log(`[CAPA] → LLM | país ambiguo: "${resultado.key}" es de ${sourceCountry} pero el mapa activo es de ${paisInferido}`);
+              return null;
+            }
+          } else {
+            console.log(`[CAPA] → LLM | país ambiguo: "${resultado.key}" es de ${sourceCountry} pero hay ${paisesDisponibles.size} países`);
+            return null;
+          }
         }
       }
     }
