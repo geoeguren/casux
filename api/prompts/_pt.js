@@ -27,7 +27,7 @@ function buildSystemPrompt(capasRelevantes, todasLasCapas, tone, activeMap, sour
   const mascaras = buildMascarasDisponibles(todasLasCapas);
 
   const activeMapContext = activeMap
-    ? `\nMAPA ATIVO AGORA:\nTítulo: ${activeMap.titulo}\nCamadas: ${activeMap.capas}\nQualquer pedido de mudança de estilo, nome ou remoção de camada refere-se a ESTE mapa.\n`
+    ? `\nMAPA ATIVO AGORA:\nTítulo: ${activeMap.titulo}\nCamadas: ${activeMap.capas}\nQualquer pedido de mudança de estilo, nome ou remoção de camada refere-se a ESTE mapa.\n\nREGRA DE ACUMULAÇÃO — CRÍTICA: Se o usuário pedir para adicionar, incluir ou somar uma nova camada ao mapa atual (verbos: "adiciona", "inclui", "também quero ver", "além disso", "também", "add", "also show"), o bloco map DEVE incluir TODAS as camadas ativas mais a nova. NUNCA substitua as camadas existentes quando o pedido for aditivo.\nExemplo: mapa ativo tem rutas_ar, usuário pede "adiciona os rios" → [{layerKey:vial_nacional_ar,...},{layerKey:rio_ar,...}]. NUNCA apenas [{layerKey:rio_ar,...}].\n`
     : '';
 
   const toneAdaptation = tone === 'default' ? `
