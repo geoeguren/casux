@@ -208,9 +208,13 @@ window.CHAT = (() => {
         else if (intencion.tipo === 'renombrar' && intencion.subtipo === 'especifico') {
           isStreaming = false;
           UI.setSendEnabled(true);
-          window.CHAT_HEADER?.startRename?.(intencion.parametros.nombre);
-          const msgEl = UI.addMessage('assistant', t('chat_renamed', { nombre: intencion.parametros.nombre }));
-          history.push({ role: 'assistant', content: t('chat_renamed', { nombre: intencion.parametros.nombre }), time: new Date().toISOString() });
+          const nombreRenombrar = intencion.parametros.nombre;
+          window.CHAT_HEADER?.startRename?.(nombreRenombrar);
+          // Actualizar también el título del mapa activo
+          const planRenombrar = window.APP?.getCurrentPlan?.();
+          if (planRenombrar) planRenombrar.titulo = toTitleCase(nombreRenombrar);
+          UI.addMessage('assistant', t('chat_renamed', { nombre: nombreRenombrar }));
+          history.push({ role: 'assistant', content: t('chat_renamed', { nombre: nombreRenombrar }), time: new Date().toISOString() });
           return;
         }
 
@@ -1992,6 +1996,11 @@ window.UI = (() => {
       if (!nombre) return;
       wrap.remove();
       window.CHAT_HEADER?.startRename?.(nombre);
+      // Actualizar también el título del mapa activo
+      const planApply = window.APP?.getCurrentPlan?.();
+      if (planApply) planApply.titulo = nombre;
+      const mapTitleInput = document.getElementById('map-title');
+      if (mapTitleInput) mapTitleInput.value = nombre;
       addMessage('assistant', t('chat_renamed', { nombre }));
       scrollBottom();
     };
