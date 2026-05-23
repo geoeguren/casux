@@ -52,7 +52,10 @@ window._SPATIAL_NEAREST = (() => {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(body),
-      signal:  AbortSignal.timeout(90000),
+      // 55s: Vercel Hobby corta la función serverless a los 60s.
+      // El cliente no debe esperar más que eso — de lo contrario aguarda
+      // en silencio 30s extra después de que el servidor ya murió.
+      signal:  AbortSignal.timeout(55000),
     });
     if (!resp.ok) throw new Error(`Edge Function HTTP ${resp.status}`);
     return resp.json();
