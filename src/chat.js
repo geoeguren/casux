@@ -1302,10 +1302,24 @@ window.UI = (() => {
     scrollBottom();
   }
 
+
+  // Resuelve el nombre visible de una instrucción para mostrarlo en el card del mapa.
+  // Misma prioridad que renderMap en app.js: tituloUI de la instrucción (puesto por
+  // construirInstruccion desde el catálogo) → tituloUI del catálogo → descripcion.
+  function _tituloInstruccion(inst) {
+    if (!inst) return '';
+    if (inst.tituloUI) return inst.tituloUI;
+    const _lang = window.I18N?.getLang?.() || 'es';
+    const _suf  = _lang === 'en' ? 'En' : _lang === 'pt' ? 'Pt' : 'Es';
+    const capa  = window.LAYERS?.[inst.layerKey];
+    if (capa) return capa[`tituloUI${_suf}`] || capa.tituloUI || capa.titulo || inst.descripcion || inst.layerKey;
+    return inst.descripcion || inst.layerKey || '';
+  }
+
   function showMapReady(plan) {
     const capas = (plan.instrucciones || [])
-      .filter(i => i.descripcion)
-      .map(i => i.descripcion)
+      .map(i => _tituloInstruccion(i))
+      .filter(Boolean)
       .join('\n');
 
     const el = document.createElement('div');
@@ -2006,8 +2020,8 @@ window.UI = (() => {
     // solo abre el mapa sin re-renderizar (el estilo ya está aplicado).
     const plan = window.APP?.getCurrentPlan?.() || {};
     const capas = (plan.instrucciones || [])
-      .filter(i => i.descripcion)
-      .map(i => i.descripcion)
+      .map(i => _tituloInstruccion(i))
+      .filter(Boolean)
       .join('\n');
 
     const el = document.createElement('div');
