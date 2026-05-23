@@ -575,9 +575,9 @@ body.day, html.day .export-option:hover { background: rgba(0,0,0,0.06); }
 
 /* Label principal del botón de exportar */
 .export-opt-label {
-  flex: 1;
+  flex-shrink: 0;
 }
-/* Hint en mono (formato) — mismo estilo que adv-ramp-option-label--mono */
+/* Hint en mono (formato) — inmediatamente a la derecha del label */
 .export-opt-hint {
   font-family: var(--font-mono);
   font-size: 11px;
