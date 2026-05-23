@@ -416,10 +416,25 @@ window.CHAT = (() => {
           const { mapKey, layerKey, field, label, type, palette } = intencion.parametros;
 
           if (!field) {
-            // Campo no identificado → mostrar selector de campo clasificable
-            const msgEl = UI.addMessage('assistant', t('classify_which_field'));
-            UI.showFieldSelectorForClassify(msgEl, mapKey, layerKey);
-            history.push({ role: 'assistant', content: t('classify_which_field'), time: new Date().toISOString() });
+            // Campo no identificado.
+            // Si además mapKey es null (capa ambigua) → selector de capa primero,
+            // luego selector de campo. Igual que el flujo de estilo vago.
+            if (!mapKey) {
+              const msgEl = UI.addMessage('assistant', t('style_which_layer'));
+              UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => {
+                const selectedEntry = window.MAP?.getActiveLayers?.()[selectedMapKey];
+                const selectedLayerKey = selectedEntry?.layerKey;
+                if (!selectedLayerKey) return;
+                const fieldMsgEl = UI.addMessage('assistant', t('classify_which_field'));
+                UI.showFieldSelectorForClassify(fieldMsgEl, selectedMapKey, selectedLayerKey);
+              });
+              history.push({ role: 'assistant', content: t('style_which_layer'), time: new Date().toISOString() });
+            } else {
+              // Capa identificada pero campo no → selector de campo
+              const msgEl = UI.addMessage('assistant', t('classify_which_field'));
+              UI.showFieldSelectorForClassify(msgEl, mapKey, layerKey);
+              history.push({ role: 'assistant', content: t('classify_which_field'), time: new Date().toISOString() });
+            }
             return;
           }
 
@@ -2219,15 +2234,18 @@ window.UI = (() => {
     if (!layerDef?.attributes?.length) return;
 
     const attrs = layerDef.attributes.filter(a =>
-      (a.label && a.label.trim()) || a.classifiable === true
+      (a.label && a.label.trim()) || (a.labelEn && a.labelEn.trim()) || a.classifiable === true
     );
     if (!attrs.length) return;
+
+    const _lang = window.I18N?.getLang?.() || 'es';
 
     const card = document.createElement('div');
     card.className = 'msg-export-choice';
 
     card.innerHTML = attrs.map(a => {
-      const displayLabel = a.label || a.campo;
+      const labelI18n = _lang === 'en' ? (a.labelEn || a.label) : (a.label || a.labelEn);
+      const displayLabel = (labelI18n && labelI18n.trim()) ? labelI18n : a.campo;
       const tipoClasif = /num|area|longitud|pobla|cant|total|valor|porc|dens|super/i.test(a.campo || '')
         ? 'graduated' : 'categorized';
       return `<button class="export-choice-btn"
