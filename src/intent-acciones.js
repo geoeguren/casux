@@ -305,11 +305,10 @@ window.INTENT_ACCIONES = (() => {
 
     const esOcultar = PATRON_OCULTAR.test(norm);
     const esMostrar = PATRON_MOSTRAR.test(norm);
+    // Matchear el patrón primero — sin depender de activeLayers.
+    // El check de capas activas se hace después del match para poder dar
+    // un mensaje útil al usuario si el mapa está vacío.
     if (!esOcultar && !esMostrar) return null;
-
-    // Solo actúa si hay capas activas en el mapa
-    const activeLayers = window.MAP?.getActiveLayers?.() || {};
-    if (!Object.keys(activeLayers).length) return null;
 
     const visible = esMostrar ? true : false;
 
@@ -317,17 +316,34 @@ window.INTENT_ACCIONES = (() => {
       .replace(esMostrar ? PATRON_MOSTRAR : PATRON_OCULTAR, '')
       .trim();
 
+    // Quitar también artículos y pronombres residuales comunes que no aportan
+    // información de capa: "la", "el", "a", "o", "the", "it", "capa", "layer", "camada"
+    const residual = textoSinVerbo
+      .replace(/^\b(la|el|a|o|the|it|capa|layer|camada|essa|esta|esa|esta|that|this)\b\s*/i, '')
+      .trim();
+
+    const activeLayers = window.MAP?.getActiveLayers?.() || {};
     const keys = Object.keys(activeLayers);
 
-    // Una sola capa activa y pedido vago → asumir esa capa
+    // Sin capas → devolver igualmente la intención con mapKey null;
+    // chat.js mostrará el mensaje apropiado ("no hay capas en el mapa").
+    if (!keys.length) {
+      return { tipo: 'toggle_visibilidad', parametros: { mapKey: null, visible } };
+    }
+
+    // Una sola capa activa → asumir esa capa sin necesidad de matching
     if (keys.length === 1) {
       return { tipo: 'toggle_visibilidad', parametros: { mapKey: keys[0], visible } };
     }
 
-    // Sin texto significativo tras quitar el verbo → no podemos resolver
-    if (!textoSinVerbo) return null;
+    // Varias capas: intentar resolver por nombre
+    if (!residual) {
+      // Pedido vago con varias capas → devolver mapKey null para que chat.js muestre selector
+      return { tipo: 'toggle_visibilidad', parametros: { mapKey: null, visible } };
+    }
 
-    const mapKey = _matchCapaActiva(textoSinVerbo);
+    const mapKey = _matchCapaActiva(residual);
+    // Si no matchea ninguna capa conocida → devolver null (no somos mejores que el LLM aquí)
     if (!mapKey) return null;
 
     return { tipo: 'toggle_visibilidad', parametros: { mapKey, visible } };
