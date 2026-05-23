@@ -50,32 +50,101 @@ function featureDentroMascara(feat, maskFeature) {
   }
 }
 
+/**
+ * dissolverFeatures(features) → FeatureCollection
+ *
+ * Une todos los features en uno solo según su tipo de geometría:
+ *
+ *   Polígono / MultiPolígono
+ *     → turf.union iterado → un único Polygon o MultiPolygon
+ *       (comportamiento original)
+ *
+ *   LineString / MultiLineString
+ *     → MultiLineString con todos los segmentos recopilados.
+ *       Cada LineString aporta su array de coordenadas.
+ *       Cada MultiLineString aporta todos sus sub-arrays.
+ *       Útil para: "dissolve los tramos de la Ruta 40" → una sola
+ *       MultiLineString con todos los tramos como un único feature.
+ *
+ *   Point / MultiPoint
+ *     → MultiPoint con todas las coordenadas recopiladas.
+ *
+ * Si solo hay un feature, lo devuelve directamente.
+ * Si la colección es vacía, devuelve FeatureCollection vacía.
+ */
 function dissolverFeatures(features) {
-  const poligonos = features.filter(f => {
+  if (!features.length) return { type: 'FeatureCollection', features: [] };
+
+  // Clasificar por tipo base
+  const poligonos = [];
+  const lineas    = [];
+  const puntos    = [];
+
+  for (const f of features) {
     const t = f.geometry?.type;
-    return t === 'Polygon' || t === 'MultiPolygon';
-  });
-
-  if (!poligonos.length) {
-    // Sin polígonos — devolver features tal cual
-    return { type: 'FeatureCollection', features };
+    if (!t) continue;
+    if (t === 'Polygon'     || t === 'MultiPolygon')    poligonos.push(f);
+    else if (t === 'LineString'  || t === 'MultiLineString') lineas.push(f);
+    else if (t === 'Point'       || t === 'MultiPoint')      puntos.push(f);
   }
 
-  if (poligonos.length === 1) {
-    return { type: 'FeatureCollection', features: [poligonos[0]] };
+  // Polígonos → turf.union iterado
+  if (poligonos.length) {
+    if (poligonos.length === 1) return { type: 'FeatureCollection', features: [poligonos[0]] };
+    const resultado = poligonos.reduce((acc, feat) => {
+      try { return turf.union(acc, feat); }
+      catch { return acc; }
+    });
+    if (!resultado.properties || !Object.keys(resultado.properties).length) {
+      resultado.properties = poligonos[0]?.properties || {};
+    }
+    return { type: 'FeatureCollection', features: [resultado] };
   }
 
-  const resultado = poligonos.reduce((acc, feat) => {
-    try { return turf.union(acc, feat); }
-    catch { return acc; }
-  });
-
-  // Preservar propiedades del primer feature
-  if (!resultado.properties || Object.keys(resultado.properties).length === 0) {
-    resultado.properties = poligonos[0]?.properties || {};
+  // Líneas → MultiLineString
+  if (lineas.length) {
+    if (lineas.length === 1) return { type: 'FeatureCollection', features: [lineas[0]] };
+    const coords = [];
+    for (const f of lineas) {
+      if (f.geometry.type === 'LineString') {
+        coords.push(f.geometry.coordinates);
+      } else {
+        for (const sub of f.geometry.coordinates) coords.push(sub);
+      }
+    }
+    return {
+      type: 'FeatureCollection',
+      features: [{
+        type:       'Feature',
+        geometry:   { type: 'MultiLineString', coordinates: coords },
+        properties: lineas[0]?.properties || {},
+      }],
+    };
   }
 
-  return { type: 'FeatureCollection', features: [resultado] };
+  // Puntos → MultiPoint
+  if (puntos.length) {
+    if (puntos.length === 1) return { type: 'FeatureCollection', features: [puntos[0]] };
+    const coords = [];
+    for (const f of puntos) {
+      if (f.geometry.type === 'Point') {
+        coords.push(f.geometry.coordinates);
+      } else {
+        for (const coord of f.geometry.coordinates) coords.push(coord);
+      }
+    }
+    return {
+      type: 'FeatureCollection',
+      features: [{
+        type:       'Feature',
+        geometry:   { type: 'MultiPoint', coordinates: coords },
+        properties: puntos[0]?.properties || {},
+      }],
+    };
+  }
+
+  // Sin geometrías reconocidas — devolver tal cual
+  return { type: 'FeatureCollection', features };
 }
 
 onmessage = function(e) {
