@@ -2,8 +2,8 @@
  * geo_maps/uy/regiones.js
  *
  * Regiones informales de Uruguay.
- * Cada región mapea a un array de departamentos exactamente como los devuelve el WFS de MTOP
- * (campo 'nombre' de la capa departamentos_uy, en MAYÚSCULAS).
+ * Cada región mapea a un array de departamentos exactamente como los devuelve el WFS de IGM Uruguay
+ * (campo 'depto' de la capa departamento_uy, en MAYÚSCULAS).
  *
  * Formato: { value: ['DEPTO1', 'DEPTO2', ...] }
  *
