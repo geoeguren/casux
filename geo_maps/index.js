@@ -86,7 +86,7 @@ window.GEO_MAPS = {
     // nivel 2: regiones informales de Uruguay (agrupan departamentos)
     regiones: {
       valores:  UY_GEO_MAPS.regiones,
-      layerKey: 'departamentos_uy',
+      layerKey: 'departamento_uy',
       tipo:     'region',
       nivel:    2,
     },
