@@ -291,8 +291,9 @@ window.CHAT = (() => {
             history.push({ role: 'assistant', content: t('style_which_layer'), time: new Date().toISOString() });
           } else {
             const msgEl = UI.showStyleFlow(intencion);
+            const _PARAM_KEY = { color: 'style_ask_color', radius: 'style_ask_size', weight: 'style_ask_weight', icon: 'style_ask_icon', geom: 'style_ask_geom' };
             const histContent = intencion?.parametros?.param
-              ? t('style_ask_' + intencion.parametros.param) || t('style_what_to_change')
+              ? t(_PARAM_KEY[intencion.parametros.param] || 'style_what_to_change')
               : t('style_what_to_change');
             history.push({ role: 'assistant', content: histContent, time: new Date().toISOString() });
           }
