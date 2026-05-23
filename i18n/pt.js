@@ -310,6 +310,7 @@ window.I18N_PT = {
   layer_already_on_map:      'Essa camada já está no mapa.',
   layer_not_found:           'Essa camada não está no mapa.',
   layer_removed:             'Pronto, removi {titulo}.',
+  quitar_which_layer:        'Qual camada você quer remover?',
   layer_hidden:              'Pronto, ocultei {titulo}.',
   layer_shown:               'Pronto, mostrei {titulo} novamente.',
   toggle_which_layer:        'Qual camada você quer mostrar/ocultar?',
