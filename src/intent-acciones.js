@@ -192,7 +192,9 @@ window.INTENT_ACCIONES = (() => {
   // Quita el verbo de adición del texto antes de pasarlo al scorer
   // para que buscarCapa solo vea el nombre de la capa pedida.
 
-  const PATRON_AGREGAR = /^(agrega[r]?me?|añadi[r]?me?|suma[r]?me?|incorpora[r]?me?|agregale|tambien\s+(quiero\s+ver|mostra[r]?me?|carga[r]?me?)|ademas\s+(quiero\s+ver|mostra[r]?me?|carga[r]?me?)|add|include|also\s+show|show\s+also|also\s+add|add\s+also|and\s+also\s+show|adiciona[r]?(me)?|inclui[r]?(me)?|tambem\s+(quero\s+ver|mostra[r]?|carrega[r]?)|alem\s+disso\s+mostra[r]?)\s+/i;
+  // ES: agregar/añadir/sumar  EN: add/include/also show  PT: adicionar/incluir/também
+  // ^ al inicio evita falsos positivos con "quiero agregar algo al informe"
+  const PATRON_AGREGAR = /^(agrega[r]?(?:me|le|nos)?|a[nñ]adi[r]?(?:me|le|nos)?|suma[r]?(?:me|le|nos)?|incorpora[r]?(?:me|le|nos)?|carga[r]?(?:me|le|nos)?\s+(?:tambi[eé]n|ademas|adem[aá]s)|ponele\s+(?:tambi[eé]n|ademas|adem[aá]s|encima)?|tambi[eé]n\s+(?:quiero\s+ver|mostra[r]?(?:me)?|carga[r]?(?:me)?|agrega[r]?(?:me)?)|ademas\s+(?:quiero\s+ver|mostra[r]?(?:me)?|carga[r]?(?:me)?)|adem[aá]s\s+(?:quiero\s+ver|mostra[r]?(?:me)?|carga[r]?(?:me)?)|y\s+tambi[eé]n\s+(?:quiero\s+ver|mostr[aá]|mostrame|agrega)|add(?:\s+also)?|include|also\s+show|show\s+also|also\s+add|add\s+also|and\s+also\s+show|on\s+top\s+of\s+that\s+show|additionally\s+show|adiciona[r]?(?:me)?|inclui[r]?(?:me)?|acrescenta[r]?(?:me)?|tamb[eé]m\s+(?:quero\s+ver|mostra[r]?(?:me)?|carrega[r]?(?:me)?|adiciona[r]?(?:me)?)|alem\s+disso\s+mostra[r]?|al[eé]m\s+disso\s+(?:mostra[r]?|adiciona[r]?))\s+/i;
 
   function detectarAgregar(textoUsuario) {
     const norm = normalizarSimple(textoUsuario);
@@ -206,8 +208,14 @@ window.INTENT_ACCIONES = (() => {
     const textoSinVerbo = textoUsuario.replace(PATRON_AGREGAR, '').trim();
     if (!textoSinVerbo) return null;
 
-    // Usar detectarCapaDirecta (sin guardia de historial) del módulo de capas
-    const resultado = window.INTENT_CAPA?.detectarCapaDirecta?.(textoSinVerbo);
+    // Estrategia de scoring en dos pasos:
+    // 1. Intentar con el texto sin verbo (caso ideal)
+    // 2. Si falla, intentar con el texto completo — el scorer ignora stopwords
+    //    y el verbo de adición tiene IDF bajo (no matchea keywords de capas).
+    let resultado = window.INTENT_CAPA?.detectarCapaDirecta?.(textoSinVerbo);
+    if (!resultado) {
+      resultado = window.INTENT_CAPA?.detectarCapaDirecta?.(textoUsuario);
+    }
     if (!resultado) return null;
 
     return { tipo: 'agregar', parametros: resultado.parametros };
