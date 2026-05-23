@@ -565,6 +565,52 @@ window.SPATIAL = (() => {
       });
     }
 
+    // clipStrategy: 'attribute'
+    //
+    // La capa se filtra por campo de atributo, no por geometría.
+    // Ejemplos: localidad_ar (nom_pcia='Mendoza'), sublocalidad_ar (nom_pcia='Córdoba').
+    //
+    // El flujo normal (via intent-capa.js) construye el CQL correcto y NO pone clipArea:
+    //   "localidades de Mendoza" → instruccion.filtro = "nom_pcia='Mendoza'", clipArea = null
+    //   → spatial.js recibe clip sin clipArea → fetch directo con CQL.
+    //
+    // Guard para llamadas directas (tests, API externa) que pasen clipArea igualmente:
+    // si la capa es 'attribute' y viene clipArea, convertimos el clipArea en CQL y
+    // vaciamos el clipArea para evitar que se dispare un clip geométrico innecesario
+    // (que en el servidor no conoce clipStrategy y procesaría puntos con booleanPointInPolygon
+    // contra un MultiPolygon complejo, devolviendo 0 features incorrectamente).
+    if (layerDef.clipStrategy === 'attribute') {
+      const areaRaw = instruccion.clipArea || instruccion.intersectArea;
+      if (areaRaw?.field && areaRaw?.value != null) {
+        // Construir CQL de atributo y limpiar el área geométrica
+        const { _buildFiltroArea } = window._INTENT_CAPA_UTILS || {};
+        if (_buildFiltroArea) {
+          const esExclude = op === 'clip_exclude' || op === 'intersect_exclude';
+          const filtroArea = _buildFiltroArea(areaRaw.field, areaRaw.value, esExclude);
+          instruccion = {
+            ...instruccion,
+            filtro:       cql ? `${cql} AND ${filtroArea}` : filtroArea,
+            clipArea:     null,
+            intersectArea: null,
+          };
+        } else {
+          // _buildFiltroArea no está expuesta: construir CQL simple como fallback
+          const values    = Array.isArray(areaRaw.value) ? areaRaw.value : [areaRaw.value];
+          const esExclude = op === 'clip_exclude' || op === 'intersect_exclude';
+          const filtroArea = values.length === 1
+            ? `${areaRaw.field}='${values[0]}'`
+            : `${areaRaw.field} IN (${values.map(v => `'${v}'`).join(',')})`;
+          const filtroFinal = esExclude ? `NOT (${filtroArea})` : filtroArea;
+          instruccion = {
+            ...instruccion,
+            filtro:       cql ? `${cql} AND ${filtroFinal}` : filtroFinal,
+            clipArea:     null,
+            intersectArea: null,
+          };
+        }
+      }
+    }
+
     // Derivar según op
     switch (op) {
       case 'clip':
