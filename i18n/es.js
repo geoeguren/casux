@@ -310,6 +310,7 @@ window.I18N_ES = {
   layer_already_on_map:      'Esa capa ya está en el mapa.',
   layer_not_found:           'No encontré esa capa en el mapa.',
   layer_removed:             'Listo, saqué {titulo}.',
+  quitar_which_layer:        '¿Cuál capa querés quitar?',
   layer_hidden:              'Listo, oculté {titulo}.',
   layer_shown:               'Listo, volví a mostrar {titulo}.',
   toggle_which_layer:        '¿Cuál capa querés mostrar/ocultar?',
