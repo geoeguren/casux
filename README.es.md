@@ -52,10 +52,27 @@ Datos oficiales de fuentes públicas, consultados en tiempo real vía WFS/REST:
 **Próximamente:** Bolivia, Brasil, Colombia, Ecuador, Paraguay, Perú, Venezuela.
 
 ### Análisis espacial
-- **Buffer:** área de influencia alrededor de una o más entidades
-- **Clip:** recorte de una capa dentro de un área definida
-- **Intersect:** features que se superponen con un área dada
-- Variantes exclude para cada operación
+
+Casux soporta siete operaciones espaciales, cada una con su variante exclude:
+
+| Operación | Qué hace | Ejemplo |
+|---|---|---|
+| **Clip** | Recorta features al borde de un área | "ríos de Córdoba" |
+| **Clip exclude** | Devuelve features *fuera* de un área | "aeropuertos fuera de Buenos Aires" |
+| **Intersect** | Devuelve features completos que tocan un área (sin recortar) | "rutas nacionales que pasan por Salta" |
+| **Intersect exclude** | Features que *no* tocan un área | "rutas que no pasan por Córdoba" |
+| **Within layer** | Features a menos de N km de un punto o área de referencia | "aeropuertos a menos de 200km de Rosario" |
+| **Within layer exclude** | Features a *más de* N km | "aeropuertos a más de 500km de Buenos Aires" |
+| **Dissolve** | Une un conjunto de features en un único polígono | "uní las provincias patagónicas" |
+| **Dissolve exclude** | Une los features *fuera* de un área de referencia | "uní todas las provincias menos las de la Patagonia" |
+| **Adjacent** | Features que comparten borde con un área de referencia | "provincias que limitan con Santa Fe" |
+| **Adjacent exclude** | Features que *no* comparten borde | "provincias que no limitan con Buenos Aires" |
+| **Nearest** | Los N features más cercanos a una referencia | "los 5 aeropuertos más cercanos a Mendoza" |
+| **Nearest exclude** | Los N features *más lejanos* de una referencia | "el aeropuerto más lejano de Buenos Aires" |
+
+Las operaciones se resuelven localmente por el motor de intenciones cuando la capa y el área de referencia son reconocibles, y derivan al LLM para pedidos complejos o con contexto ambiguo.
+
+Las referencias soportan regiones geográficas informales (Patagonia, NOA, NEA, Cuyo, Mesopotamia en Argentina; Norte Grande, Zona Central, Austral en Chile; Sur, Este, Litoral en Uruguay) y áreas múltiples simultáneas ("aeropuertos de Córdoba y Mendoza").
 
 ### Exportación
 - **JPEG** — imagen de alta resolución lista para publicar
@@ -75,11 +92,11 @@ Datos oficiales de fuentes públicas, consultados en tiempo real vía WFS/REST:
 ## Tecnología
 
 - **Frontend:** JavaScript vanilla, Leaflet
-- **Backend:** Vercel Serverless Functions (Node.js)
-- **Datos:** WFS (OGC Web Feature Service) y REST/ArcGIS
+- **Backend:** Vercel Serverless Functions (Node.js) + Cloudflare Workers (endpoints livianos)
+- **Datos:** WFS (OGC Web Feature Service) y REST/ArcGIS; snapshots de capas en Cloudflare R2
 - **IA:** pipeline con Cerebras → Groq → Gemini como fallback (streaming de tokens)
-- **Persistencia:** Firebase Firestore
-- **Procesamiento espacial:** Turf.js (en Web Workers)
+- **Persistencia:** Turso (SQLite) para chats y analíticas
+- **Procesamiento espacial:** Turf.js (en Web Workers), con edge function para operaciones pesadas
 
 ---
 
