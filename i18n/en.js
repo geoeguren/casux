@@ -310,7 +310,15 @@ window.I18N_EN = {
   layer_already_on_map:      'That layer is already on the map.',
   layer_not_found:           'That layer is not on the map.',
   layer_removed:             'Done, removed {titulo}.',
-  chat_renamed:            'Renamed the map to "{nombre}".',
+  layer_hidden:              'Done, hidden {titulo}.',
+  layer_shown:               'Done, showing {titulo} again.',
+  toggle_which_layer:        'Which layer do you want to show/hide?',
+  style_which_layer:         'Which layer do you want to change?',
+  rename_ask:                'What do you want to call the map?',
+  rename_placeholder:        'New name…',
+  rename_confirm:            'Rename',
+  classify_done:             'Done, classified the layer by {label}.',
+  chat_renamed:              'Renamed the map to "{nombre}".',
 
   // ── Basemaps ─────────────────────────────────────────────────
   basemap_gray:            'Positron',
