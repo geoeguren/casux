@@ -124,6 +124,23 @@ window.CHAT = (() => {
     }
   }
 
+  // Quita una capa del mapa y la elimina del plan persistido
+  function _quitarCapa(mapKey) {
+    const activeLayers = window.MAP?.getActiveLayers?.() || {};
+    if (!activeLayers[mapKey]) return;
+    window.MAP.removeLayer(mapKey);
+    window.MAP.updateLegend();
+    const planActual = window.APP?.getCurrentPlan?.();
+    if (planActual?.instrucciones) {
+      planActual.instrucciones = planActual.instrucciones.filter(i => i.mapKey !== mapKey);
+    }
+    const user   = window.AUTH?.currentUser?.();
+    const chatId = window.CHAT?.getChatId?.();
+    if (user && chatId && planActual) {
+      window.FB?.updateChat?.(user.uid, chatId, { lastMap: planActual }).catch(() => {});
+    }
+  }
+
   // ── Enviar mensaje ────────────────────────────────────────────
 
   async function send(userText) {
@@ -358,26 +375,26 @@ window.CHAT = (() => {
           UI.setSendEnabled(true);
           const { mapKey } = intencion.parametros;
           const activeLayers = window.MAP?.getActiveLayers?.() || {};
+
+          if (!mapKey) {
+            // Pedido vago con varias capas → selector de capa
+            const msgEl = UI.addMessage('assistant', t('quitar_which_layer'));
+            UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => {
+              _quitarCapa(selectedMapKey);
+            });
+            history.push({ role: 'assistant', content: t('quitar_which_layer'), time: new Date().toISOString() });
+            return;
+          }
+
           const entry = activeLayers[mapKey];
           if (!entry) {
-            const msgEl = UI.addMessage('assistant', t('layer_not_found'));
+            UI.addMessage('assistant', t('layer_not_found'));
             history.push({ role: 'assistant', content: t('layer_not_found'), time: new Date().toISOString() });
             return;
           }
+          _quitarCapa(mapKey);
           const tituloEliminada = entry.titulo || mapKey;
-          window.MAP.removeLayer(mapKey);
-          window.MAP.updateLegend();
-          const planActual = window.APP?.getCurrentPlan?.();
-          if (planActual?.instrucciones) {
-            planActual.instrucciones = planActual.instrucciones.filter(i => i.mapKey !== mapKey);
-          }
-          const user   = window.AUTH?.currentUser?.();
-          const chatId = window.CHAT?.getChatId?.();
-          if (user && chatId && planActual) {
-            window.FB?.updateChat?.(user.uid, chatId, { lastMap: planActual }).catch(() => {});
-          }
-          const msg = t('layer_removed', { titulo: tituloEliminada });
-          const msgEl = UI.addMessage('assistant', msg);
+          UI.addMessage('assistant', t('layer_removed', { titulo: tituloEliminada }));
           history.push({ role: 'assistant', content: `[intent] -${tituloEliminada}`, time: new Date().toISOString(), model: 'pim' });
           return;
         }
