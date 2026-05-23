@@ -27,7 +27,7 @@ function buildSystemPrompt(capasRelevantes, todasLasCapas, tone, activeMap, sour
   const mascaras = buildMascarasDisponibles(todasLasCapas);
 
   const activeMapContext = activeMap
-    ? `\nACTIVE MAP RIGHT NOW:\nTitle: ${activeMap.titulo}\nLayers: ${activeMap.capas}\nAny request to change style, name, or remove a layer refers to THIS map.\n`
+    ? `\nACTIVE MAP RIGHT NOW:\nTitle: ${activeMap.titulo}\nLayers: ${activeMap.capas}\nAny request to change style, name, or remove a layer refers to THIS map.\n\nACCUMULATION RULE — CRITICAL: If the user asks to add, include, or layer on top of the current map (words: "add", "also show", "include", "and also", "on top of that show", "additionally"), the map block MUST include ALL currently active layers PLUS the new one. NEVER replace existing layers when the request is clearly additive.\nExample: active map has routes_ar, user asks "add the rivers" → [{layerKey:vial_nacional_ar,...},{layerKey:rio_ar,...}]. NEVER just [{layerKey:rio_ar,...}].\n`
     : '';
 
   const toneAdaptation = tone === 'default' ? `
