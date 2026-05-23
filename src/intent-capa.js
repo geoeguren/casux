@@ -89,7 +89,11 @@ window.INTENT_CAPA = (() => {
   const PATRON_NEAREST = /\b(m[aá]s\s+cercano|m[aá]s\s+pr[oó]ximo|los\s+\d+(?:\s+\w+)?\s+m[aá]s\s+cercanos?|las\s+\d+(?:\s+\w+)?\s+m[aá]s\s+cercanas?|nearest|closest|cerca\s+de\b|el\s+m[aá]s\s+cercano|la\s+m[aá]s\s+cercana|o\s+mais\s+pr[oó]ximo|os\s+\d+(?:\s+\w+)?\s+mais\s+pr[oó]ximos?)\b/i;
 
   // nearest_exclude: los N más lejanos — se evalúa ANTES que nearest
-  const PATRON_NEAREST_EXCLUDE = /\b(m[aá]s\s+lejano|m[aá]s\s+distante|los\s+\d+\s+m[aá]s\s+lejanos?|las\s+\d+\s+m[aá]s\s+lejanas?|furthest|farthest|most\s+distant|el\s+m[aá]s\s+lejano|la\s+m[aá]s\s+lejana|o\s+mais\s+distante|mais\s+afastado)\b/i;
+  //
+  // Admite sustantivo entre el N y "más lejanos":
+  //   "los 3 municipios más lejanos de Buenos Aires" → los\s+\d+(?:\s+\w+)?\s+más lejanos
+  //   "más lejanos de" (sin N ni sustantivo) → m[aá]s\s+lejanos?
+  const PATRON_NEAREST_EXCLUDE = /\b(m[aá]s\s+lejanos?|m[aá]s\s+distantes?|los\s+\d+(?:\s+\w+)?\s+m[aá]s\s+lejanos?|las\s+\d+(?:\s+\w+)?\s+m[aá]s\s+lejanas?|furthest|farthest|most\s+distant|el\s+m[aá]s\s+lejano|la\s+m[aá]s\s+lejana|o\s+mais\s+distante|mais\s+afastado)\b/i;
 
   // Patrones de exclusión de las ops clásicas
   const PATRON_CLIP_EXCLUDE = /\b(fuera\s+de|excepto\s+(los?|las?)\s+de|salvo\s+(los?|las?)\s+de|todos?\s+menos\s+(los?|las?)\s+de|que\s+no\s+est[aá]n?\s+en|outside(\s+of)?|except(\s+those)?\s+(in|from)|all\s+except|excluding|fora\s+de|exceto\s+(os?|as?)\s+de|salvo\s+(os?|as?)\s+de|todos?\s+exceto)\b/i;
