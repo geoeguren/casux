@@ -310,6 +310,7 @@ window.I18N_EN = {
   layer_already_on_map:      'That layer is already on the map.',
   layer_not_found:           'That layer is not on the map.',
   layer_removed:             'Done, removed {titulo}.',
+  quitar_which_layer:        'Which layer do you want to remove?',
   layer_hidden:              'Done, hidden {titulo}.',
   layer_shown:               'Done, showing {titulo} again.',
   toggle_which_layer:        'Which layer do you want to show/hide?',
