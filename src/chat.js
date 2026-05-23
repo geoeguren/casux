@@ -884,30 +884,153 @@ window.CHAT = (() => {
   /**
    * tituloDesdePlan(instrucciones) → string | null
    *
-   * Construye un título limpio desde las instrucciones del plan:
-   *   "tituloUI de la capa [+ área geográfica]"
-   * Ejemplos: "Faros de Argentina", "Rutas nacionales de Mendoza"
+   * Construye un título de mapa/chat desde las instrucciones del plan.
+   * Formato: "nombre_corto_capa — recorte_espacial"
    *
-   * Devuelve null si no puede resolver al menos el nombre de la capa.
+   * Cuando hay recorte → usa titulo (nombre corto sin país) para evitar
+   * redundancia: "Red vial nacional — Córdoba", no "Red vial nacional de
+   * Argentina — Córdoba".
+   * Cuando no hay recorte → usa tituloUI completo: "Red vial nacional de Argentina".
+   *
+   * Reconoce todos los campos de área que puede emitir construirInstruccion:
+   * clipArea, intersectArea, withinArea, adjacentArea, nearestArea, dissolveArea.
+   *
+   * Con varias capas: construye "A + B — recorte" o "A + B" si son ≤ 3.
+   * Devuelve null si no puede resolver al menos el nombre de la primera capa.
    */
   function tituloDesdePlan(instrucciones) {
     if (!instrucciones?.length) return null;
-    const inst  = instrucciones[0];
-    const capa  = window.LAYERS?.[inst.layerKey];
-    if (!capa) return null;
 
-    const _lang      = window.I18N?.getLang?.() || 'es';
-    const _suf       = _lang === 'en' ? 'En' : _lang === 'pt' ? 'Pt' : 'Es';
-    const nombreCapa = capa[`tituloUI${_suf}`] || capa.tituloUI || capa.titulo || inst.layerKey;
+    const _lang = window.I18N?.getLang?.() || 'es';
+    const _suf  = _lang === 'en' ? 'En' : _lang === 'pt' ? 'Pt' : 'Es';
 
-    // Área espacial: clipArea o bufferArea
-    const area = inst.clipArea || inst.bufferArea;
-    const valorArea = area?.value;
-
-    if (valorArea) {
-      return toTitleCase(`${nombreCapa} — ${valorArea}`);
+    // ── Resolver nombre de una capa ───────────────────────────
+    //
+    // Sin recorte → tituloUI completo: "Ríos de Argentina"
+    // Con recorte → tituloUI sin el sufijo geográfico: "Ríos"
+    //   Se quita " de Argentina/Uruguay/Chile/..." y variantes PT/EN.
+    //   Fallback: titulo (nombre WFS, singular) si no hay tituloUI.
+    function _nombreCapa(inst, conRecorte) {
+      const capa = window.LAYERS?.[inst.layerKey];
+      if (!capa) return inst.tituloUI || inst.layerKey;
+      const tituloUI = capa[`tituloUI${_suf}`] || capa.tituloUI || '';
+      if (!conRecorte) return tituloUI || capa.titulo || inst.layerKey;
+      // Quitar el sufijo geográfico del tituloUI para obtener nombre corto
+      // Patrones: " de X", " of X", " do X", " da X", " del X" al final
+      const sinSufijo = tituloUI
+        .replace(/\s+(?:de|of|do|da|del|of\s+the)\s+\S.*$/i, '')
+        .trim();
+      // Si quitando el sufijo quedó algo razonable (≥3 chars), usarlo
+      if (sinSufijo && sinSufijo.length >= 3) return sinSufijo;
+      // Si no, usar el tituloUI completo (mejor que el titulo singular)
+      return tituloUI || capa.titulo || inst.layerKey;
     }
-    return toTitleCase(nombreCapa);
+
+    // ── Extraer recorte espacial de una instrucción ───────────
+    //
+    // Precedencia: clipArea > intersectArea > withinArea > adjacentArea
+    //              > nearestArea > dissolveArea > filtro (dissolve por atributo)
+    //
+    // Devuelve { valor, op } donde valor es string o array, op es la operación.
+    function _extraerRecorte(inst) {
+      if (inst.clipArea?.value)      return { valor: inst.clipArea.value,      op: inst.op || 'clip' };
+      if (inst.intersectArea?.value) return { valor: inst.intersectArea.value, op: 'intersect' };
+      if (inst.withinArea?.value)    return { valor: inst.withinArea.value,     op: 'within' };
+      if (inst.adjacentArea?.value)  return { valor: inst.adjacentArea.value,   op: 'adjacent' };
+      if (inst.nearestArea?.value)   return { valor: inst.nearestArea.value,    op: 'nearest' };
+      if (inst.dissolveArea?.value)  return { valor: inst.dissolveArea.value,   op: 'dissolve' };
+      // Paso E: within/nearest referenciado a otra capa (refLayerKey)
+      if (inst.refLayerKey && (inst.op === 'within_layer' || inst.op === 'nearest')) {
+        const refCapa = window.LAYERS?.[inst.refLayerKey];
+        const refNombre = refCapa?.[`tituloUI${_suf}`] || refCapa?.tituloUI || inst.refLayerKey;
+        return { valor: refNombre, op: inst.op };
+      }
+      return null;
+    }
+
+    // ── Formatear el fragmento de área según la operación ─────
+    function _formatearArea(recorte, nearestCount) {
+      if (!recorte) return null;
+      const { valor, op } = recorte;
+      const valorStr = Array.isArray(valor) ? valor.join(', ') : valor;
+
+      if (_lang === 'en') {
+        if (op === 'intersect' || op === 'intersect_exclude') return valorStr;
+        if (op === 'within' || op === 'within_layer')  {
+          const km = nearestCount || '';
+          return km ? `within ${km} km of ${valorStr}` : `near ${valorStr}`;
+        }
+        if (op === 'adjacent' || op === 'adjacent_exclude') return `bordering ${valorStr}`;
+        if (op === 'nearest' || op === 'nearest_exclude') {
+          const n = nearestCount > 1 ? `${nearestCount} nearest to` : 'nearest to';
+          return `${n} ${valorStr}`;
+        }
+        return valorStr;
+      }
+
+      if (_lang === 'pt') {
+        if (op === 'within' || op === 'within_layer') {
+          const km = nearestCount || '';
+          return km ? `a ${km} km de ${valorStr}` : `perto de ${valorStr}`;
+        }
+        if (op === 'adjacent' || op === 'adjacent_exclude') return `limítrofes com ${valorStr}`;
+        if (op === 'nearest' || op === 'nearest_exclude') {
+          const n = nearestCount > 1 ? `os ${nearestCount} mais próximos de` : 'o mais próximo de';
+          return `${n} ${valorStr}`;
+        }
+        return valorStr;
+      }
+
+      // ES (default)
+      if (op === 'within' || op === 'within_layer') {
+        const km = nearestCount || '';
+        return km ? `a ${km} km de ${valorStr}` : `cerca de ${valorStr}`;
+      }
+      if (op === 'adjacent' || op === 'adjacent_exclude') return `limítrofes con ${valorStr}`;
+      if (op === 'nearest' || op === 'nearest_exclude') {
+        const n = nearestCount > 1 ? `los ${nearestCount} más cercanos a` : 'el más cercano a';
+        return `${n} ${valorStr}`;
+      }
+      // clip, intersect, dissolve: solo el nombre del área
+      return valorStr;
+    }
+
+    // ── Construir el título ───────────────────────────────────
+
+    // Tomar hasta 3 instrucciones para el título (evitar títulos kilométricos)
+    const MAX_CAPAS_TITULO = 3;
+    const insts = instrucciones.slice(0, MAX_CAPAS_TITULO);
+
+    // Recorte: usar el de la primera instrucción que tenga uno
+    let recorte = null;
+    for (const inst of insts) {
+      recorte = _extraerRecorte(inst);
+      if (recorte) break;
+    }
+
+    const conRecorte = !!recorte;
+
+    // Nombres de capas
+    const nombres = insts
+      .map(inst => _nombreCapa(inst, conRecorte))
+      .filter(Boolean);
+    if (!nombres.length) return null;
+
+    const nombreCapas = nombres.length === 1
+      ? nombres[0]
+      : nombres.length === 2
+        ? `${nombres[0]} y ${nombres[1]}`
+        : `${nombres[0]}, ${nombres[1]} y ${nombres[2]}`;
+
+    // Fragmento de área
+    const nearestCount = insts[0]?.nearestCount || null;
+    const areaStr = _formatearArea(recorte, nearestCount);
+
+    const titulo = areaStr
+      ? `${nombreCapas} — ${areaStr}`
+      : nombreCapas;
+
+    return toTitleCase(titulo);
   }
 
   function generarTitulo(texto) {
