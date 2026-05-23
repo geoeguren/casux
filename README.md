@@ -52,10 +52,27 @@ Official data from public sources, queried in real time via WFS/REST:
 **Coming soon:** Bolivia, Brazil, Colombia, Ecuador, Paraguay, Peru, Venezuela.
 
 ### Spatial analysis
-- **Buffer:** area of influence around one or more features
-- **Clip:** crop a layer to a defined area
-- **Intersect:** features that overlap with a given area
-- Exclude variants for each operation
+
+Casux supports seven spatial operations, each with an exclude variant:
+
+| Operation | What it does | Example |
+|---|---|---|
+| **Clip** | Crops features to the boundary of an area | "rivers of Córdoba" |
+| **Clip exclude** | Keeps features *outside* an area | "airports outside Buenos Aires" |
+| **Intersect** | Returns complete features that touch an area (unclipped) | "national roads passing through Salta" |
+| **Intersect exclude** | Returns features that do *not* touch an area | "roads that don't pass through Córdoba" |
+| **Within layer** | Features within N km of a reference point or area | "airports within 200km of Rosario" |
+| **Within layer exclude** | Features *more than* N km away | "airports more than 500km from Buenos Aires" |
+| **Dissolve** | Merges a set of features into a single polygon | "merge the Patagonian provinces" |
+| **Dissolve exclude** | Merges features *outside* a reference area | "merge all provinces except Patagonia" |
+| **Adjacent** | Features that share a border with a reference area | "provinces bordering Santa Fe" |
+| **Adjacent exclude** | Features that do *not* share a border | "provinces not bordering Buenos Aires" |
+| **Nearest** | The N closest features to a reference | "the 5 nearest airports to Mendoza" |
+| **Nearest exclude** | The N *farthest* features from a reference | "the airport farthest from Buenos Aires" |
+
+Operations are resolved locally by the intent engine when the layer and reference area are unambiguous, and fall back to the LLM for complex or multi-step requests.
+
+Areas of influence and reference points support informal geographic regions (Patagonia, NOA, NEA, Cuyo, Mesopotamia for Argentina; Norte Grande, Zona Central, Austral for Chile; Sur, Este, Litoral for Uruguay) and multiple simultaneous areas ("airports in Córdoba and Mendoza").
 
 ### Export
 - **JPEG** — high-resolution image ready to publish
@@ -75,11 +92,11 @@ Official data from public sources, queried in real time via WFS/REST:
 ## Tech stack
 
 - **Frontend:** vanilla JavaScript, Leaflet
-- **Backend:** Vercel Serverless Functions (Node.js)
-- **Data:** WFS (OGC Web Feature Service) and REST/ArcGIS
+- **Backend:** Vercel Serverless Functions (Node.js) + Cloudflare Workers (lightweight endpoints)
+- **Data:** WFS (OGC Web Feature Service) and REST/ArcGIS; layer snapshots cached in Cloudflare R2
 - **AI:** Cerebras → Groq → Gemini pipeline with automatic fallback (token streaming)
-- **Persistence:** Firebase Firestore
-- **Spatial processing:** Turf.js (in Web Workers)
+- **Persistence:** Turso (SQLite) for chats and analytics
+- **Spatial processing:** Turf.js (in Web Workers), with edge function fallback for heavy operations
 
 ---
 
