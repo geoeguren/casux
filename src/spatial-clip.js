@@ -233,7 +233,6 @@ window._SPATIAL_CLIP = (() => {
       } else {
         console.log(`[SPATIAL:clip] Capa pequeña (${layerDef.featureCount ?? '?'} features) — procesando en cliente directamente.`);
       }
-      U().toastFallbackOnce();
     }
 
     // ── Fallback cliente ─────────────────────────────────────
