@@ -231,13 +231,15 @@ window.INTENT_ACCIONES = (() => {
   // Caso especial: si solo hay una capa activa y el pedido es vago
   // ("sacala", "quitala"), asume esa capa sin necesidad de matching.
 
-  const PATRON_QUITAR = /^(saca[r]?me?|quita[r]?me?|elimina[r]?me?|borra[r]?me?|remueve|remove|delete|hide|take\s+off|get\s+rid\s+of|drop|remove[r]?|deleta[r]?|elimina[r]?|tira[r]?|esconde[r]?)\s+/i;
+  // ES: quitar/sacar/eliminar/borrar  EN: remove/delete/drop  PT: remover/deletar/tirar
+  // Reescrito sin me? suelto para evitar el bug de word-boundary (igual que toggle).
+  const PATRON_QUITAR = /^(?:sacar?(?:me|le|nos)?|quitar?(?:me|le|nos)?|eliminar?(?:me|le|nos)?|borrar?(?:me|le|nos)?|remueve|tirar?(?:me|le|nos)?|remove|delete|drop|get\s+rid\s+of|take\s+off|remover?(?:me)?|deletar?(?:me)?|apagar?(?:me|le|nos)?)\s+/i;
 
   // Busca la mejor coincidencia entre el texto pedido y las capas activas.
   // Usa scoring simple (coincidencia de tokens) sobre título y layerKey.
-  function _matchCapaActiva(query) {
+  // Recibe el texto ya normalizado (sin tildes, minúsculas).
+  function _matchCapaActiva(queryNorm) {
     const activeLayers = window.MAP?.getActiveLayers?.() || {};
-    const queryNorm    = normalizar(query);
     const tokens       = tokenizar(queryNorm);
     if (!tokens.length) return null;
 
@@ -270,18 +272,31 @@ window.INTENT_ACCIONES = (() => {
     const activeLayers = window.MAP?.getActiveLayers?.() || {};
     if (!Object.keys(activeLayers).length) return null;
 
-    const textoSinVerbo = textoUsuario.replace(PATRON_QUITAR, '').trim();
+    // Usar norm para el replace — evita el bug de tildes ("quitá" ≠ "quita[r]?")
+    const normSinVerbo = norm.replace(PATRON_QUITAR, '').trim();
 
-    // Si hay una sola capa activa y el pedido es vago → asume esa capa
+    // Limpiar residual genérico: "la", "el", "the", "capa", "layer", etc.
+    const _GENERICAS = /^(?:la|el|a|o|the|it|capa|layer|camada|essa|esta|esa|that|this|una|um|uma|los|las|os|as)$/i;
+    const residual = normSinVerbo
+      .replace(/^(?:la|el|a|o|the|it|capa|layer|camada|essa|esta|esa|that|this|una|um|uma|los|las|os|as)\s+/i, '')
+      .replace(/\s+(?:la|el|the|capa|layer|camada)$/i, '')
+      .trim()
+      .replace(_GENERICAS, '')
+      .trim();
+
     const keys = Object.keys(activeLayers);
+
+    // Una sola capa activa → asumir esa capa
     if (keys.length === 1) return { tipo: 'quitar', parametros: { mapKey: keys[0] } };
 
-    if (!textoSinVerbo) return null;
+    // Varias capas con nombre identificable → resolver directo
+    if (residual) {
+      const mapKey = _matchCapaActiva(residual);
+      if (mapKey) return { tipo: 'quitar', parametros: { mapKey } };
+    }
 
-    const mapKey = _matchCapaActiva(textoSinVerbo);
-    if (!mapKey) return null;
-
-    return { tipo: 'quitar', parametros: { mapKey } };
+    // Pedido vago con varias capas → selector de capa (no null → LLM)
+    return { tipo: 'quitar', parametros: { mapKey: null } };
   }
 
   // ══════════════════════════════════════════════════════════════
