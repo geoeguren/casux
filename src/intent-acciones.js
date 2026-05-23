@@ -303,10 +303,11 @@ window.INTENT_ACCIONES = (() => {
   //   false → ocultar   true → mostrar   null → toggle (invertir estado actual)
 
   // ES: ocultar/esconder/apagar/desactivar  EN: hide/turn off/disable  PT: ocultar/esconder/desativar
-  const PATRON_OCULTAR = /\b(oculta[r]?me?|esconde[r]?me?|apaga[r]?me?|desactiva[r]?me?|deshabilita[r]?me?|saca[r]?me?\s+de\s+la\s+vista|ocult[ae]\s+la\s+capa|esconde\s+la\s+capa|oculta[r]?\s+esa|oculta[r]?\s+esta|escond[eé]\s+esa|escond[eé]\s+esta|apag[aá]\s+esa|apag[aá]\s+esta|ocultar\s+todo|esconder\s+todo|ocultar\s+las\s+capas|hide|turn\s+off|disable|hide\s+all|hide\s+the\s+layer|remove\s+from\s+view|take\s+off\s+the\s+map|esconder?\s+a\s+camada|ocultar?\s+a\s+camada|desativar?\s+a\s+camada|desabilitar?\s+a\s+camada|tirar?\s+do\s+mapa)\b/i;
+  // Nota: usar (?:me)? en lugar de me? evita el bug de \b con cuantificador sobre char word.
+  const PATRON_OCULTAR = /\b(?:ocultar?(?:me|le|nos)?|esconder?(?:me|le|nos)?|apagar?(?:me|le|nos)?|desactivar?(?:me|le|nos)?|deshabilitarme?|sacar?(?:me)?\s+de\s+(?:la\s+)?vista|hide|turn\s+off|disable|esconder?\s+a\s+camada|ocultar?\s+a\s+camada|desativar?\s+a\s+camada|desabilitar?\s+a\s+camada|tirar?\s+do\s+mapa)\b/i;
 
   // ES: mostrar/activar  EN: show/turn on/enable  PT: mostrar/exibir/ativar
-  const PATRON_MOSTRAR = /\b(mostra[r]?me?|ve[r]?me?\s+la|muestra[r]?me?|activa[r]?me?|enciende[r]?me?|habilita[r]?me?|vuelve\s+a\s+mostrar|mostr[aá]\s+esa|mostr[aá]\s+esta|activ[aá]\s+esa|activ[aá]\s+esta|volver\s+a\s+ver|mostrar\s+todo|mostrar\s+las\s+capas|show|turn\s+on|enable|display|show\s+all|show\s+the\s+layer|show\s+again|bring\s+back|mostrar?\s+a\s+camada|exibir?\s+a\s+camada|ativar?\s+a\s+camada|habilitar?\s+a\s+camada|mostrar?\s+de\s+novo|voltar\s+a\s+mostrar)\b/i;
+  const PATRON_MOSTRAR = /\b(?:mostrar?(?:me|le|nos)?|volver\s+a\s+(?:ver|mostrar)|activar?(?:me|le|nos)?|encender?(?:me|le|nos)?|habilitar?(?:me|le|nos)?|show|turn\s+on|enable|display|bring\s+back|show\s+again|mostrar?\s+a\s+camada|exibir?\s+a\s+camada|ativar?\s+a\s+camada|habilitar?\s+a\s+camada|mostrar?\s+de\s+novo|voltar\s+a\s+mostrar)\b/i;
 
   function detectarToggleVisibilidad(textoUsuario) {
     const norm = normalizarSimple(textoUsuario);
@@ -320,14 +321,22 @@ window.INTENT_ACCIONES = (() => {
 
     const visible = esMostrar ? true : false;
 
-    const textoSinVerbo = textoUsuario
+    // Usar norm (ya sin tildes) para el replace, así los patrones sin tilde
+    // como ocult[ae] o ocultar[?] matchean correctamente aunque el usuario
+    // escriba con tilde ("ocultá", "mostrá", etc.).
+    const normSinVerbo = norm
       .replace(esMostrar ? PATRON_MOSTRAR : PATRON_OCULTAR, '')
       .trim();
 
-    // Quitar también artículos y pronombres residuales comunes que no aportan
-    // información de capa: "la", "el", "a", "o", "the", "it", "capa", "layer", "camada"
-    const residual = textoSinVerbo
-      .replace(/^\b(la|el|a|o|the|it|capa|layer|camada|essa|esta|esa|esta|that|this)\b\s*/i, '')
+    // Quitar artículos, pronombres y palabras genéricas residuales.
+    // Primero quitar al inicio, luego al final, luego verificar si
+    // el residuo completo ES una palabra genérica (ej: solo "capa").
+    const _GENERICAS = /^(la|el|a|o|the|it|capa|layer|camada|essa|esta|esa|that|this|una|um|uma|los|las|os|as)$/i;
+    const residual = normSinVerbo
+      .replace(/^(la|el|a|o|the|it|capa|layer|camada|essa|esta|esa|that|this|una|um|uma|los|las|os|as)\s+/i, '')
+      .replace(/\s+(la|el|the|capa|layer|camada)$/i, '')
+      .trim()
+      .replace(_GENERICAS, '')  // si quedó solo una palabra genérica, vaciar
       .trim();
 
     const activeLayers = window.MAP?.getActiveLayers?.() || {};
@@ -344,17 +353,21 @@ window.INTENT_ACCIONES = (() => {
       return { tipo: 'toggle_visibilidad', parametros: { mapKey: keys[0], visible } };
     }
 
-    // Varias capas: intentar resolver por nombre
+    // Varias capas: intentar resolver por nombre en el residual
     if (!residual) {
-      // Pedido vago con varias capas → devolver mapKey null para que chat.js muestre selector
+      // Pedido vago con varias capas → selector de capa
       return { tipo: 'toggle_visibilidad', parametros: { mapKey: null, visible } };
     }
 
     const mapKey = _matchCapaActiva(residual);
-    // Si no matchea ninguna capa conocida → devolver null (no somos mejores que el LLM aquí)
-    if (!mapKey) return null;
+    if (mapKey) {
+      // Capa identificada por nombre → ejecutar directo
+      return { tipo: 'toggle_visibilidad', parametros: { mapKey, visible } };
+    }
 
-    return { tipo: 'toggle_visibilidad', parametros: { mapKey, visible } };
+    // No pudo identificar la capa por nombre → selector de capa (no al LLM)
+    // El usuario dijo "ocultá la capa" con varias activas y no especificó cuál.
+    return { tipo: 'toggle_visibilidad', parametros: { mapKey: null, visible } };
   }
 
   // ══════════════════════════════════════════════════════════════
