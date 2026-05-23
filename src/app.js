@@ -891,7 +891,15 @@ window.APP = (() => {
       changed = true;
     }
     if (!changed) return;
-    _persistPlan();
+
+    // Persistir directamente — _persistPlan no está en scope aquí
+    const _user   = window.AUTH?.currentUser?.();
+    const _chatId = window.CHAT?.getChatId?.();
+    if (_user && _chatId && currentPlan) {
+      window.SIDEBAR?.updateCachedChat?.(_chatId, { lastMap: currentPlan });
+      window.FB?.updateChat?.(_user.uid, _chatId, { lastMap: currentPlan })
+        .catch(e => console.warn('[APP] Error persistiendo clasificación:', e));
+    }
 
     if (window.MAP_CONTROLS?.isMobile?.()) {
       const mapPanel = document.getElementById('map-panel');
