@@ -322,7 +322,7 @@ window.INTENT_ACCIONES = (() => {
   const PATRON_OCULTAR = /\b(?:ocultar?(?:me|le|nos)?|esconder?(?:me|le|nos)?|apagar?(?:me|le|nos)?|desactivar?(?:me|le|nos)?|deshabilitarme?|sacar?(?:me)?\s+de\s+(?:la\s+)?vista|hide|turn\s+off|disable|esconder?\s+a\s+camada|ocultar?\s+a\s+camada|desativar?\s+a\s+camada|desabilitar?\s+a\s+camada|tirar?\s+do\s+mapa)\b/i;
 
   // ES: mostrar/activar  EN: show/turn on/enable  PT: mostrar/exibir/ativar
-  const PATRON_MOSTRAR = /\b(?:mostrar?(?:me|le|nos)?|volver\s+a\s+(?:ver|mostrar)|activar?(?:me|le|nos)?|encender?(?:me|le|nos)?|habilitar?(?:me|le|nos)?|show|turn\s+on|enable|display|bring\s+back|show\s+again|mostrar?\s+a\s+camada|exibir?\s+a\s+camada|ativar?\s+a\s+camada|habilitar?\s+a\s+camada|mostrar?\s+de\s+novo|voltar\s+a\s+mostrar)\b/i;
+  const PATRON_MOSTRAR = /\b(?:mostrar?(?:me|le|nos)?|muestra[r]?(?:me|le|nos)?|volver\s+a\s+(?:ver|mostrar)|activar?(?:me|le|nos)?|encender?(?:me|le|nos)?|habilitar?(?:me|le|nos)?|show|turn\s+on|enable|display|bring\s+back|show\s+again|mostrar?\s+a\s+camada|exibir?\s+a\s+camada|ativar?\s+a\s+camada|habilitar?\s+a\s+camada|mostrar?\s+de\s+novo|voltar\s+a\s+mostrar)\b/i;
 
   function detectarToggleVisibilidad(textoUsuario) {
     const norm = normalizarSimple(textoUsuario);
