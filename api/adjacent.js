@@ -167,8 +167,38 @@ module.exports = async function handler(req, res) {
     }
 
     const result = [];
+
+    // Identificador del feature de referencia para excluirlo del resultado.
+    // Cuando la capa pedida y la máscara son la misma (ej: provincia vs provincia),
+    // el feature de referencia pasa esAdyacente porque se intersecta consigo mismo.
+    // Lo excluimos comparando el GID o, como fallback, las coordenadas del centroide.
+    const maskGid = maskFeatureRaw?.properties?.gid ?? maskFeatureRaw?.properties?.GID ?? null;
+    const maskId  = maskFeatureRaw?.properties?.id  ?? maskFeatureRaw?.properties?.ID  ?? null;
+    const maskFid = maskFeatureRaw?.id ?? maskFeatureRaw?.properties?.fid ?? null;
+
+    function esMismoFeature(feat) {
+      // Comparación por GID (campo numérico de IGN)
+      if (maskGid !== null) {
+        const fGid = feat.properties?.gid ?? feat.properties?.GID;
+        if (fGid !== null && fGid !== undefined) return fGid === maskGid;
+      }
+      // Comparación por ID genérico
+      if (maskId !== null) {
+        const fId = feat.properties?.id ?? feat.properties?.ID;
+        if (fId !== null && fId !== undefined) return fId === maskId;
+      }
+      // Comparación por feature ID (GeoJSON)
+      if (maskFid !== null) {
+        const fFid = feat.id ?? feat.properties?.fid;
+        if (fFid !== null && fFid !== undefined) return fFid === maskFid;
+      }
+      return false;
+    }
+
     for (const feat of layerGeoJSON.features || []) {
       try {
+        // Nunca incluir el feature que ES el área de referencia
+        if (!isExclude && esMismoFeature(feat)) continue;
         const adj = esAdyacente(feat, maskNormalizada);
         if (isExclude ? !adj : adj) result.push(feat);
       } catch {}
