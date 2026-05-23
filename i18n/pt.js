@@ -318,6 +318,7 @@ window.I18N_PT = {
   rename_placeholder:        'Novo nome…',
   rename_confirm:            'Renomear',
   classify_done:             'Pronto, classifiquei a camada por {label}.',
+  classify_which_field:      'Por qual campo você quer classificar?',
   chat_renamed:              'Renomeei o mapa para "{nombre}".',
 
   // ── Mapas base ───────────────────────────────────────────────
