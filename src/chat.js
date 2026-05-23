@@ -102,6 +102,15 @@ window.CHAT = (() => {
 
     const newStyle = { ...entry.style, ...styleChanges };
     window.MAP?.updateLayerStyle?.(mapKey, newStyle);
+
+    // Re-aplicar clasificación si existe
+    const _entryCheck = window.MAP?.getActiveLayers?.()[mapKey];
+    if (_entryCheck?.classification?.field) {
+      const cl = _entryCheck.classification;
+      const paletteColors = cl.paletteColors || window.PALETTES?.[cl.palette] || window.PALETTES?.qualitative;
+      window.MAP?.applyClassification?.(mapKey, { ...cl, paletteColors });
+    }
+
     window.MAP?.updateLegend?.();
     window.ANALYTICS?.styleChanged?.('intent');
 
@@ -1667,12 +1676,23 @@ window.UI = (() => {
 
   // Aplica un estilo via MAP.updateLayerStyle (evita llamar applyStylePlan que tiene
   // dependencias privadas de app.js). onStyleChange se encarga de persistir.
+  // Si la capa tiene clasificación activa, la re-aplica después del cambio para que
+  // los colores por categoría no se pierdan al cambiar radio, grosor, opacidad, etc.
   function _applyStyle(mapKey, styleChanges) {
     const activeLayers = window.MAP?.getActiveLayers?.() || {};
     const entry = activeLayers[mapKey];
     if (!entry) return;
     const newStyle = { ...entry.style, ...styleChanges };
     window.MAP?.updateLayerStyle?.(mapKey, newStyle);
+
+    // Re-aplicar clasificación si existe — updateLayerStyle en el path de eachLayer
+    // aplica entry.style plano, ignorando la clasificación activa.
+    if (entry.classification?.field) {
+      const cl = entry.classification;
+      const paletteColors = cl.paletteColors || window.PALETTES?.[cl.palette] || window.PALETTES?.qualitative;
+      window.MAP?.applyClassification?.(mapKey, { ...cl, paletteColors });
+    }
+
     window.MAP?.updateLegend?.();
     window.ANALYTICS?.styleChanged?.('button');
 
@@ -2120,16 +2140,22 @@ window.UI = (() => {
 
     const chatTitulo = window.APP?.getCurrentPlan?.()?.titulo || '';
     const param = intencion?.parametros?.param || null;
-    const containerRef = { remove: () => {} }; // dummy — el card se gestiona solo
 
     const msgEl = addMessage('assistant',
       param ? t('style_ask_' + param) || t('style_what_to_change') : t('style_what_to_change')
     );
 
+    // Crear un container hermano del msgEl (igual que showStyleFlow)
+    // para que containerRef.remove() lo elimine al confirmar.
+    const container = document.createElement('div');
+    container.style.cssText = 'width:100%';
+    container.className = 'style-flow-container';
+    msgEl.after(container);
+
     if (param) {
-      _showParamControl(msgEl, mapKey, layer, param, chatTitulo, containerRef);
+      _showParamControl(container, mapKey, layer, param, chatTitulo, container);
     } else {
-      _showParamButtons(msgEl, mapKey, layer, chatTitulo, containerRef);
+      _showParamButtons(container, mapKey, layer, chatTitulo, container);
     }
     scrollBottom();
   }
