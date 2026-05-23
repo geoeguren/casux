@@ -52,7 +52,7 @@ body.day, html.day .msg.assistant { color: #1a1814; }
 
 /* Tarjeta de error de capa — misma estructura que msg-map-card */
 .msg-error-card {
-  width: 100%; max-width: 90%;
+  width: 100%;
   background: rgba(180, 60, 60, 0.06);
   border: 0.5px solid rgba(200, 80, 80, 0.25);
   border-radius: var(--radius);
@@ -179,7 +179,7 @@ body.day, html.day .msg.thinking { background: var(--bg2); border-color: var(--b
 
 /* Tarjeta de mapa listo */
 .msg-map-card {
-  width: 100%; max-width: 90%; background: var(--bg2);
+  width: 100%; background: var(--bg2);
   border: 0.5px solid var(--border-md); border-radius: var(--radius);
   padding: 14px 16px; display: flex; align-items: center; gap: 14px;
   box-sizing: border-box;
@@ -357,7 +357,7 @@ body.day, html.day .msg-collapse-fade {
 
 /* Export choice card */
 .msg-export-choice {
-  width: 100%; max-width: 90%; display: flex; flex-direction: column;
+  width: 100%; display: flex; flex-direction: column;
   gap: 4px; box-sizing: border-box;
 }
 .export-choice-btn {
@@ -442,6 +442,26 @@ body.day, html.day .style-grid-label { color: #6a6560; }
   color: var(--cream2); min-width: 28px; text-align: right;
 }
 
+/* ── Rename card ─────────────────────────────────────────────── */
+.msg-rename-card {
+  width: 100%;
+  background: var(--bg2); border: 0.5px solid var(--border-md);
+  border-radius: var(--radius); padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+  box-sizing: border-box;
+}
+.rename-card-input {
+  flex: 1; background: transparent; border: none; outline: none;
+  font-family: var(--font-sans); font-size: 15px; font-weight: 500;
+  color: var(--cream); min-width: 0; cursor: text;
+  border-bottom: 1px solid var(--border-md);
+  transition: border-color var(--transition);
+  padding: 2px 0;
+}
+.rename-card-input:focus { border-bottom-color: var(--accent); }
+.rename-card-input::placeholder { color: var(--cream2); }
+body.day, html.day .rename-card-input { color: #1a1814; }
+body.day, html.day .rename-card-input:focus { border-bottom-color: var(--accent); }
 
 /* ── Prompts sugeridos — mismo estilo que .map-card-btn ───────── */
 .suggested-prompts {
