@@ -318,6 +318,7 @@ window.I18N_ES = {
   rename_placeholder:        'Nuevo nombre…',
   rename_confirm:            'Renombrar',
   classify_done:             'Listo, clasificué la capa por {label}.',
+  classify_which_field:      '¿Por qué campo querés clasificar?',
   chat_renamed:              'Renombré el mapa como "{nombre}".',
   basemap_gray:            'Positron',
   basemap_dark:            'Dark Matter',
