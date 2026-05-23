@@ -172,14 +172,21 @@ window.WFS = (() => {
   async function _fetchFromR2(wfsBase, typename) {
     const url = _r2SnapshotUrl(wfsBase, typename);
     if (!url) return null;
+    // Usar AbortController + setTimeout en lugar de AbortSignal.timeout() para
+    // evitar NS_BINDING_ABORTED en Firefox, donde AbortSignal.timeout() puede
+    // cancelar el request antes de completarse en conexiones CORS lentas.
+    const ctrl  = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), R2_TIMEOUT_MS);
     try {
-      const resp = await fetch(url, { signal: AbortSignal.timeout(R2_TIMEOUT_MS) });
+      const resp = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(timer);
       if (!resp.ok) return null;
       const geojson = await resp.json();
       if (!geojson?.features) return null;
       console.log(`[WFS] Snapshot R2: ${typename} (${geojson.features.length} features)`);
       return geojson;
     } catch {
+      clearTimeout(timer);
       return null; // timeout o error — no hacer ruido
     }
   }
