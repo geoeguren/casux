@@ -276,6 +276,326 @@ window.INTENT_ACCIONES = (() => {
     return { tipo: 'quitar', parametros: { mapKey } };
   }
 
+  // ══════════════════════════════════════════════════════════════
+  // 8. TOGGLE VISIBILIDAD
+  // ══════════════════════════════════════════════════════════════
+  //
+  // Detecta pedidos de mostrar u ocultar una capa del mapa activo.
+  // Opera de forma análoga a detectarQuitar pero sin eliminar la capa.
+  //
+  // Verbos de ocultamiento: ocultar, esconder, apagar, desactivar, hide
+  // Verbos de mostrado:     mostrar, ver, activar, encender, show
+  //
+  // Cuando hay una sola capa activa y el pedido es vago ("ocultala") →
+  // asume esa capa sin necesidad de matching.
+  // Cuando hay varias → usa _matchCapaActiva para resolver.
+  // Si no puede identificar la capa → null (evita falsos positivos).
+  //
+  // El campo `visible` indica la acción deseada:
+  //   false → ocultar   true → mostrar   null → toggle (invertir estado actual)
+
+  // ES: ocultar/esconder/apagar/desactivar  EN: hide/turn off/disable  PT: ocultar/esconder/desativar
+  const PATRON_OCULTAR = /\b(oculta[r]?me?|esconde[r]?me?|apaga[r]?me?|desactiva[r]?me?|deshabilita[r]?me?|saca[r]?me?\s+de\s+la\s+vista|ocult[ae]\s+la\s+capa|esconde\s+la\s+capa|oculta[r]?\s+esa|oculta[r]?\s+esta|escond[eé]\s+esa|escond[eé]\s+esta|apag[aá]\s+esa|apag[aá]\s+esta|ocultar\s+todo|esconder\s+todo|ocultar\s+las\s+capas|hide|turn\s+off|disable|hide\s+all|hide\s+the\s+layer|remove\s+from\s+view|take\s+off\s+the\s+map|esconder?\s+a\s+camada|ocultar?\s+a\s+camada|desativar?\s+a\s+camada|desabilitar?\s+a\s+camada|tirar?\s+do\s+mapa)\b/i;
+
+  // ES: mostrar/activar  EN: show/turn on/enable  PT: mostrar/exibir/ativar
+  const PATRON_MOSTRAR = /\b(mostra[r]?me?|ve[r]?me?\s+la|muestra[r]?me?|activa[r]?me?|enciende[r]?me?|habilita[r]?me?|vuelve\s+a\s+mostrar|mostr[aá]\s+esa|mostr[aá]\s+esta|activ[aá]\s+esa|activ[aá]\s+esta|volver\s+a\s+ver|mostrar\s+todo|mostrar\s+las\s+capas|show|turn\s+on|enable|display|show\s+all|show\s+the\s+layer|show\s+again|bring\s+back|mostrar?\s+a\s+camada|exibir?\s+a\s+camada|ativar?\s+a\s+camada|habilitar?\s+a\s+camada|mostrar?\s+de\s+novo|voltar\s+a\s+mostrar)\b/i;
+
+  function detectarToggleVisibilidad(textoUsuario) {
+    const norm = normalizarSimple(textoUsuario);
+
+    const esOcultar = PATRON_OCULTAR.test(norm);
+    const esMostrar = PATRON_MOSTRAR.test(norm);
+    if (!esOcultar && !esMostrar) return null;
+
+    // Solo actúa si hay capas activas en el mapa
+    const activeLayers = window.MAP?.getActiveLayers?.() || {};
+    if (!Object.keys(activeLayers).length) return null;
+
+    const visible = esMostrar ? true : false;
+
+    const textoSinVerbo = textoUsuario
+      .replace(esMostrar ? PATRON_MOSTRAR : PATRON_OCULTAR, '')
+      .trim();
+
+    const keys = Object.keys(activeLayers);
+
+    // Una sola capa activa y pedido vago → asumir esa capa
+    if (keys.length === 1) {
+      return { tipo: 'toggle_visibilidad', parametros: { mapKey: keys[0], visible } };
+    }
+
+    // Sin texto significativo tras quitar el verbo → no podemos resolver
+    if (!textoSinVerbo) return null;
+
+    const mapKey = _matchCapaActiva(textoSinVerbo);
+    if (!mapKey) return null;
+
+    return { tipo: 'toggle_visibilidad', parametros: { mapKey, visible } };
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // 9. ESTILO ESPECÍFICO (resolver valor sin LLM)
+  // ══════════════════════════════════════════════════════════════
+  //
+  // Complementa detectarEstilo: cuando el subtipo ya es 'especifico',
+  // intenta extraer el valor concreto (color, número, opacidad) para
+  // poder ejecutar el cambio sin derivar al LLM.
+  //
+  // Devuelve { tipo:'estilo', subtipo:'resuelto', parametros:{ prop, value, mapKey? } }
+  // si pudo resolver el valor, o null si no puede (el flujo vago sigue al LLM).
+  //
+  // Cuando hay varias capas activas → mapKey queda en null y el llamador
+  // muestra un selector de capa antes de aplicar.
+
+  // Tabla de colores con nombre en ES/EN/PT → hex.
+  // Las claves PT usan nombres sin colisión con ES (no repetir 'azul', 'verde', etc.).
+  const COLOR_MAP = {
+    // ES
+    rojo: '#e63946', roja: '#e63946',
+    azul: '#457b9d', azules: '#457b9d',
+    verde: '#52b788', verdes: '#52b788',
+    amarillo: '#f7d24a', amarilla: '#f7d24a',
+    naranja: '#f4a261',
+    violeta: '#6a4c93', lila: '#c77dff',
+    rosa: '#ff6b6b', rosado: '#ff6b6b', rosada: '#ff6b6b',
+    negro: '#222222', negra: '#222222',
+    blanco: '#f8f9fa', blanca: '#f8f9fa',
+    gris: '#888888', grises: '#888888',
+    celeste: '#90e0ef',
+    marron: '#a47856', cafe: '#a47856',
+    turquesa: '#2a9d8f',
+    cian: '#00b4d8',
+    magenta: '#e040fb', fucsia: '#ff006e',
+    indigo: '#3d52a0',
+    // EN
+    red: '#e63946',
+    blue: '#457b9d',
+    green: '#52b788',
+    yellow: '#f7d24a',
+    orange: '#f4a261',
+    purple: '#6a4c93',
+    pink: '#ff6b6b',
+    black: '#222222',
+    white: '#f8f9fa',
+    gray: '#888888', grey: '#888888',
+    brown: '#a47856',
+    cyan: '#00b4d8',
+    teal: '#2a9d8f',
+    // PT — solo formas exclusivas del portugués para evitar colisión con ES
+    vermelho: '#e63946', vermelha: '#e63946',
+    amarelo: '#f7d24a', amarela: '#f7d24a',
+    laranja: '#f4a261',
+    roxo: '#6a4c93', roxa: '#6a4c93',
+    preto: '#222222', preta: '#222222',
+    branco: '#f8f9fa', branca: '#f8f9fa',
+    cinza: '#888888',
+    marrom: '#a47856',
+    anil: '#3d52a0',
+  };
+
+  // Regex para capturar opacidad / transparencia numérica
+  const PATRON_OPACIDAD_NUM = /(\d+(?:[.,]\d+)?)\s*%/;
+
+  // Regex para color #hex directo
+  const PATRON_HEX = /#([0-9a-fA-F]{3,6})\b/;
+
+  // Regex para valores numéricos de tamaño/grosor
+  const PATRON_NUM = /\b(\d+(?:[.,]\d+)?)\s*(?:px|pt|puntos?)?\b/;
+
+  function _resolverProp(norm) {
+    // Determinar qué propiedad se quiere cambiar (ES / EN / PT)
+    if (/\b(opacidad|transparencia|opaco|transparente|opacity|transparent|opaque|opacidade|transparencia|opaco)\b/.test(norm)) return 'opacity';
+    if (/\b(tamano|radio|grande|chico|chica|size|radius|bigger|larger|smaller|tamanho|raio|grande|pequeno|pequena|maior|menor)\b/.test(norm)) return 'radius';
+    if (/\b(grosor|grueso|fino|gordo|delgado|weight|thick|thin|thicker|thinner|espessura|grosso|fino|grossura)\b/.test(norm)) return 'weight';
+    if (/\b(color|relleno|fill|tono|tinte|cor|cores|preenchimento|coloracao|coloração)\b/.test(norm)) return 'color';
+    // Último recurso: si menciona un color o hex, es color
+    if (PATRON_HEX.test(norm)) return 'color';
+    // Si menciona un nombre de color conocido en cualquier idioma
+    const normLower = norm.toLowerCase();
+    if (Object.keys(COLOR_MAP).some(k => normLower.includes(k))) return 'color';
+    return null;
+  }
+
+  function _resolverValor(norm, prop, activeLayers, mapKey) {
+    if (prop === 'color') {
+      // Primero: #hex directo
+      const hexMatch = norm.match(PATRON_HEX);
+      if (hexMatch) return '#' + hexMatch[1].padEnd(6, hexMatch[1]);
+
+      // Segundo: nombre de color
+      const normLower = norm.toLowerCase();
+      // Buscar de más largo a más corto para evitar matches parciales
+      const sorted = Object.keys(COLOR_MAP).sort((a, b) => b.length - a.length);
+      for (const nombre of sorted) {
+        if (normLower.includes(nombre)) return COLOR_MAP[nombre];
+      }
+      return null;
+    }
+
+    if (prop === 'opacity') {
+      // Porcentaje numérico explícito
+      const pctMatch = norm.match(PATRON_OPACIDAD_NUM);
+      if (pctMatch) return parseFloat(pctMatch[1].replace(',', '.')) / 100;
+
+      // Palabras relativas (ES / EN / PT)
+      if (/\b(mas\s+transparente|menos\s+opaco|more\s+transparent|less\s+opaque|mais\s+transparente|menos\s+opaco)\b/.test(norm)) {
+        const cur = mapKey ? (activeLayers[mapKey]?.style?.fillOpacity ?? 0.5) : 0.5;
+        return Math.max(0.05, +(cur - 0.2).toFixed(2));
+      }
+      if (/\b(mas\s+opaco|menos\s+transparente|more\s+opaque|less\s+transparent|mais\s+opaco|menos\s+transparente)\b/.test(norm)) {
+        const cur = mapKey ? (activeLayers[mapKey]?.style?.fillOpacity ?? 0.5) : 0.5;
+        return Math.min(1, +(cur + 0.2).toFixed(2));
+      }
+      return null;
+    }
+
+    if (prop === 'radius' || prop === 'weight') {
+      // Número explícito
+      const numMatch = norm.match(PATRON_NUM);
+      if (numMatch) {
+        const v = parseFloat(numMatch[1].replace(',', '.'));
+        if (v >= 0.5 && v <= 50) return v;
+      }
+      // Palabras relativas
+      const cur = mapKey
+        ? (prop === 'radius'
+            ? (activeLayers[mapKey]?.style?.radius ?? 5)
+            : (activeLayers[mapKey]?.style?.weight ?? 2))
+        : (prop === 'radius' ? 5 : 2);
+      // ES: más grande/chico/grueso/fino  EN: bigger/smaller/thicker/thinner  PT: maior/menor/mais grosso/mais fino
+      if (/\b(mas\s+grande|aumenta[r]?|sube[r]?|subir|bigger|larger|increase|more\s+big|maior|aumentar?|mais\s+grande)\b/.test(norm)) {
+        return Math.min(prop === 'radius' ? 25 : 10, +(cur + 2).toFixed(1));
+      }
+      if (/\b(mas\s+chico|mas\s+pequ|achica[r]?|reduce[r]?|reducir|baja[r]?|smaller|decrease|menor|reduzir?|mais\s+pequen)\b/.test(norm)) {
+        return Math.max(0.5, +(cur - 2).toFixed(1));
+      }
+      if (/\b(mas\s+grueso|mas\s+gordo|thicker|mais\s+gross|mais\s+espess|mas\s+espeso)\b/.test(norm)) {
+        return Math.min(10, +(cur + 1.5).toFixed(1));
+      }
+      if (/\b(mas\s+fino|mas\s+delgado|thinner|mais\s+fin|mais\s+delgad|mais\s+fino)\b/.test(norm)) {
+        return Math.max(0.5, +(cur - 1.5).toFixed(1));
+      }
+      return null;
+    }
+
+    return null;
+  }
+
+  function detectarEstiloResuelto(textoUsuario) {
+    // Solo actúa si el detector base ya confirmó que es estilo específico
+    const base = detectarEstilo(textoUsuario);
+    if (!base || base.subtipo !== 'especifico') return null;
+
+    const norm = normalizarSimple(textoUsuario);
+    const prop = _resolverProp(norm);
+    if (!prop) return null;
+
+    const activeLayers = window.MAP?.getActiveLayers?.() || {};
+    const keys = Object.keys(activeLayers);
+    if (!keys.length) return null;
+
+    // Con una sola capa activa → resolver valor ya (necesita el estilo actual)
+    // Con varias → no resolver valor aún (no sabemos cuál capa y el estilo puede diferir)
+    const mapKey = keys.length === 1 ? keys[0] : null;
+
+    const value = _resolverValor(norm, prop, activeLayers, mapKey);
+    if (value === null) return null;
+
+    return {
+      tipo:       'estilo',
+      subtipo:    'resuelto',
+      parametros: { prop, value, mapKey },
+    };
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // 10. CLASIFICAR
+  // ══════════════════════════════════════════════════════════════
+  //
+  // Detecta pedidos de clasificación cromática de capas activas.
+  // Solo actúa cuando hay capas en el mapa.
+  //
+  // Si puede identificar la capa y el campo → devuelve un plan
+  // de clasificación completo para ejecutar sin LLM.
+  // Si hay ambigüedad → null → LLM.
+  //
+  // El campo se busca en los `attributes` de la capa activa
+  // comparando el texto del usuario con el label de cada atributo.
+
+  // ES: clasificar/pintar por/colorear por  EN: classify/color by/categorize  PT: classificar/colorir por
+  const PATRON_CLASIFICAR = /\b(clasificá|clasifica[r]?|pinta[r]?\s+por|colorea[r]?\s+por|color[ií]a\s+por|categori[zc]á|categoriza[r]?|agrupa[r]?\s+por|diferencia[r]?\s+por|distingui[r]?\s+por|separa[r]?\s+por|divid[eé]\s+por|dividi[r]?\s+por|classify|color\s+by|categorize|group\s+by|show\s+by|classify\s+by|distinguish\s+by|separate\s+by|break\s+down\s+by|split\s+by|classifica[r]?|classificar?\s+por|colorir?\s+por|agrupar?\s+por|diferenciar?\s+por|separar?\s+por|dividir?\s+por)\b/i;
+
+  function detectarClasificar(textoUsuario) {
+    if (!PATRON_CLASIFICAR.test(normalizarSimple(textoUsuario))) return null;
+
+    const activeLayers = window.MAP?.getActiveLayers?.() || {};
+    if (!Object.keys(activeLayers).length) return null;
+
+    // Texto sin el verbo de clasificación para buscar el campo
+    const textoSinVerbo = textoUsuario.replace(PATRON_CLASIFICAR, '').trim();
+    const normSinVerbo  = normalizar(textoSinVerbo);
+
+    // Iterar capas activas buscando si alguna tiene un atributo que matchee
+    const candidatos = [];
+    for (const [mapKey, entry] of Object.entries(activeLayers)) {
+      const layerDef  = window.LAYERS?.[entry.layerKey];
+      if (!layerDef?.attributes?.length) continue;
+
+      for (const attr of layerDef.attributes) {
+        const labelNorm = normalizar(attr.label || '');
+        const campoNorm = normalizar(attr.campo || '');
+
+        // Match: el texto menciona el label o el campo del atributo
+        const matchLabel = labelNorm && normSinVerbo.includes(labelNorm);
+        const matchCampo = campoNorm && normSinVerbo.includes(campoNorm);
+        if (!matchLabel && !matchCampo) continue;
+
+        // Determinar tipo: si el campo parece numérico → graduado; si no → categorizado
+        const tipoClasif = /num|area|longitud|pobla|cant|total|valor|porc|dens|super/i.test(attr.campo || '')
+          ? 'graduated'
+          : 'categorized';
+
+        candidatos.push({
+          mapKey,
+          layerKey: entry.layerKey,
+          field:    attr.campo,
+          label:    attr.label,
+          type:     tipoClasif,
+          score:    matchLabel ? 2 : 1,
+        });
+      }
+    }
+
+    if (!candidatos.length) return null;
+
+    // Si hay más de un candidato plausible → ambigüedad → LLM
+    if (candidatos.length > 1 && new Set(candidatos.map(c => c.mapKey + c.field)).size > 1) {
+      // Solo derivar al LLM si los candidatos son de distintas capas o campos distintos
+      const porCapa = {};
+      for (const c of candidatos) {
+        if (!porCapa[c.mapKey]) porCapa[c.mapKey] = [];
+        porCapa[c.mapKey].push(c);
+      }
+      // Si hay candidatos en varias capas → ambiguo
+      if (Object.keys(porCapa).length > 1) return null;
+    }
+
+    // Tomar el candidato con mayor score
+    const mejor = candidatos.sort((a, b) => b.score - a.score)[0];
+
+    return {
+      tipo:       'clasificar',
+      parametros: {
+        mapKey:   mejor.mapKey,
+        layerKey: mejor.layerKey,
+        field:    mejor.field,
+        label:    mejor.label,
+        type:     mejor.type,
+        palette:  mejor.type === 'graduated' ? 'seq_blues' : 'qualitative',
+      },
+    };
+  }
+
   // ── API pública ───────────────────────────────────────────────
   return {
     detectarLimpiar,
@@ -283,8 +603,11 @@ window.INTENT_ACCIONES = (() => {
     detectarBasemap,
     detectarRenombrar,
     detectarEstilo,
+    detectarEstiloResuelto,
     detectarAgregar,
     detectarQuitar,
+    detectarToggleVisibilidad,
+    detectarClasificar,
   };
 
 })();
