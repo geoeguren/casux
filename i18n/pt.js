@@ -310,7 +310,15 @@ window.I18N_PT = {
   layer_already_on_map:      'Essa camada já está no mapa.',
   layer_not_found:           'Essa camada não está no mapa.',
   layer_removed:             'Pronto, removi {titulo}.',
-  chat_renamed:            'Renomeei o mapa para "{nombre}".',
+  layer_hidden:              'Pronto, ocultei {titulo}.',
+  layer_shown:               'Pronto, mostrei {titulo} novamente.',
+  toggle_which_layer:        'Qual camada você quer mostrar/ocultar?',
+  style_which_layer:         'Em qual camada você quer aplicar a mudança?',
+  rename_ask:                'Como você quer chamar o mapa?',
+  rename_placeholder:        'Novo nome…',
+  rename_confirm:            'Renomear',
+  classify_done:             'Pronto, classifiquei a camada por {label}.',
+  chat_renamed:              'Renomeei o mapa para "{nombre}".',
 
   // ── Mapas base ───────────────────────────────────────────────
   basemap_gray:            'Positron',
