@@ -537,6 +537,23 @@ window.INTENT_CAPA = (() => {
     return { layerKey: resultadoCapa.key, capa: resultadoCapa.capa, refLayerKey: resultadoRef.key };
   }
 
+
+  // ── _inferirPaisDelMapa ───────────────────────────────────────
+  //
+  // Si todas las capas activas pertenecen a un solo país, devuelve ese código.
+  // Usado para resolver la ambigüedad de país cuando el usuario no lo especifica.
+  // Ej: mapa activo tiene pasos_frontera_ar → país inferido = 'ar'.
+  function _inferirPaisDelMapa() {
+    const activeLayers = window.MAP?.getActiveLayers?.() || {};
+    if (!Object.keys(activeLayers).length) return null;
+    const paises = new Set(
+      Object.values(activeLayers)
+        .map(entry => window.SOURCES?.[window.LAYERS?.[entry.layerKey]?.source]?.country)
+        .filter(Boolean)
+    );
+    return paises.size === 1 ? [...paises][0] : null;
+  }
+
   function detectarCapaDirecta(textoUsuario) {
     if (PATRON_NO_CAPA.test(textoUsuario))  return null;
 
@@ -569,6 +586,19 @@ window.INTENT_CAPA = (() => {
       areaFinal = { pais: paisExplicito };
     }
 
+    // Inferir país del mapa activo antes del scorer (igual que detectarCapa)
+    if (!paisExplicito && !areaFinal?.pais) {
+      const paisesDisponibles = new Set(
+        Object.values(window.SOURCES || {}).map(s => s.country).filter(Boolean)
+      );
+      if (paisesDisponibles.size > 1) {
+        const paisInferido = _inferirPaisDelMapa();
+        if (paisInferido) {
+          areaFinal = areaFinal ? { ...areaFinal, pais: paisInferido } : { pais: paisInferido };
+        }
+      }
+    }
+
     // Paso E: si no hay área y la op es within_layer/nearest, intentar refLayerKey
     const op = detectarOpEspacial(textoNorm);
     if (!areaFinal?.valorOriginal && ['within_layer','within_layer_exclude','nearest','nearest_exclude'].includes(op)) {
@@ -590,8 +620,9 @@ window.INTENT_CAPA = (() => {
     const resultado = buscarCapa(textoNorm, areaFinal);
     if (!resultado) return null;
 
-    // Guardia de país ambiguo: si hay capas de varios países y no se especificó
-    // ninguno, intentar inferirlo desde el mapa activo antes de derivar al LLM.
+    // Guardia de país ambiguo: si el scorer eligió una capa de otro país
+    // que el inferido del mapa activo, descartar (ya fue restringido antes,
+    // pero esto es la red de seguridad por si areaFinal no tenía pais).
     if (!paisExplicito && !areaFinal?.pais && !areaFinal?.valorNorm) {
       const sourceCountry = window.SOURCES?.[resultado.capa.source]?.country;
       if (sourceCountry) {
@@ -599,18 +630,9 @@ window.INTENT_CAPA = (() => {
           Object.values(window.SOURCES || {}).map(s => s.country).filter(Boolean)
         );
         if (paisesDisponibles.size > 1) {
-          const activeLayers = window.MAP?.getActiveLayers?.() || {};
-          const paisesActivos = new Set(
-            Object.values(activeLayers)
-              .map(entry => window.SOURCES?.[window.LAYERS?.[entry.layerKey]?.source]?.country)
-              .filter(Boolean)
-          );
-          if (paisesActivos.size === 1) {
-            const paisInferido = [...paisesActivos][0];
-            if (sourceCountry !== paisInferido) return null;
-          } else {
-            return null;
-          }
+          const paisInferido = _inferirPaisDelMapa();
+          if (paisInferido && sourceCountry !== paisInferido) return null;
+          if (!paisInferido) return null;
         }
       }
     }
@@ -676,6 +698,24 @@ window.INTENT_CAPA = (() => {
       areaFinal = { pais: paisExplicito };
     }
 
+    // Inferir país del mapa activo ANTES de llamar al scorer.
+    // Si no se especificó país explícito ni área con país, y el mapa activo
+    // tiene capas de un solo país, restringir el scorer a ese país.
+    // Esto evita que el scorer elija una capa del país equivocado y luego
+    // la guardia posterior descarte todo derivando al LLM.
+    if (!paisExplicito && !areaFinal?.pais) {
+      const paisesDisponibles = new Set(
+        Object.values(window.SOURCES || {}).map(s => s.country).filter(Boolean)
+      );
+      if (paisesDisponibles.size > 1) {
+        const paisInferido = _inferirPaisDelMapa();
+        if (paisInferido) {
+          areaFinal = areaFinal ? { ...areaFinal, pais: paisInferido } : { pais: paisInferido };
+          console.log(`[CAPA] País inferido del mapa activo: ${paisInferido}`);
+        }
+      }
+    }
+
     // Paso E: si no hay área y la op es within_layer/nearest, intentar refLayerKey
     const op = detectarOpEspacial(textoNorm);
     if (!areaFinal?.valorOriginal && ['within_layer','within_layer_exclude','nearest','nearest_exclude'].includes(op)) {
@@ -699,41 +739,6 @@ window.INTENT_CAPA = (() => {
     if (!resultado) {
       console.log(`[CAPA] → LLM | scorer no encontró coincidencia: "${textoUsuario.slice(0, 60)}"`);
       return null;
-    }
-
-    // Guardia de país ambiguo: si hay capas de varios países y no se especificó
-    // ninguno, intentar inferirlo desde el mapa activo antes de derivar al LLM.
-    // Si todas las capas activas son de un solo país → usar ese como implícito.
-    if (!paisExplicito && !areaFinal?.pais && !areaFinal?.valorNorm) {
-      const sourceCountry = window.SOURCES?.[resultado.capa.source]?.country;
-      if (sourceCountry) {
-        const paisesDisponibles = new Set(
-          Object.values(window.SOURCES || {}).map(s => s.country).filter(Boolean)
-        );
-        if (paisesDisponibles.size > 1) {
-          // Intentar inferir el país desde las capas activas del mapa
-          const activeLayers = window.MAP?.getActiveLayers?.() || {};
-          const paisesActivos = new Set(
-            Object.values(activeLayers)
-              .map(entry => window.SOURCES?.[window.LAYERS?.[entry.layerKey]?.source]?.country)
-              .filter(Boolean)
-          );
-          if (paisesActivos.size === 1) {
-            const paisInferido = [...paisesActivos][0];
-            // Solo aplicar si la capa encontrada pertenece a ese país
-            if (sourceCountry === paisInferido) {
-              console.log(`[CAPA] País inferido del mapa activo: ${paisInferido}`);
-              // Continuar normalmente — el scorer ya eligió la capa correcta
-            } else {
-              console.log(`[CAPA] → LLM | país ambiguo: "${resultado.key}" es de ${sourceCountry} pero el mapa activo es de ${paisInferido}`);
-              return null;
-            }
-          } else {
-            console.log(`[CAPA] → LLM | país ambiguo: "${resultado.key}" es de ${sourceCountry} pero hay ${paisesDisponibles.size} países`);
-            return null;
-          }
-        }
-      }
     }
 
     const instruccion = construirInstruccion(resultado.key, resultado.capa, areaFinal, textoUsuario);
