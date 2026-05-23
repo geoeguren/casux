@@ -27,7 +27,7 @@ window.INTENT_ACCIONES = (() => {
   // Detecta pedidos de vaciar el mapa: borrar capas, resetear, etc.
   // El patrón cubre expresiones en ES, EN y PT.
 
-  const PATRON_LIMPIAR = /\b(borra(r|lo)?|limpia(r|lo)?|limpia(r)?\s+el\s+mapa|vacia(r|lo)?|vacia\s+el\s+mapa|saca(r)?\s+(las?\s+)?capas?|borra(r)?\s+todo|elimina(r)?\s+todo|resetea(r)?|reinicia(r)?|clear(\s+the\s+map|\s+all|\s+everything)?|clean(\s+the\s+map)?|reset(\s+the\s+map)?|wipe(\s+the\s+map)?|erase(\s+the\s+map)?|start\s+over|remove\s+all(\s+layers?)?|limpa(r)?(\s+o\s+mapa)?|apaga(r)?(\s+o\s+mapa)?|apague(\s+o\s+mapa)?|reseta(r)?(\s+o\s+mapa)?|limpe(\s+o\s+mapa)?|remove(r)?\s+tudo)\b/i;
+    const PATRON_LIMPIAR = /\b(limpi[ae](r|lo|te)?|limpi[ae](r)?\s+el\s+mapa|borr[ae](r|lo|te)?|borr[ae](r)?\s+todo|vaci[ae](r|lo|te)?|vaci[ae](r)?\s+el\s+mapa|elimin[ae](r)?\s+todo|reset[ae](r)?|reinici[ae](r)?|saca(r)?\s+(las?\s+)?capas?|clear(\s+the\s+map|\s+all|\s+everything)?|clean(\s+the\s+map)?|reset(\s+the\s+map)?|wipe(\s+the\s+map)?|erase(\s+the\s+map)?|start\s+over|remove\s+all(\s+layers?)?|limpa(r)?(\s+o\s+mapa)?|apag[ae](r)?(\s+o\s+mapa)?|apague(\s+o\s+mapa)?|reseta(r)?(\s+o\s+mapa)?|limpe(\s+o\s+mapa)?|remove(r)?\s+tudo)\b/i;
 
   function detectarLimpiar(texto) {
     return PATRON_LIMPIAR.test(normalizarSimple(texto)) ? { tipo: 'limpiar' } : null;
@@ -42,7 +42,7 @@ window.INTENT_ACCIONES = (() => {
   // intenta identificar el formato solicitado.
   // Si no se detecta formato → subtipo 'vago' (abre el selector de formato).
 
-  const PATRON_EXPORT = /\b(export(a|ar)?|descarg(a|ar)?|guard(a|ar)?|baj(a|ar)?|guardar\s+como|descargar\s+como|download|save(\s+as)?|get\s+the\s+map|baixa(r)?|salva(r)?|descarrega(r)?|exporta(r)?|gravar|guardar)\b/i;
+    const PATRON_EXPORT = /\b(export[ae](r)?|export[ae]\s|descarg[ae](r)?|descargue|guard[ae](r)?|guard[ae]\s|guarde|baj[ae](r)?|guardar\s+como|descargar\s+como|download|save(\s+as)?|get\s+the\s+map|baixa(r)?|salva(r)?|descarrega(r)?|gravar)\b/i;
 
   const FORMATOS_EXPORT = [
     { subtipo: 'jpeg',    patron: /\b(jpeg|jpg|imagen|foto|captura|image|picture|imagem)\b/i },
@@ -99,7 +99,7 @@ window.INTENT_ACCIONES = (() => {
   // La extracción del nombre usa regex sobre el texto ORIGINAL (no normalizado)
   // para preservar mayúsculas y tildes en el nombre deseado.
 
-  const PATRON_RENOMBRAR = /\b(renombra(r|lo)?|llama(r|lo|le)?(\s+(al\s+)?(mapa|chat))?|cambia(\s+el\s+)?(nombre|titulo)|nombra(r|lo)?|titula(r|lo)?|el\s+nombre\s+(es|sera|va\s+a\s+ser)|rename(\s+(the\s+)?(map|chat))?|call(\s+it|\s+the\s+map)?|name(\s+it|\s+the\s+map)?|title(\s+it)?|the\s+name\s+(is|will\s+be)|renomear|renomeie|chama(r)?(\s+o\s+(mapa|chat))?|nomear|nomeie|o\s+nome\s+(é|sera|vai\s+ser))\b/i;
+    const PATRON_RENOMBRAR = /\b(renombr[ae](r|lo|se)?|renombré|llam[ae](r|lo|le)?(\s+(al\s+)?(mapa|chat|map))?|cambi[ae](r)?(\s+el\s+)?(nombre|titulo)|nombr[ae]r(lo)?|nombr[ae]\s+(el|al|lo|este|ese|un)\s+(mapa|chat|map)|titul[ae](r|lo)?|el\s+nombre\s+(es|era|sera|va\s+a\s+ser)|rename(\s+(the\s+)?(map|chat))?|call(\s+it|\s+the\s+map)?|name(\s+it|\s+the\s+map)?|title(\s+it)?|the\s+name\s+(is|will\s+be)|renomear|renomeie|cham[ae](r)?(\s+o\s+(mapa|chat))?|nomear|nomeie|o\s+nome\s+(e|era|sera|vai\s+ser))\b/i;
 
   function detectarRenombrar(texto) {
     const norm = normalizarSimple(texto);
@@ -133,7 +133,7 @@ window.INTENT_ACCIONES = (() => {
   //   'vago'       → quiere cambiar algo visual pero no especificó qué.
   //                  Se abre el selector de propiedades.
 
-  const PATRON_ESTILO = /\b(estilo|color(es)?|relleno|borde|grosor|tamano|icono|simbolo|apariencia|aspecto|hacelo\s+mas|ponelo|ponerlo|forma|geometria|style|fill|stroke|outline|thickness|weight|icon|symbol|appearance|make\s+it|shape|circle|square|size|radius|cor|cores|preenchimento|borda|espessura|ícone|símbolo|aparência|forma|geometria|circulo|quadrado|tamanho)\b/i;
+  const PATRON_ESTILO = /\b(estilo|color(es)?|relleno|borde|grosor|tamano|icono|simbolo|apariencia|aspecto|hacelo\s+mas|ponelo|ponerlo|forma|geometria|style|fill|stroke|outline|thickness|weight|icon|symbol|appearance|make\s+it|shape|circle|square|size|radius|radio|cor|cores|preenchimento|borda|espessura|ícone|símbolo|aparência|forma|geometria|circulo|quadrado|tamanho)\b/i;
 
   // Valores concretos que confirman que el usuario ya sabe qué quiere cambiar
   const PATRON_ESTILO_ESPECIFICO = /\b(rojo|azul|verde|amarillo|naranja|violeta|rosa|negro|blanco|gris|celeste|marron|mas\s+(grande|chico|grueso|fino|oscuro|claro|transparente)|tambien|lo\s+mismo|idem|opacidad|transparencia|red|blue|green|yellow|orange|purple|pink|black|white|gray|grey|cyan|brown|bigger|smaller|larger|thicker|thinner|darker|lighter|transparent|opacity|same|vermelho|azul|verde|amarelo|laranja|violeta|rosa|preto|branco|cinza|ciano|marrom|maior|menor|mais\s+(grosso|fino|escuro|claro|transparente)|transparencia|opacidade|#[0-9a-fA-F]{3,6}|\d+(\.\d+)?\s*(px|pt|puntos?))\b/i;
@@ -575,7 +575,7 @@ window.INTENT_ACCIONES = (() => {
   // comparando el texto del usuario con el label de cada atributo.
 
   // ES: clasificar/pintar por/colorear por  EN: classify/color by/categorize  PT: classificar/colorir por
-  const PATRON_CLASIFICAR = /\b(clasificá|clasifica[r]?|pinta[r]?\s+por|colorea[r]?\s+por|color[ií]a\s+por|categori[zc]á|categoriza[r]?|agrupa[r]?\s+por|diferencia[r]?\s+por|distingui[r]?\s+por|separa[r]?\s+por|divid[eé]\s+por|dividi[r]?\s+por|classify|color\s+by|categorize|group\s+by|show\s+by|classify\s+by|distinguish\s+by|separate\s+by|break\s+down\s+by|split\s+by|classifica[r]?|classificar?\s+por|colorir?\s+por|agrupar?\s+por|diferenciar?\s+por|separar?\s+por|dividir?\s+por)\b/i;
+  const PATRON_CLASIFICAR = /\b(clasificá|clasific[ae](r)?|clasifique|pinta[r]?\s+por|colorea[r]?\s+por|color[ií]a\s+por|categori[zc]á|categori[zc][ae](r)?|categorice|agrupa[r]?\s+por|diferencia[r]?\s+por|distingui[r]?\s+por|separa[r]?\s+por|divid[eé]\s+por|dividi[r]?\s+por|classify|color\s+by|categorize|group\s+by|show\s+by|classify\s+by|distinguish\s+by|separate\s+by|break\s+down\s+by|split\s+by|classifica[r]?|classificar?\s+por|colorir?\s+por|agrupar?\s+por|diferenciar?\s+por|separar?\s+por|dividir?\s+por)\b/i;
 
   function detectarClasificar(textoUsuario) {
     if (!PATRON_CLASIFICAR.test(normalizarSimple(textoUsuario))) return null;
