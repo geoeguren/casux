@@ -8,16 +8,19 @@
  *   intención detectada, o null si ninguna aplica (→ LLM).
  *
  * Orden de evaluación (de mayor a menor prioridad):
- *   1. limpiar    → borrar/vaciar el mapa
- *   2. export     → descargar/exportar
- *   3. basemap    → cambiar mapa de fondo
- *   4. renombrar  → cambiar nombre del chat/mapa
- *   5. estilo     → cambiar apariencia de una capa
- *   6. agregar    → sumar una capa al mapa activo (sin historial guard)
- *   7. quitar     → eliminar una capa del mapa activo (sin historial guard)
- *   8. capa       → cargar una capa nueva (con historial guard)
+ *   1. limpiar             → borrar/vaciar el mapa
+ *   2. export              → descargar/exportar
+ *   3. basemap             → cambiar mapa de fondo
+ *   4. renombrar           → cambiar nombre del chat/mapa
+ *   5. estilo (resuelto)   → cambio de estilo con valor resuelto localmente
+ *   6. estilo (vago)       → cambio de estilo que necesita interacción
+ *   7. toggle_visibilidad  → mostrar/ocultar capa activa (sin historial guard)
+ *   8. agregar             → sumar una capa al mapa activo (sin historial guard)
+ *   9. quitar              → eliminar una capa del mapa activo (sin historial guard)
+ *  10. clasificar          → clasificación cromática de capa activa (sin historial guard)
+ *  11. capa                → cargar una capa nueva (con historial guard)
  *
- * agregar y quitar van antes de capa porque operan sobre el mapa activo
+ * Los detectores 7–10 van antes de capa porque operan sobre el mapa activo
  * y deben evaluarse incluso cuando ya hubo conversación con el LLM.
  *
  * Si ningún detector devuelve un resultado → null → el mensaje se envía
@@ -47,22 +50,28 @@ window.INTENT = (() => {
 
   function detectarIntencion(texto, historial = []) {
     const resultado =
-      Acciones.detectarLimpiar(texto)         ||
-      Acciones.detectarExport(texto)          ||
-      Acciones.detectarBasemap(texto)         ||
-      Acciones.detectarRenombrar(texto)       ||
-      Acciones.detectarEstilo(texto)          ||
-      Acciones.detectarAgregar(texto)         ||
-      Acciones.detectarQuitar(texto)          ||
+      Acciones.detectarLimpiar(texto)             ||
+      Acciones.detectarExport(texto)              ||
+      Acciones.detectarBasemap(texto)             ||
+      Acciones.detectarRenombrar(texto)           ||
+      Acciones.detectarEstiloResuelto(texto)      ||
+      Acciones.detectarEstilo(texto)              ||
+      Acciones.detectarToggleVisibilidad(texto)   ||
+      Acciones.detectarAgregar(texto)             ||
+      Acciones.detectarQuitar(texto)              ||
+      Acciones.detectarClasificar(texto)          ||
       Capa.detectarCapa(texto, historial);
 
     // Log de diagnóstico — visible en la consola del browser durante desarrollo
     if (resultado) {
       const extra =
-        resultado.tipo === 'capa'    ? ` → ${resultado.parametros?.instruccion?.layerKey || '?'}` :
-        resultado.tipo === 'agregar' ? ` → ${resultado.parametros?.instruccion?.layerKey || '?'}` :
-        resultado.tipo === 'quitar'  ? ` → ${resultado.parametros?.mapKey || '?'}` :
-        resultado.subtipo            ? ` (${resultado.subtipo})` : '';
+        resultado.tipo === 'capa'               ? ` → ${resultado.parametros?.instruccion?.layerKey || '?'}` :
+        resultado.tipo === 'agregar'            ? ` → ${resultado.parametros?.instruccion?.layerKey || '?'}` :
+        resultado.tipo === 'quitar'             ? ` → ${resultado.parametros?.mapKey || '?'}` :
+        resultado.tipo === 'toggle_visibilidad' ? ` → ${resultado.parametros?.mapKey || '?'} (${resultado.parametros?.visible ? 'mostrar' : 'ocultar'})` :
+        resultado.tipo === 'estilo' && resultado.subtipo === 'resuelto' ? ` → ${resultado.parametros?.prop}=${resultado.parametros?.value}${resultado.parametros?.mapKey ? ' [' + resultado.parametros.mapKey + ']' : ' [selector]'}` :
+        resultado.tipo === 'clasificar'         ? ` → ${resultado.parametros?.layerKey || '?'} por ${resultado.parametros?.field || '?'}` :
+        resultado.subtipo                       ? ` (${resultado.subtipo})` : '';
       console.log(`[INTENT] ✓ ${resultado.tipo}${extra} | "${texto.slice(0, 60)}"`);
     } else {
       console.log(`[INTENT] → LLM | "${texto.slice(0, 60)}"`);
