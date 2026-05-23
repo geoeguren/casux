@@ -38,7 +38,7 @@ window.INTENT_CAPA = (() => {
   // Palabras que indican que el pedido NO es una solicitud de capa.
   // Si alguna aparece, se deriva al LLM antes de intentar el scorer.
   // Evita que "exportar la capa" active el detector de capas.
-  const PATRON_NO_CAPA = /\b(export|exporta|descarga|qué es|qué son|cuánto|cuántos|explicame|explicá|contame|ayuda|borrá|limpiar|vaciar|cambiar|cambio|color|estilo|clasificá|clasificar|download|what\s+is|what\s+are|how\s+many|explain|help|clear|clean|style|classify|baixar|o\s+que\s+é|quantos?|explique|ajuda|limpar|apagar|cor|estilo|classificar|oculta[r]?|esconde[r]?|apaga[r]?|desactiva[r]?|deshabilita[r]?|hide|turn\s+off|disable|mostra[r]?|muestra[r]?|activa[r]?|habilita[r]?|show|turn\s+on|enable|display|ocultar?|esconder?|desativar?|mostrar?|exibir?|ativar?)\b/i;
+  const PATRON_NO_CAPA = /\b(export|exporta|descarga|qué es|qué son|cuánto|cuántos|explicame|explicá|contame|ayuda|borrá|limpiar|vaciar|cambiar|cambio|color|estilo|clasificá|clasificar|download|what\s+is|what\s+are|how\s+many|explain|help|clear|clean|style|classify|baixar|o\s+que\s+é|quantos?|explique|ajuda|limpar|apagar|cor|estilo|classificar|oculta[r]?|esconde[r]?|apaga[r]?|desactiva[r]?|deshabilita[r]?|hide|turn\s+off|disable|mostra[r]?|muestra[r]?|activa[r]?|habilita[r]?|show|turn\s+on|enable|display|ocultar?|esconder?|desativar?|mostrar?|exibir?|ativar?|clasifica[r]?|clasificar?|classifica[r]?|classify|categorize|categoriza[r]?)\b/i;
 
   // Palabras de "pedido múltiple" que indican que el usuario quiere
   // cargar varias capas en un solo mensaje. El LLM las descompone mejor.
