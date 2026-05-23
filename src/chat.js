@@ -2163,30 +2163,28 @@ window.UI = (() => {
 
   // ── showRenameInput ───────────────────────────────────────────
   //
-  // Muestra un input inline para que el usuario escriba el nuevo nombre
-  // del chat/mapa, sin necesidad de pasar por el LLM.
+  // Muestra un card inline de una sola línea para renombrar el mapa/chat.
+  // Input con estilo underline (igual que el título del mapa/chat).
+  // Botón VER-style a la derecha.
 
   function showRenameInput(msgEl) {
-    const wrap = document.createElement('div');
-    wrap.className = 'style-slider-wrap';
-    wrap.style.cssText = 'display:flex;gap:8px;align-items:center;margin-top:6px';
+    const card = document.createElement('div');
+    card.className = 'msg-rename-card';
 
     const input = document.createElement('input');
     input.type = 'text';
+    input.className = 'rename-card-input';
     input.placeholder = t('rename_placeholder');
-    input.style.cssText = 'flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--border-md);background:var(--bg2);color:var(--cream1);font-family:var(--font-sans);font-size:13px;outline:none';
 
     const btn = document.createElement('button');
-    btn.className = 'export-choice-btn style-confirm-btn';
-    btn.style.cssText = 'flex-shrink:0;padding:6px 14px';
-    btn.innerHTML = `<span class="export-choice-label">${t('rename_confirm')}</span>`;
+    btn.className = 'map-card-btn';
+    btn.textContent = t('rename_confirm');
 
     const apply = () => {
       const nombre = input.value.trim();
       if (!nombre) return;
-      wrap.remove();
+      card.remove();
       window.CHAT_HEADER?.startRename?.(nombre);
-      // Actualizar también el título del mapa activo
       const planApply = window.APP?.getCurrentPlan?.();
       if (planApply) planApply.titulo = nombre;
       const mapTitleInput = document.getElementById('map-title');
@@ -2198,14 +2196,14 @@ window.UI = (() => {
     btn.addEventListener('click', apply);
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); apply(); }
-      if (e.key === 'Escape') wrap.remove();
+      if (e.key === 'Escape') card.remove();
     });
 
-    wrap.appendChild(input);
-    wrap.appendChild(btn);
+    card.appendChild(input);
+    card.appendChild(btn);
 
-    if (msgEl) msgEl.after(wrap);
-    else $msgs()?.appendChild(wrap);
+    if (msgEl) msgEl.after(card);
+    else $msgs()?.appendChild(card);
 
     setTimeout(() => input.focus(), 80);
     scrollBottom();
