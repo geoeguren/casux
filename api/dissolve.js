@@ -132,7 +132,8 @@ module.exports = async function handler(req, res) {
       whereClause,
       exclude,         // true → dissolve_exclude
       mask,            // GeoJSON del área a excluir (dissolve_exclude)
-      maskInstructions // instrucciones para que el servidor fetchee la máscara
+      maskInstructions, // instrucciones para que el servidor fetchee la máscara
+      clipInstructions, // instrucciones para pre-filtrar espacialmente antes de disolver
     } = req.body || {};
 
     const isExclude = !!exclude;
@@ -152,6 +153,49 @@ module.exports = async function handler(req, res) {
         layerGeoJSON = await fetchREST({ typename, restBase, whereClause });
       } else {
         layerGeoJSON = await fetchWFS({ typename, wfsBase, wfsVersion, cqlFilter });
+      }
+    }
+
+    // 1b. Pre-filtro espacial via clipInstructions (dissolve simple con área geográfica).
+    //
+    // Cuando intent no puede usar geoFields (la capa no tiene el campo de provincia),
+    // manda clipInstructions para que el servidor fetchee el área de referencia
+    // y filtre espacialmente los features antes de disolver.
+    // Ej: "uní las áreas protegidas de Neuquén" → la capa no tiene nom_pcia,
+    //     pero podemos obtener el polígono de Neuquén y quedarnos solo con
+    //     los features cuyo centroide esté dentro.
+    if (!isExclude && clipInstructions?.typename) {
+      const clipGeoJSON = await fetchWFS({
+        typename:   clipInstructions.typename,
+        wfsBase:    clipInstructions.wfsBase,
+        wfsVersion: clipInstructions.wfsVersion || '1.1.0',
+        cqlFilter:  clipInstructions.cqlFilter,
+      });
+      const clipFeature = clipGeoJSON.features?.[0];
+      if (clipFeature) {
+        const { normalizarMascara } = require('./_geo');
+        const clipMask = normalizarMascara(clipFeature);
+        layerGeoJSON = {
+          type:     'FeatureCollection',
+          features: (layerGeoJSON.features || []).filter(feat => {
+            try {
+              const geom = feat.geometry?.type;
+              if (!geom) return false;
+              if (geom === 'Point') {
+                return booleanPointInPolygon(feat, clipMask);
+              }
+              // Polígonos y líneas: usar centroide como aproximación
+              const coords = geom === 'Polygon'     ? feat.geometry.coordinates[0]
+                           : geom === 'MultiPolygon' ? feat.geometry.coordinates[0][0]
+                           : geom === 'LineString'   ? feat.geometry.coordinates
+                           :                           feat.geometry.coordinates[0];
+              if (!coords?.length) return false;
+              const midPt = { type: 'Feature', geometry: { type: 'Point', coordinates: coords[Math.floor(coords.length / 2)] }, properties: {} };
+              return booleanPointInPolygon(midPt, clipMask);
+            } catch { return false; }
+          }),
+        };
+        console.log(`[api/dissolve] clipInstructions: ${layerGeoJSON.features.length} features dentro del área`);
       }
     }
 
