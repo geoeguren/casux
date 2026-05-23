@@ -317,7 +317,7 @@ window.I18N_PT = {
   style_which_layer:         'Em qual camada você quer aplicar a mudança?',
   rename_ask:                'Como você quer chamar o mapa?',
   rename_placeholder:        'Novo nome…',
-  rename_confirm:            'Renomear',
+  rename_confirm:            'RENOMEAR',
   classify_done:             'Pronto, classifiquei a camada por {label}.',
   classify_which_field:      'Por qual campo você quer classificar?',
   chat_renamed:              'Renomeei o mapa para "{nombre}".',
