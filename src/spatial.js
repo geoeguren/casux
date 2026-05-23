@@ -344,8 +344,9 @@ window.SPATIAL = (() => {
     if (clipArea.value) {
       const PAISES_CODIGOS = { 'argentina': 'ar', 'uruguay': 'uy', 'chile': 'cl' };
       // clipArea.value puede ser string o array — normalizar toma el primer elemento si es array
-      const valueNorm = window._SPATIAL_CLIP?.normalizar?.(clipArea.value)
-        ?? (Array.isArray(clipArea.value) ? clipArea.value[0] : clipArea.value)?.toLowerCase?.() ?? '';
+      const valueNorm = window._SPATIAL_UTILS.normalizar(
+        Array.isArray(clipArea.value) ? clipArea.value[0] : (clipArea.value ?? '')
+      );
       const paisDelValue = PAISES_CODIGOS[valueNorm];
       if (paisDelValue) {
         const maskLayerDef  = window.LAYERS?.[clipArea.layerKey];
