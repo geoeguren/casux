@@ -27,14 +27,13 @@ window._SPATIAL_DISSOLVE = (() => {
   // ── Edge Function ─────────────────────────────────────────────
 
   async function dissolveViaEdgeFunction(layerDef, wfsOpts, cql, maskFeature, instruccion) {
-    const isExclude   = instruccion.op === 'dissolve_exclude';
+    const isExclude    = instruccion.op === 'dissolve_exclude';
     const dissolveArea = instruccion?.dissolveArea;
+    const clipArea     = instruccion?.clipArea;
 
-    // Construir maskPayload solo para dissolve_exclude
+    // ── Máscara para dissolve_exclude ────────────────────────────
     let maskPayload = {};
     if (isExclude && maskFeature) {
-      // Intentar mandar maskInstructions en lugar del GeoJSON completo
-      // (ver TODO en spatial-clip.js sobre la deuda técnica del Camino B)
       if (dissolveArea?.layerKey && dissolveArea?.field && dissolveArea?.value) {
         const maskDef    = window.LAYERS?.[dissolveArea.layerKey];
         const maskSource = maskDef && window.SOURCES?.[maskDef.source];
@@ -53,10 +52,34 @@ window._SPATIAL_DISSOLVE = (() => {
           };
         }
       }
-
-      // TODO: Migrar máscara al Camino A (maskInstructions) — ver spatial-clip.js
       if (!maskPayload.maskInstructions) {
         maskPayload = { mask: { type: 'FeatureCollection', features: [maskFeature] } };
+      }
+    }
+
+    // ── Pre-filtro espacial para dissolve simple con clipArea ────
+    //
+    // Cuando intent no puede resolver el área vía geoFields (ej: departamento_ar
+    // no tiene nom_pcia), setea instruccion.clipArea para que el servidor
+    // fetchee solo los features dentro del área antes de disolver.
+    // Esto evita disolver toda la capa cuando solo se necesita un subconjunto.
+    let clipPayload = {};
+    if (!isExclude && clipArea?.layerKey && clipArea?.field && clipArea?.value) {
+      const clipDef    = window.LAYERS?.[clipArea.layerKey];
+      const clipSource = clipDef && window.SOURCES?.[clipDef.source];
+      if (clipDef && clipSource?.wfsBase) {
+        const values    = Array.isArray(clipArea.value) ? clipArea.value : [clipArea.value];
+        const cqlFilter = values.length === 1
+          ? `${clipArea.field}='${values[0]}'`
+          : `${clipArea.field} IN (${values.map(v => `'${v}'`).join(',')})`;
+        clipPayload = {
+          clipInstructions: {
+            typename:   clipDef.typename,
+            wfsBase:    clipSource.wfsBase,
+            wfsVersion: clipSource.wfsVersion || '1.1.0',
+            cqlFilter,
+          }
+        };
       }
     }
 
@@ -72,6 +95,7 @@ window._SPATIAL_DISSOLVE = (() => {
         cqlFilter:  !wfsOpts.restBase ? (cql || undefined) : undefined,
         whereClause: wfsOpts.restBase  ? (cql || undefined) : undefined,
         ...maskPayload,
+        ...clipPayload,
       }),
       signal: AbortSignal.timeout(90000),
     });
