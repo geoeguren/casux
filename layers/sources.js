@@ -35,6 +35,14 @@ const SOURCES_DATA = {
     clipField:    'nam',
     attribution:  'Instituto Geográfico Nacional (Argentina)',
     url:          'https://www.ign.gob.ar',
+    // Temáticas sobre las que IGN es autoridad primaria.
+    // Incluye división político-administrativa: si una fuente temática (ej: INDEC)
+    // también publica departamentos/provincias, IGN gana el desempate.
+    domain: [
+      'division politica', 'provincia', 'provincias', 'departamento', 'departamentos',
+      'municipio', 'municipios', 'limite', 'limites', 'localidad', 'localidades',
+      'topografia', 'cartografia',
+    ],
   },
 
   igm_uy: {
@@ -48,6 +56,14 @@ const SOURCES_DATA = {
     clipField:    'depto',
     attribution:  'Instituto Geográfico Militar (Uruguay)',
     url:          'https://www.igm.gub.uy',
+    // Temáticas sobre las que IGM es autoridad primaria.
+    // Si MTOP también publica departamentos (para uso como máscara de clip),
+    // IGM gana el desempate en consultas de división política.
+    domain: [
+      'division politica', 'departamento', 'departamentos',
+      'limite', 'limites', 'localidad', 'localidades',
+      'topografia', 'cartografia',
+    ],
   },
 
   mtop_uy: {
