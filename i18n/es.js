@@ -352,6 +352,9 @@ window.I18N_ES = {
   op_ask_dissolve_all: '¿Querés unir todos los objetos de {titulo} en uno solo, o solo los de un área específica?',
   op_dissolve_all_yes: 'Unir todos',
   op_dissolve_all_no:  'Elegir un área',
+  selector_capa_msg:      '¿Sobre qué capa querés aplicar esta acción?',
+  selector_capa_selected: 'Listo.',
+
   confirm_btn:         'CONFIRMAR',
 
 
