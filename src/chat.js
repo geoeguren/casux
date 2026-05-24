@@ -481,10 +481,18 @@ window.CHAT = (() => {
 
           if (!field) {
             // Campo no identificado.
-            // Si además mapKey es null (capa ambigua) → selector de capa primero,
-            // luego selector de campo. Igual que el flujo de estilo vago.
-            if (!mapKey) {
+            // Resolver la capa: si mapKey es null pero hay exactamente 1 capa activa,
+            // usarla directamente sin selector. Si hay varias → selector de capa.
+            const _resolvedMapKey = mapKey || (() => {
+              const keys = Object.keys(activeLayers);
+              return keys.length === 1 ? keys[0] : null;
+            })();
+            const _resolvedLayerKey = layerKey || activeLayers[_resolvedMapKey]?.layerKey;
+
+            if (!_resolvedMapKey) {
+              // Varias capas y mapKey null → selector de capa primero, luego campo
               const msgEl = UI.addMessage('assistant', t('style_which_layer'));
+              UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
               UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => {
                 const selectedEntry = window.MAP?.getActiveLayers?.()[selectedMapKey];
                 const selectedLayerKey = selectedEntry?.layerKey;
@@ -494,9 +502,10 @@ window.CHAT = (() => {
               });
               history.push({ role: 'assistant', content: t('style_which_layer'), time: new Date().toISOString() });
             } else {
-              // Capa identificada pero campo no → selector de campo
+              // Capa resuelta → ir directo al selector de campo
               const msgEl = UI.addMessage('assistant', t('classify_which_field'));
-              UI.showFieldSelectorForClassify(msgEl, mapKey, layerKey);
+              UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
+              UI.showFieldSelectorForClassify(msgEl, _resolvedMapKey, _resolvedLayerKey);
               history.push({ role: 'assistant', content: t('classify_which_field'), time: new Date().toISOString() });
             }
             return;
