@@ -579,6 +579,84 @@ window.CHAT = (() => {
         }
 
         // CAPA → resolver sin LLM
+        // CAPA PREGUNTAR → falta un dato para ejecutar la operación espacial
+        else if (intencion.tipo === 'capa_preguntar') {
+          isStreaming = false;
+          UI.setSendEnabled(true);
+          const { preguntar, instruccion, layerKey } = intencion.parametros;
+          const layerDef = window.LAYERS?.[layerKey];
+          const tituloLayer = layerDef?.tituloUI || layerDef?.titulo || layerKey;
+
+          const _ejecutarConInstruccion = async (instruccionFinal) => {
+            const plan = {
+              titulo:        tituloDesdePlan([instruccionFinal]) || generarTitulo(userText),
+              instrucciones: [instruccionFinal],
+            };
+            const msgEl2 = UI.addMessage('assistant', '');
+            UI.showMapReady(plan);
+            const msgTime = new Date();
+            UI.setMessageMeta(msgEl2, { time: msgTime, model: 'pim' });
+            if (!window.MAP_CONTROLS?.isMobile?.()) window.MAP_CONTROLS?.setMapVisible(true);
+            try {
+              await window.APP.renderMap(plan);
+              history.push({ role: 'assistant', content: `[intent] ${plan.titulo}`, time: msgTime.toISOString(), model: 'pim' });
+              await saveChat(userText, plan);
+            } catch (e) {
+              console.error('[CHAT] Error al renderizar:', e);
+              UI.showErrorCard(t('error_layer_retry', { titulo: tituloLayer }));
+            }
+          };
+
+          if (preguntar === 'distancia') {
+            const msgEl = UI.addMessage('assistant', t('op_ask_distance', { titulo: tituloLayer }));
+            UI.showNumberInput(msgEl, {
+              placeholder: t('op_distance_placeholder'),
+              unit:        'km',
+              onConfirm:   (km) => {
+                instruccion.withinDistance = parseFloat(km);
+                _ejecutarConInstruccion(instruccion);
+              },
+            });
+            history.push({ role: 'assistant', content: t('op_ask_distance', { titulo: tituloLayer }), time: new Date().toISOString() });
+
+          } else if (preguntar === 'n') {
+            const msgEl = UI.addMessage('assistant', t('op_ask_n', { titulo: tituloLayer }));
+            UI.showNumberInput(msgEl, {
+              placeholder: t('op_n_placeholder'),
+              unit:        '',
+              onConfirm:   (n) => {
+                instruccion.nearestCount = parseInt(n, 10) || 1;
+                _ejecutarConInstruccion(instruccion);
+              },
+            });
+            history.push({ role: 'assistant', content: t('op_ask_n', { titulo: tituloLayer }), time: new Date().toISOString() });
+
+          } else if (preguntar === 'area') {
+            // Sin área → el usuario debe especificar la referencia
+            const msgEl = UI.addMessage('assistant', t('op_ask_area', { titulo: tituloLayer, op: instruccion.op || 'clip' }));
+            history.push({ role: 'assistant', content: t('op_ask_area', { titulo: tituloLayer, op: instruccion.op || 'clip' }), time: new Date().toISOString() });
+            // El usuario responderá en el siguiente turno; el LLM procesará con contexto
+
+          } else if (preguntar === 'confirmar_dissolve_all') {
+            // Dissolve sin área → preguntar si quiere unir todos
+            const msgEl = UI.addMessage('assistant', t('op_ask_dissolve_all', { titulo: tituloLayer }));
+            UI.showConfirmChoice(msgEl,
+              t('op_dissolve_all_yes'),
+              t('op_dissolve_all_no'),
+              () => {
+                // Sí → ejecutar dissolve sin área (todos los features)
+                _ejecutarConInstruccion(instruccion);
+              },
+              () => {
+                // No → pedir área
+                UI.addMessage('assistant', t('op_ask_area', { titulo: tituloLayer, op: 'dissolve' }));
+              }
+            );
+            history.push({ role: 'assistant', content: t('op_ask_dissolve_all', { titulo: tituloLayer }), time: new Date().toISOString() });
+          }
+          return;
+        }
+
         else if (intencion.tipo === 'capa') {
           const instruccionDirecta = intencion.parametros.instruccion;
           const titulo = tituloDesdePlan([instruccionDirecta]) || generarTitulo(userText);
@@ -2442,6 +2520,73 @@ window.UI = (() => {
     scrollBottom();
   }
 
-    return { addMessage, setMessageText, setMessageMeta, showThinking, hideThinking, showMapReady, showViewMapBtn, showErrorCard, showModeSelector, showExportChoice, showStyleButtons, showStyleFlow, showStyleFlowForLayer, showBasemapButtons, showLayerSelectorForAction, showRenameInput, showFieldSelectorForClassify, showClassifiedStyleChoice, setSendEnabled };
+
+  // ── showNumberInput ───────────────────────────────────────────
+  // Input numérico inline para pedir distancia o N al usuario.
+  // opts: { placeholder, unit, onConfirm }
+  function showNumberInput(msgEl, opts) {
+    const card = document.createElement('div');
+    card.className = 'msg-rename-card';
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '1';
+    input.step = opts.unit === 'km' ? '1' : '1';
+    input.className = 'rename-card-input';
+    input.placeholder = opts.placeholder || '';
+    input.style.maxWidth = '120px';
+
+    const unitSpan = document.createElement('span');
+    unitSpan.textContent = opts.unit || '';
+    unitSpan.style.cssText = 'color:var(--cream2);font-size:13px;flex-shrink:0';
+
+    const btn = document.createElement('button');
+    btn.className = 'map-card-btn';
+    btn.textContent = t('confirm_btn');
+
+    const apply = () => {
+      const val = input.value.trim();
+      if (!val || isNaN(parseFloat(val))) return;
+      card.remove();
+      opts.onConfirm(parseFloat(val));
+    };
+    btn.addEventListener('click', apply);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); apply(); } });
+
+    card.appendChild(input);
+    if (opts.unit) card.appendChild(unitSpan);
+    card.appendChild(btn);
+
+    if (msgEl) msgEl.after(card);
+    else $msgs()?.appendChild(card);
+    setTimeout(() => input.focus(), 80);
+    scrollBottom();
+  }
+
+  // ── showConfirmChoice ─────────────────────────────────────────
+  // Dos botones de confirmación (sí/no).
+  function showConfirmChoice(msgEl, labelYes, labelNo, onYes, onNo) {
+    const card = document.createElement('div');
+    card.className = 'msg-export-choice';
+
+    const btnYes = document.createElement('button');
+    btnYes.className = 'export-choice-btn';
+    btnYes.innerHTML = `<span class="export-choice-label">${labelYes}</span>`;
+    btnYes.addEventListener('click', () => { card.remove(); onYes(); });
+
+    const btnNo = document.createElement('button');
+    btnNo.className = 'export-choice-btn';
+    btnNo.innerHTML = `<span class="export-choice-label">${labelNo}</span>`;
+    btnNo.addEventListener('click', () => { card.remove(); onNo(); });
+
+    card.appendChild(btnYes);
+    card.appendChild(btnNo);
+
+    if (msgEl) msgEl.after(card);
+    else $msgs()?.appendChild(card);
+    scrollBottom();
+  }
+
+    return { addMessage, setMessageText, setMessageMeta, showThinking, hideThinking, showMapReady, showViewMapBtn, showErrorCard, showModeSelector, showExportChoice, showStyleButtons, showStyleFlow, showStyleFlowForLayer, showBasemapButtons, showLayerSelectorForAction, showRenameInput, showFieldSelectorForClassify, showClassifiedStyleChoice, showNumberInput, showConfirmChoice, setSendEnabled };
 
 })();
