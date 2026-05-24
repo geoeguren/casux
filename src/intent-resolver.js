@@ -49,10 +49,16 @@ window.INTENT_RESOLVER = (() => {
   // ── Extractor de nombre para renombrar ────────────────────────
   function _extraerNombreRenombrar(texto) {
     const patrones = [
-      /(?:llamalo?|renombralo?\s+(?:como\s+)?|titulalo?\s*|el\s+nombre\s+(?:es|sera|va\s+a\s+ser)\s+|llam[aa]\s+(?:al\s+)?(?:mapa|chat)\s+)["']?([^"'\n]{2,40})["']?/i,
+      // "renombrá el mapa como X" / "renombra el mapa como X" (con y sin tilde)
+      /(?:renombr[aáeé][a-záéíóúñ]*\s+(?:el\s+|este\s+|ese\s+)?(?:mapa|chat)\s+como\s+)["']?([^"'\n]{2,40})["']?/i,
+      // "llamalo X" / "renombralo como X" / "el nombre es X"
+      /(?:llamalo?|renombralo?\s+(?:como\s+)?|titulalo?\s*|el\s+nombre\s+(?:es|ser[aá]|va\s+a\s+ser)\s+|llam[aá]\s+(?:al\s+)?(?:mapa|chat)\s+)["']?([^"'\n]{2,40})["']?/i,
+      // "como 'Nombre'" — solo con comillas para evitar falsos positivos
       /(?:como\s+)["']([^"'\n]{2,40})["']/i,
+      // EN: "call it X" / "rename to X" / "name it X"
       /(?:call\s+(?:it|the\s+map)\s+|rename\s+(?:it\s+)?(?:to\s+)?|name\s+it\s+|the\s+name\s+is\s+)["']?([^"'\n]{2,40})["']?/i,
-      /(?:chama(?:r)?\s+(?:o\s+mapa\s+)?(?:de\s+)?|renomeia(?:r)?\s+(?:para\s+)?|o\s+nome\s+(?:e|vai\s+ser)\s+)["']?([^"'\n]{2,40})["']?/i,
+      // PT: "chama o mapa de X" / "renomeia para X"
+      /(?:chama(?:r)?\s+(?:o\s+mapa\s+)?(?:de\s+)?|renomeia(?:r)?\s+(?:para\s+)?|o\s+nome\s+(?:[eé]|vai\s+ser)\s+)["']?([^"'\n]{2,40})["']?/i,
     ];
     for (const p of patrones) {
       const m = texto.match(p);
