@@ -736,7 +736,9 @@ window.APP = (() => {
         const clSource = prevCl || (inst.classification?.field && inst.classification?.type ? inst.classification : null);
         if (clSource?.field && clSource?.type) {
           const paletteColors = clSource.paletteColors || window.PALETTES[clSource.palette] || window.PALETTES.qualitative;
-          window.MAP.applyClassification(mapKey, { ...clSource, paletteColors });
+          // Bug D fix: applyClassification es async — awaitar para que la leyenda
+          // se actualice DESPUÉS de que el colorMap/breaks estén listos.
+          await window.MAP.applyClassification(mapKey, { ...clSource, paletteColors });
         }
         _stepProgress();
       } catch (err) {
@@ -875,7 +877,7 @@ window.APP = (() => {
 
   // ── Aplicar clasificación desde chat ─────────────────────────
 
-  function applyClassifyPlan(classifyPlan) {
+  async function applyClassifyPlan(classifyPlan) {
     const activeLayers = window.MAP.getActiveLayers();
     let changed = false;
     for (const c of classifyPlan) {
@@ -883,7 +885,9 @@ window.APP = (() => {
       if (!entry) continue;
       const [mapKey] = entry;
       const colors = window.PALETTES[c.palette] || window.PALETTES.qualitative;
-      window.MAP.applyClassification(mapKey, { ...c, paletteColors: colors });
+      // Bug B fix: applyClassification es async (usa worker), hay que awaitarla
+      // para que la leyenda se actualice DESPUÉS de que el colorMap esté listo.
+      await window.MAP.applyClassification(mapKey, { ...c, paletteColors: colors });
       if (currentPlan?.instrucciones) {
         const inst = currentPlan.instrucciones.find(i => i.mapKey === mapKey);
         if (inst) inst.classification = { ...c, paletteColors: colors };
