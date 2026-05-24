@@ -340,6 +340,38 @@ window.MAP = (() => {
       }
     });
 
+    // Si hay clasificación activa, re-aplicar colores por feature encima del estilo base.
+    // eachLayer con setStyle(entry.style) aplica un color uniforme que pisa la clasificación.
+    if (entry.classification?.field) {
+      const cl = entry.classification;
+      entry.leafletLayer.eachLayer(l => {
+        const val = l.feature?.properties?.[cl.field];
+        let featureStyle;
+        if (cl.type === 'graduated') {
+          const fill = getColorForValue(parseFloat(val), cl.breaks, cl.paletteColors || ['#888']);
+          const border = darkenHex(fill);
+          featureStyle = geomType === 'line'
+            ? { ...entry.style, color: fill }
+            : { ...entry.style, color: border, fillColor: fill };
+        } else {
+          // categorized
+          if (!cl.colorMap?.hasOwnProperty(val)) {
+            featureStyle = geomType === 'point'
+              ? { ...entry.style, radius: 0, opacity: 0, fillOpacity: 0 }
+              : { ...entry.style, opacity: 0, fillOpacity: 0, weight: 0 };
+          } else {
+            const fill = cl.colorMap[val];
+            const valStyle = cl.styleMap?.[val] || {};
+            const border = valStyle.color || darkenHex(valStyle.fillColor || fill);
+            featureStyle = geomType === 'line'
+              ? { ...entry.style, ...valStyle, color: valStyle.color || fill }
+              : { ...entry.style, ...valStyle, color: border, fillColor: valStyle.fillColor || fill };
+          }
+        }
+        if (featureStyle) l.setStyle(featureStyle);
+      });
+    }
+
     updateLegend();
     if (_layerStyleCallback) _layerStyleCallback(mapKey, entry.style);
   }
