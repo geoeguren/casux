@@ -307,7 +307,7 @@ window.I18N_EN = {
   basemap_changed:         'Done, I changed the background map.',
   error_retry:             'RETRY',
   error_layer_retry:       'Try loading {titulo} again',
-  error_no_response:       'The layer did not respond.',
+  error_no_response:       '{titulo} did not respond.',
   map_drawing:             'Drawing…',
   map_already_empty:       'The map was already empty.',
   map_cleared:             'Done, I cleared the map.',
