@@ -107,7 +107,7 @@ window.INTENT_ACCIONES = (() => {
 
     // Intentar extraer el nombre deseado del texto original
     const matchNombre =
-      texto.match(/(?:llamalo?|renombralo?\s+(?:como\s+)?|titulalo?\s*|el\s+nombre\s+(?:es|sera|va\s+a\s+ser)\s+|llam[aa]\s+(?:al\s+)?(?:mapa|chat)\s+)["]?([^"'\n]{2,40})["]?/i) ||
+      texto.match(/(?:llamalo?|renombralo?\s+(?:como\s+)?|titulalo?\s*|el\s+nombre\s+(?:es|sera|va\s+a\s+ser)\s+|llam[aá]\s+(?:a\s+)?(?:este|ese|el|un|al?)?\s*(?:mapa|chat)\s+)["]?([^"'\n]{2,40})["]?/i) ||
       texto.match(/(?:como\s+)["]([^"'\n]{2,40})["]/i) ||
       texto.match(/(?:call\s+(?:it|the\s+map)\s+|rename\s+(?:it\s+)?(?:to\s+)?|name\s+it\s+|the\s+name\s+is\s+)["]?([^"'\n]{2,40})["]?/i) ||
       texto.match(/(?:chama(?:r)?\s+(?:o\s+mapa\s+)?(?:de\s+)?|renomeia(?:r)?\s+(?:para\s+)?|o\s+nome\s+(?:e|vai\s+ser)\s+)["]?([^"'\n]{2,40})["]?/i);
