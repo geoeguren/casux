@@ -219,17 +219,4 @@ window.MAKI_ICONS = [
   { key: 'watch',               en: ['watch','clock','time','jewelry'],                                          es: ['relojería','reloj','joyería'],                                               pt: ['relojoaria','relógio','joalheria'] },
   { key: 'windmill',            en: ['windmill','wind','energy','rural'],                                        es: ['molino','viento','energía','rural'],                                         pt: ['moinho','vento','energia','rural'] },
   // ── Variantes japonesas (JP) ──────────────────────────────────────────────
-  { key: 'bank-JP',             en: ['bank japan','japanese bank','JP bank'],                                    es: ['banco japonés'],                                                            pt: ['banco japonês'] },
-  { key: 'castle-JP',           en: ['castle japan','japanese castle','JP castle'],                              es: ['castillo japonés'],                                                         pt: ['castelo japonês'] },
-  { key: 'cemetery-JP',         en: ['cemetery japan','japanese cemetery','JP cemetery'],                        es: ['cementerio japonés'],                                                       pt: ['cemitério japonês'] },
-  { key: 'college-JP',          en: ['college japan','japanese college','JP college'],                           es: ['universidad japonesa'],                                                     pt: ['universidade japonesa'] },
-  { key: 'ferry-JP',            en: ['ferry japan','japanese ferry','JP ferry'],                                  es: ['ferry japonés'],                                                            pt: ['ferry japonês'] },
-  { key: 'fire-station-JP',     en: ['fire station japan','japanese fire station'],                              es: ['bomberos japonés'],                                                         pt: ['bombeiros japonês'] },
-  { key: 'hospital-JP',         en: ['hospital japan','japanese hospital','JP hospital'],                        es: ['hospital japonés'],                                                         pt: ['hospital japonês'] },
-  { key: 'landmark-JP',         en: ['landmark japan','japanese landmark','JP landmark'],                        es: ['hito japonés'],                                                             pt: ['marco japonês'] },
-  { key: 'lighthouse-JP',       en: ['lighthouse japan','japanese lighthouse'],                                  es: ['faro japonés'],                                                             pt: ['farol japonês'] },
-  { key: 'monument-JP',         en: ['monument japan','japanese monument','JP monument'],                        es: ['monumento japonés'],                                                        pt: ['monumento japonês'] },
-  { key: 'police-JP',           en: ['police japan','japanese police','koban'],                                  es: ['policía japonesa','koban'],                                                  pt: ['polícia japonesa','koban'] },
-  { key: 'post-JP',             en: ['post japan','japanese post office','JP post'],                             es: ['correo japonés'],                                                           pt: ['correio japonês'] },
-  { key: 'school-JP',           en: ['school japan','japanese school','JP school'],                              es: ['escuela japonesa'],                                                         pt: ['escola japonesa'] },
 ];
