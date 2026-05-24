@@ -1464,11 +1464,11 @@ window.UI = (() => {
     const el = document.createElement('div');
     el.className = 'msg-error-card';
     const desc = externalMsg
-      ? `<span class="error-card-desc error-card-external">${externalMsg}</span>`
-      : `<span class="error-card-desc">${t('error_no_response', { titulo })}</span>`;
+      ? `<span class="error-card-desc error-card-external"><span class="material-icons" style="font-size:13px;vertical-align:-2px">info</span> ${externalMsg}</span>`
+      : `<span class="error-card-desc">${t('error_no_response')}</span>`;
     el.innerHTML = `
       <div class="error-card-left">
-        <span class="material-icons error-card-icon">cloud_off</span>
+        <span class="material-icons error-card-icon">${externalMsg ? 'cloud_off' : 'error_outline'}</span>
         <div class="error-card-info">
           <span class="error-card-title">${titulo}</span>
           ${desc}
@@ -1506,16 +1506,7 @@ window.UI = (() => {
 
   function showMapReady(plan) {
     const capas = (plan.instrucciones || [])
-      .map(i => {
-        const titulo = _tituloInstruccion(i);
-        if (!titulo) return null;
-        const capa   = window.LAYERS?.[i.layerKey];
-        const source = capa?.source ? window.SOURCES?.[capa.source] : null;
-        const fuente = source?.label || null;
-        return fuente
-          ? `${titulo}<span class="map-card-source">${fuente}</span>`
-          : titulo;
-      })
+      .map(i => _tituloInstruccion(i))
       .filter(Boolean)
       .join('\n');
 
@@ -1675,8 +1666,9 @@ window.UI = (() => {
     }
     if (geomTypes.some(g => /polygon|polígono|poligono/i.test(g))) {
       options.push(
-        { label: t('style_fill_color'),   msg: t('style_change_fill')   },
-        { label: t('style_border_color'), msg: t('style_change_border') },
+        { label: t('style_fill_color'),    msg: t('style_change_fill')          },
+        { label: t('style_border_color'),  msg: t('style_change_border')        },
+        { label: t('style_border_weight'), msg: t('style_change_border_weight') },
       );
     }
 
@@ -2239,7 +2231,7 @@ window.UI = (() => {
       // Múltiples capas
       if (param) {
         // Caso 2b/2c: intentar resolver capa por geometría
-        const geomMap = { radius: 'point', icon: 'point', geom: 'point', weight: 'line' };
+        const geomMap = { radius: 'point', icon: 'point', geom: 'point' };
         const targetGeom = geomMap[param];
         if (targetGeom) {
           const matching = layerEntries.filter(([, l]) => l.geomType === targetGeom);
