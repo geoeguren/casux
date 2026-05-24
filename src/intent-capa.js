@@ -37,8 +37,10 @@ window.INTENT_CAPA = (() => {
   //
   // Palabras que indican que el pedido NO es una solicitud de capa.
   // Si alguna aparece, se deriva al LLM antes de intentar el scorer.
-  // Evita que "exportar la capa" active el detector de capas.
-  const PATRON_NO_CAPA = /\b(export|exporta|descarga|qué es|qué son|cuánto|cuántos|explicame|explicá|contame|ayuda|borrá|limpiar|vaciar|cambiar|cambio|color|estilo|clasificá|clasificar|download|what\s+is|what\s+are|how\s+many|explain|help|clear|clean|style|classify|baixar|o\s+que\s+é|quantos?|explique|ajuda|limpar|apagar|cor|estilo|classificar|oculta[r]?|esconde[r]?|apaga[r]?|desactiva[r]?|deshabilita[r]?|hide|turn\s+off|disable|mostra[r]?|muestra[r]?|activa[r]?|habilita[r]?|show|turn\s+on|enable|display|ocultar?|esconder?|desativar?|mostrar?|exibir?|ativar?|clasifica[r]?|clasificar?|classifica[r]?|classify|categorize|categoriza[r]?)\b/i;
+  // Evita que "exportar la capa" o "cambiar el color" activen el detector de capas.
+  // NOTA: se excluyen intencionalmente los verbos de carga (mostrá, show, dame…) porque
+  // ya son filtrados/encaminados por el resolver antes de llegar aquí.
+  const PATRON_NO_CAPA = /\b(export|exporta|descarga|qué\s+es|qué\s+son|cuánto|cuántos|explicame|explicá|contame|ayuda|borrá|limpiar|vaciar|cambiar|cambio|color|estilo|clasificá|clasificar|download|what\s+is|what\s+are|how\s+many|explain|help|clear|clean|style|classify|baixar|o\s+que\s+é|quantos?|explique|ajuda|limpar|apagar|cor|estilo|classificar|clasifica[r]?|classificar?|classifica[r]?|categorize|categoriza[r]?)\b/i;
 
   // Palabras de "pedido múltiple" que indican que el usuario quiere
   // cargar varias capas en un solo mensaje. El LLM las descompone mejor.
@@ -778,11 +780,14 @@ window.INTENT_CAPA = (() => {
   // puede seguir manejando el pedido.
 
   function detectarCapa(textoUsuario, historial) {
-    const mensajesLLM = (historial || []).filter(
-      m => m.role === 'assistant' && m.fromLLM === true
-    );
-    if (mensajesLLM.length > 0) {
-      console.log(`[CAPA] → LLM | conversación LLM previa (${mensajesLLM.length} msgs)`);
+    // Guardia de historial LLM: si el último mensaje del asistente vino del LLM
+    // (no de intent), derivar al LLM para mantener el contexto de la conversación.
+    // Solo miramos el mensaje MÁS RECIENTE del asistente — mensajes LLM anteriores
+    // no bloquean pedidos nuevos que son claramente de carga de capas.
+    const mensajes = historial || [];
+    const ultimoAsistente = [...mensajes].reverse().find(m => m.role === 'assistant');
+    if (ultimoAsistente?.fromLLM === true) {
+      console.log(`[CAPA] → LLM | último mensaje del asistente fue del LLM`);
       return null;
     }
     if (PATRON_NO_CAPA.test(textoUsuario)) {
