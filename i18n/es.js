@@ -307,7 +307,7 @@ window.I18N_ES = {
   basemap_changed:         'Listo, cambié el mapa de fondo.',
   error_retry:             'REINTENTAR',
   error_layer_retry:       'Intentá cargar {titulo} de nuevo',
-  error_no_response:       'La capa no respondió.',
+  error_no_response:       '{titulo} no respondió.',
   map_drawing:             'Trazando…',
   map_already_empty:       'El mapa ya estaba vacío.',
   map_cleared:             'Listo, limpié el mapa.',
