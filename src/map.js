@@ -851,27 +851,24 @@ window.MAP = (() => {
     return palette[palette.length-1];
   }
 
-  // Para capas de polígonos clasificadas, ordena los features de mayor a menor
-  // área aproximada (bounding box) para que los features pequeños queden encima.
-  function _sortFeaturesByAreaDesc(geojson) {
-    if (!geojson?.features?.length) return geojson;
-    const bboxArea = (f) => {
-      const coords = f.geometry?.type === 'Polygon'
-        ? f.geometry.coordinates[0]
-        : f.geometry?.type === 'MultiPolygon'
-          ? f.geometry.coordinates.flat(2)
-          : null;
-      if (!coords?.length) return 0;
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      for (const [x, y] of coords) {
-        if (x < minX) minX = x; if (x > maxX) maxX = x;
-        if (y < minY) minY = y; if (y > maxY) maxY = y;
-      }
-      return (maxX - minX) * (maxY - minY);
-    };
+  // Ordena los features según el orden de clases en colorMap, invertido:
+  // la primera clase del panel queda al final del array → se pinta última → queda arriba.
+  // Aplica a cualquier geometría. El orden inicial es alfabético (colorMap se construye
+  // con .sort()); si el usuario arrastra clases en el panel, colorMap refleja el nuevo
+  // orden y el render se actualiza en consecuencia.
+  function _sortFeaturesByClassOrder(geojson, colorMap, field) {
+    if (!geojson?.features?.length || !colorMap || !field) return geojson;
+    const classKeys = Object.keys(colorMap); // orden actual del panel
+    // Índice de posición: mayor índice = más arriba en la lista = se pinta último = encima
+    const rank = {};
+    classKeys.forEach((k, i) => { rank[k] = i; });
     return {
       ...geojson,
-      features: [...geojson.features].sort((a, b) => bboxArea(b) - bboxArea(a))
+      features: [...geojson.features].sort((a, b) => {
+        const ra = rank[String(a.properties?.[field])] ?? -1;
+        const rb = rank[String(b.properties?.[field])] ?? -1;
+        return ra - rb; // menor rank → se pinta antes → queda abajo
+      })
     };
   }
 
@@ -881,10 +878,10 @@ window.MAP = (() => {
     const cl   = entry.classification;
     let newLayer;
 
-    // Para polígonos clasificados, renderizar de mayor a menor área para que
-    // los features pequeños (ej: CABA) queden encima de los grandes (ej: provincia).
-    const geojson = (cl && geom === 'polygon')
-      ? _sortFeaturesByAreaDesc(entry.geojson)
+    // Para capas clasificadas (cualquier geometría), ordenar features según el orden
+    // de clases en colorMap: primera clase del panel arriba en el visor.
+    const geojson = (cl?.type === 'categorized' && cl.colorMap && cl.field)
+      ? _sortFeaturesByClassOrder(entry.geojson, cl.colorMap, cl.field)
       : entry.geojson;
 
     const getStyle = (feat) => {
