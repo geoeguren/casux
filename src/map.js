@@ -234,6 +234,7 @@ window.MAP = (() => {
       leafletLayer,
       layerKey,
       geomType,
+      _defaultStyle,       // estilo original para restaurar con limpiar_estilo
       style:   { ...style },
       titulo:  titulo || layerDef?.tituloUI || layerDef?.titulo || mapKey,
       visible: true
