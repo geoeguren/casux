@@ -2565,7 +2565,13 @@ window.UI = (() => {
 
   function showFieldSelectorForClassify(msgEl, mapKey, layerKey) {
     const layerDef = window.LAYERS?.[layerKey];
-    if (!layerDef?.attributes?.length) return;
+    if (!layerDef?.attributes?.length) {
+      // Capa sin atributos definidos en el catálogo → no se puede clasificar
+      if (msgEl) msgEl.remove(); // sacar el "¿Por qué campo?" que quedó huérfano
+      addMessage('assistant', t('classify_no_classifiable_fields'));
+      scrollBottom();
+      return;
+    }
 
     // Filtrar solo atributos clasificables:
     // - classifiable:true  → categórico con pocos valores conocidos
@@ -2578,7 +2584,8 @@ window.UI = (() => {
       return a.classifiable === true || a.numeric === true || NUMERIC_TIPOS.has(a.tipo?.toLowerCase());
     });
     if (!attrs.length) {
-      // Ningún campo marcado como clasificable — avisar al usuario
+      // Ningún campo marcado como clasificable — sacar la pregunta huérfana y avisar
+      if (msgEl) msgEl.remove();
       addMessage('assistant', t('classify_no_classifiable_fields'));
       scrollBottom();
       return;
@@ -2607,13 +2614,14 @@ window.UI = (() => {
 
     card.querySelectorAll('.export-choice-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const field   = btn.dataset.campo;
-        const label   = btn.dataset.label;
-        const type    = btn.dataset.type;
+        const field = btn.dataset.campo;
+        const label = btn.dataset.label;
+        const type  = btn.dataset.type;
+        // Para graduated: paleta secuencial. Para categorized: rotación automática
+        // (applyClassifyPlan la asigna internamente según las capas ya clasificadas).
         const palette = type === 'graduated' ? 'seq_blues' : 'qualitative';
-        const paletteColors = window.PALETTES?.[palette] || window.PALETTES?.qualitative;
         card.remove();
-        window.APP?.applyClassifyPlan?.([{ layerKey, field, type, palette, paletteColors }]);
+        window.APP?.applyClassifyPlan?.([{ layerKey, field, type, palette }]);
         addMessage('assistant', t('classify_done', { label }));
         scrollBottom();
       });
