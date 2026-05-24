@@ -234,7 +234,7 @@ window.LP_MODAL = (() => {
             <div class="adv-ramp-option adv-field-option ${o.value === currentValue ? 'selected' : ''} ${o.disabled ? 'adv-field-disabled' : ''}"
                  data-value="${o.value}">
               <span class="${o.isTechnical ? 'adv-ramp-option-label adv-ramp-option-label--mono' : 'adv-ramp-option-label'}">${o.label}</span>
-              ${o.disabled ? '<span class="adv-field-badge">+25</span>' : ''}
+              ${o.disabled ? '<span class="adv-field-badge">+12</span>' : ''}
             </div>`).join('')}
         </div>`;
 
@@ -687,7 +687,7 @@ window.LP_MODAL = (() => {
           bodyEl.appendChild(note);
           return;
         }
-        const MAX_UNIQUE = window.CLASSIFY_THRESHOLDS?.maxUnique ?? 25;
+        const MAX_UNIQUE = window.CLASSIFY_THRESHOLDS?.maxUnique ?? 12;
 
         const fieldRow   = document.createElement('div');
         fieldRow.className = 'adv-body-row';
