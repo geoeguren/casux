@@ -40,9 +40,8 @@ window.INTENT_TABLA = (() => {
     // "mostrá X" / "dame X" / "cargá X"
     CARGAR: {
       NUEVA_CAPA:   'capa',
-      CAPA_ACTIVA:  'toggle_vis_on',   // la capa ya existe → mostrarla
-      MAPA:         null,              // "mostrá el mapa" → sin sentido
-      CLASIFICACION:'LLM',
+      CAPA_ACTIVA:  'LLM',           // la capa ya existe → LLM responde
+      MAPA:         null,
       ESTILO_PROP:  null,
       BASEMAP:      null,
       NOMBRE:       null,
@@ -54,9 +53,8 @@ window.INTENT_TABLA = (() => {
     // "agregá X" / "también mostrá X"
     AGREGAR: {
       NUEVA_CAPA:   'agregar',
-      CAPA_ACTIVA:  'toggle_vis_on',   // ya cargada pero oculta → mostrar
+      CAPA_ACTIVA:  'LLM',           // ya cargada → LLM responde
       MAPA:         null,
-      CLASIFICACION:'LLM',
       ESTILO_PROP:  null,
       BASEMAP:      null,
       NOMBRE:       null,
@@ -69,78 +67,33 @@ window.INTENT_TABLA = (() => {
     BORRAR: {
       MAPA:         'limpiar',
       CAPA_ACTIVA:  'quitar',
-      NUEVA_CAPA:   'LLM',            // "borrá los aeropuertos" — no está cargada
-      CLASIFICACION:'limpiar_clasificacion',
+      NUEVA_CAPA:   'LLM',           // "borrá los aeropuertos" — no está cargada
       ESTILO_PROP:  'limpiar_estilo',
-      BASEMAP:      null,             // no se puede "borrar" el basemap
+      BASEMAP:      null,            // no se puede "borrar" el basemap
       NOMBRE:       null,
       FILTRO:       'limpiar_filtro',
-      AMBIGUO:      'selector_capa',  // sin objeto específico → preguntar cuál capa (no limpiar todo)
-    },
-
-    // ── OCULTAR ───────────────────────────────────────────────────
-    // "ocultá X" / "escondé X" / "hide X"
-    OCULTAR: {
-      CAPA_ACTIVA:  'toggle_vis_off',
-      MAPA:         null,             // no se puede ocultar el mapa entero
-      NUEVA_CAPA:   'LLM',
-      CLASIFICACION:'limpiar_clasificacion', // "ocultá la clasificación"
-      ESTILO_PROP:  null,
-      BASEMAP:      null,
-      NOMBRE:       null,
-      FILTRO:       null,
-      AMBIGUO:      'selector_capa',
-    },
-
-    // ── MOSTRAR_VIS ───────────────────────────────────────────────
-    // "mostrá X" (capa ya cargada) / "activá X" / "volvé a mostrar X"
-    MOSTRAR_VIS: {
-      CAPA_ACTIVA:  'toggle_vis_on',
-      NUEVA_CAPA:   'capa',           // no está cargada → cargar
-      MAPA:         null,
-      CLASIFICACION:'LLM',
-      ESTILO_PROP:  null,
-      BASEMAP:      null,
-      NOMBRE:       null,
-      FILTRO:       null,
-      AMBIGUO:      'selector_capa',
+      AMBIGUO:      'selector_capa', // sin objeto específico → preguntar cuál capa
     },
 
     // ── ESTILO ────────────────────────────────────────────────────
     // "cambiá el color" / "hacelo más grande" / "poné rojo"
     ESTILO: {
-      CAPA_ACTIVA:  'estilo_vago',    // resolución de valor se hace en validar
+      CAPA_ACTIVA:  'estilo_vago',
       ESTILO_PROP:  'estilo_vago',
       MAPA:         null,
       NUEVA_CAPA:   'LLM',
-      CLASIFICACION:'LLM',
-      BASEMAP:      'basemap',        // "cambiá el basemap oscuro"
-      NOMBRE:       'renombrar',      // "cambiá el nombre"
+      BASEMAP:      'basemap',       // "cambiá el basemap oscuro"
+      NOMBRE:       'renombrar',     // "cambiá el nombre"
       FILTRO:       null,
       AMBIGUO:      'selector_capa',
     },
 
-    // ── CLASIFICAR ────────────────────────────────────────────────
-    // "clasificá por X" / "pinta por X"
-    CLASIFICAR: {
-      CAPA_ACTIVA:  'clasificar',
-      MAPA:         'clasificar',    // temporalmente deshabilitado → chat.js avisa
-      NUEVA_CAPA:   'clasificar',
-      CLASIFICACION:'clasificar',
-      ESTILO_PROP:  'clasificar',
-      BASEMAP:      'clasificar',
-      NOMBRE:       'clasificar',
-      FILTRO:       'clasificar',
-      AMBIGUO:      'clasificar',    // antes selector_capa → ahora aviso directo
-    },
-
     // ── LIMPIAR_PROP ──────────────────────────────────────────────
-    // "borrá la clasificación" / "resetea el estilo" / "quitá el filtro"
+    // "resetea el estilo" / "quitá el filtro" / "borrá la clasificación"
     LIMPIAR_PROP: {
-      CLASIFICACION:'limpiar_clasificacion',
       ESTILO_PROP:  'limpiar_estilo',
       FILTRO:       'limpiar_filtro',
-      CAPA_ACTIVA:  'limpiar_clasificacion', // vago → asume clasificación
+      CAPA_ACTIVA:  'limpiar_estilo', // vago → asume estilo
       MAPA:         'limpiar',
       NUEVA_CAPA:   null,
       BASEMAP:      null,
@@ -152,14 +105,13 @@ window.INTENT_TABLA = (() => {
     // "exportá el mapa" / "descargá los datos"
     EXPORTAR: {
       MAPA:         'export',
-      CAPA_ACTIVA:  'export',        // exportar los datos de esa capa
+      CAPA_ACTIVA:  'export',
       NUEVA_CAPA:   'export',
-      CLASIFICACION:'export',
       ESTILO_PROP:  null,
       BASEMAP:      null,
       NOMBRE:       null,
       FILTRO:       null,
-      AMBIGUO:      'export',        // exportar siempre tiene sentido
+      AMBIGUO:      'export',
     },
 
     // ── BASEMAP ───────────────────────────────────────────────────
@@ -169,7 +121,6 @@ window.INTENT_TABLA = (() => {
       MAPA:         'basemap',       // "cambiá el mapa" puede ser basemap
       CAPA_ACTIVA:  null,
       NUEVA_CAPA:   null,
-      CLASIFICACION:null,
       ESTILO_PROP:  null,
       NOMBRE:       null,
       FILTRO:       null,
@@ -181,22 +132,20 @@ window.INTENT_TABLA = (() => {
     RENOMBRAR: {
       NOMBRE:       'renombrar',
       MAPA:         'renombrar',
-      CAPA_ACTIVA:  'renombrar',     // renombrar la capa en la leyenda
+      CAPA_ACTIVA:  'renombrar',
       NUEVA_CAPA:   null,
-      CLASIFICACION:null,
       ESTILO_PROP:  null,
       BASEMAP:      null,
       FILTRO:       null,
-      AMBIGUO:      'renombrar',     // si solo dice "renombrá" → vago
+      AMBIGUO:      'renombrar',
     },
 
     // ── FILTRAR ───────────────────────────────────────────────────
     // "filtrá los pasos con Chile" / "mostrá solo los aeropuertos internacionales"
     FILTRAR: {
       CAPA_ACTIVA:  'filtrar',
-      NUEVA_CAPA:   'filtrar',       // filtrar al cargar
+      NUEVA_CAPA:   'filtrar',
       MAPA:         'selector_capa',
-      CLASIFICACION:'filtrar',
       ESTILO_PROP:  null,
       BASEMAP:      null,
       NOMBRE:       null,
