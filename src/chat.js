@@ -203,6 +203,9 @@ window.CHAT = (() => {
           window.MAP?.clearAll?.();
           window.MAP?.resetView?.();
           window.MAP?.updateLegend?.();
+          // Resetear el plan para que 'agregar' posterior no vea capas viejas
+          const _planLimpiar = window.APP?.getCurrentPlan?.();
+          if (_planLimpiar) _planLimpiar.instrucciones = [];
           const msgEl = UI.addMessage('assistant', t('map_cleared'));
           UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
           history.push({ role: 'assistant', content: t('map_cleared'), time: new Date().toISOString(), model: 'pim' });
@@ -594,10 +597,44 @@ window.CHAT = (() => {
           UI.setSendEnabled(true);
           const msgEl = UI.addMessage('assistant', t('selector_capa_msg'));
           UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
-          UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => {
-            // Una vez elegida la capa, reenviar la intención original con la capa resuelta
-            // Por ahora, mostrar un mensaje de confirmación
-            UI.addMessage('assistant', t('selector_capa_selected'));
+          // Capturar el texto original para re-ejecutar el intent con la capa elegida
+          const _textoOriginal = userText;
+          UI.showLayerSelectorForAction(msgEl, async (selectedMapKey) => {
+            // Re-ejecutar la intención original inyectando el mapKey elegido
+            const activeLayers = window.MAP?.getActiveLayers?.() || {};
+            const entry = activeLayers[selectedMapKey];
+            if (!entry) return;
+            // Construir intent corregido según la acción pendiente original
+            // Detectar de nuevo pero forzando la capa seleccionada
+            const intentCorregido = window.INTENT?.detectarIntencionConCapa?.(_textoOriginal, history, selectedMapKey)
+              || window.INTENT?.detectarIntencion?.(_textoOriginal + ' ' + (entry.titulo || selectedMapKey), history);
+            if (intentCorregido && intentCorregido.tipo !== 'selector_capa') {
+              // Forzar mapKey en parámetros y re-dispatchar
+              if (intentCorregido.parametros) intentCorregido.parametros.mapKey = selectedMapKey;
+              // Simular el envío para re-procesar (método simplificado)
+              if (intentCorregido.tipo === 'quitar') {
+                _quitarCapa(selectedMapKey);
+                const tituloQ = entry.titulo || selectedMapKey;
+                UI.addMessage('assistant', t('layer_removed', { titulo: tituloQ }));
+                history.push({ role: 'assistant', content: `[intent] -${tituloQ}`, time: new Date().toISOString(), model: 'pim' });
+              } else if (intentCorregido.tipo === 'estilo') {
+                const int2 = { ...intentCorregido, parametros: { ...intentCorregido.parametros, mapKey: selectedMapKey } };
+                UI.showStyleFlowForLayer(int2, selectedMapKey);
+              } else if (intentCorregido.tipo === 'clasificar') {
+                const selectedLayerKey = entry.layerKey;
+                const fieldMsgEl = UI.addMessage('assistant', t('classify_which_field'));
+                UI.showFieldSelectorForClassify(fieldMsgEl, selectedMapKey, selectedLayerKey);
+              } else if (intentCorregido.tipo === 'toggle_visibilidad') {
+                const vis = intentCorregido.parametros?.visible;
+                _toggleVisibilidad(selectedMapKey, vis);
+                const titulo2 = entry.titulo || selectedMapKey;
+                UI.addMessage('assistant', vis ? t('layer_shown', { titulo: titulo2 }) : t('layer_hidden', { titulo: titulo2 }));
+              } else {
+                UI.addMessage('assistant', t('selector_capa_selected'));
+              }
+            } else {
+              UI.addMessage('assistant', t('selector_capa_selected'));
+            }
           });
           history.push({ role: 'assistant', content: t('selector_capa_msg'), time: new Date().toISOString() });
           return;
