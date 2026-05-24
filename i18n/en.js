@@ -320,6 +320,15 @@ window.I18N_EN = {
   rename_confirm:            'RENAME',
   classify_done:             'Done, classified the layer by {label}.',
   classify_which_field:      'Which field do you want to classify by?',
+  style_classified_warning:  'This layer has an active classification. What do you want to do?',
+  style_keep_classification: 'Keep classification',
+  style_keep_classification_sub: 'Change size, weight or other parameters',
+  style_replace_classification: 'Replace with solid color',
+  style_replace_classification_sub: 'This will remove the current classification',
+  style_param_not_valid:     '{param} is not available for {geom}. Available parameters:',
+  geom_point:                'points',
+  geom_line:                 'lines',
+  geom_polygon:              'polygons',
   chat_renamed:              'Renamed the map to "{nombre}".',
 
   // ── Basemaps ─────────────────────────────────────────────────
