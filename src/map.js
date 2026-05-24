@@ -862,11 +862,34 @@ window.MAP = (() => {
       const rawValues = entry.geojson.features
         .map(f => f.properties?.[field])
         .filter(v => v != null);
-      const colorMap = await runClassifyWorker(
-        { op: 'colorMap', values: rawValues, colors, maxCats: MAX_CATS },
-        () => computeColorMapSync(rawValues, colors, MAX_CATS)
-      );
-      entry.classification = { type, field, palette, paletteColors: colors, colorMap };
+      // Validar cardinalidad antes de clasificar
+      const uniqueCount = new Set(rawValues.map(String)).size;
+      if (uniqueCount > MAX_CATS) {
+        console.warn(`[MAP] classify: campo "${field}" tiene ${uniqueCount} valores únicos (máx ${MAX_CATS}). Sugiriendo graduated.`);
+        // Intentar como graduated si los valores son numéricos
+        const numVals = rawValues.map(v => parseFloat(v)).filter(v => !isNaN(v));
+        if (numVals.length > rawValues.length * 0.5) {
+          // Mayoría numérica → reclasificar como graduated
+          const breaks = await runClassifyWorker(
+            { op: 'breaks', values: numVals, method: method || 'jenks', classes: classes || 5 },
+            () => computeBreaksSync(numVals, method || 'jenks', classes || 5)
+          );
+          entry.classification = { type: 'graduated', field, palette, paletteColors: colors, method: method || 'jenks', classes: classes || 5, breaks };
+        } else {
+          // Demasiados valores categóricos → clasificar con MAX_CATS y agrupar el resto en "Otros"
+          const colorMap = await runClassifyWorker(
+            { op: 'colorMap', values: rawValues, colors, maxCats: MAX_CATS },
+            () => computeColorMapSync(rawValues, colors, MAX_CATS)
+          );
+          entry.classification = { type, field, palette, paletteColors: colors, colorMap };
+        }
+      } else {
+        const colorMap = await runClassifyWorker(
+          { op: 'colorMap', values: rawValues, colors, maxCats: MAX_CATS },
+          () => computeColorMapSync(rawValues, colors, MAX_CATS)
+        );
+        entry.classification = { type, field, palette, paletteColors: colors, colorMap };
+      }
 
     } else if (type === 'graduated') {
       const numVals = entry.geojson.features
