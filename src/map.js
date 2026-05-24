@@ -205,6 +205,8 @@ window.MAP = (() => {
 
     const layerDef = window.LAYERS[layerKey];
     const geomType = layerDef?.geomType || 'polygon';
+    // Guardar el estilo inicial para poder restaurarlo con limpiar_estilo
+    const _defaultStyle = style ? { ...style } : {};
 
     let leafletLayer;
 
