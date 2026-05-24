@@ -41,32 +41,6 @@ window.CHAT = (() => {
 
   // ── Helpers privados de intención ────────────────────────────
 
-  // Aplica toggle de visibilidad y persiste en el plan
-  function _toggleVisibilidad(mapKey, visible) {
-    const activeLayers = window.MAP?.getActiveLayers?.() || {};
-    const entry = activeLayers[mapKey];
-    if (!entry) return;
-
-    const estadoActual = entry.visible !== false; // true si visible
-    const nuevoVisible = (visible === null || visible === undefined) ? !estadoActual : visible;
-
-    if (nuevoVisible === estadoActual) return; // ya está en el estado deseado
-
-    window.MAP?.toggleLayerVisibility?.(mapKey);
-
-    // Persistir en el plan
-    const planActual = window.APP?.getCurrentPlan?.();
-    if (planActual?.instrucciones) {
-      const inst = planActual.instrucciones.find(i => i.mapKey === mapKey);
-      if (inst) inst.visible = nuevoVisible;
-    }
-    const user   = window.AUTH?.currentUser?.();
-    const chatId = window.CHAT?.getChatId?.();
-    if (user && chatId && planActual) {
-      window.FB?.updateChat?.(user.uid, chatId, { lastMap: planActual }).catch(() => {});
-    }
-  }
-
   // Aplica un cambio de estilo por propiedad y valor ya resueltos
   function _applyStyleProp(mapKey, prop, value) {
     const activeLayers = window.MAP?.getActiveLayers?.() || {};
@@ -299,6 +273,7 @@ window.CHAT = (() => {
           isStreaming = false;
           UI.setSendEnabled(true);
           const { prop, value, mapKey } = intencion.parametros;
+          const activeLayers = window.MAP?.getActiveLayers?.() || {};
           if (mapKey) {
             // Chequear si el valor ya está en el límite (para tamaño/grosor relativos)
             const _curStyle = activeLayers[mapKey]?.style || {};
@@ -431,44 +406,6 @@ window.CHAT = (() => {
           return;
         }
 
-        // TOGGLE VISIBILIDAD → mostrar/ocultar capa activa
-        else if (intencion.tipo === 'toggle_visibilidad') {
-          isStreaming = false;
-          UI.setSendEnabled(true);
-          const { mapKey, visible } = intencion.parametros;
-          const activeLayers = window.MAP?.getActiveLayers?.() || {};
-
-          // Sin capas en el mapa → mensaje informativo
-          if (!Object.keys(activeLayers).length) {
-            UI.addMessage('assistant', t('layer_not_found'));
-            history.push({ role: 'assistant', content: t('layer_not_found'), time: new Date().toISOString() });
-            return;
-          }
-
-          if (mapKey) {
-            // Capa identificada → ejecutar directo
-            _toggleVisibilidad(mapKey, visible);
-            const entry = activeLayers[mapKey];
-            const tituloToggle = entry?.titulo || mapKey;
-            const msg = visible
-              ? t('layer_shown',  { titulo: tituloToggle })
-              : t('layer_hidden', { titulo: tituloToggle });
-            UI.addMessage('assistant', msg);
-            history.push({ role: 'assistant', content: `[intent] ${visible ? '+vis' : '-vis'} ${tituloToggle}`, time: new Date().toISOString(), model: 'pim' });
-          } else {
-            // mapKey null → varias capas, mostrar selector
-            const msgEl = UI.addMessage('assistant', t('toggle_which_layer'));
-            UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => {
-              _toggleVisibilidad(selectedMapKey, visible);
-              const entry2 = window.MAP?.getActiveLayers?.()[selectedMapKey];
-              const titulo2 = entry2?.titulo || selectedMapKey;
-              UI.addMessage('assistant', visible ? t('layer_shown', { titulo: titulo2 }) : t('layer_hidden', { titulo: titulo2 }));
-            });
-            history.push({ role: 'assistant', content: t('toggle_which_layer'), time: new Date().toISOString() });
-          }
-          return;
-        }
-
         // QUITAR CAPA → eliminar una capa del mapa activo
         else if (intencion.tipo === 'quitar') {
           isStreaming = false;
@@ -500,18 +437,6 @@ window.CHAT = (() => {
           return;
         }
 
-        // CLASIFICAR → clasificación cromática de capa activa sin LLM
-        else if (intencion.tipo === 'clasificar') {
-          // Clasificación deshabilitada temporalmente por chat.
-          // Usá el panel de edición avanzada para clasificar capas.
-          isStreaming = false;
-          UI.setSendEnabled(true);
-          const msgEl = UI.addMessage('assistant', t('classify_use_panel'));
-          UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
-          history.push({ role: 'assistant', content: t('classify_use_panel'), time: new Date().toISOString(), model: 'pim' });
-          return;
-        }
-
         // VALIDACION ERROR → mostrar mensaje bloqueante
         else if (intencion.tipo === '_validacion_error') {
           isStreaming = false;
@@ -520,49 +445,6 @@ window.CHAT = (() => {
           const msg = t(error, errorParams);
           UI.addMessage('assistant', msg || t('error_generic'));
           history.push({ role: 'assistant', content: msg, time: new Date().toISOString() });
-          return;
-        }
-
-        // LIMPIAR CLASIFICACION → quitar clasificación de una capa
-        else if (intencion.tipo === 'limpiar_clasificacion') {
-          isStreaming = false;
-          UI.setSendEnabled(true);
-          const { mapKey } = intencion.parametros;
-          if (!mapKey) {
-            // Varias capas → selector, luego verificar clasificación
-            const msgEl = UI.addMessage('assistant', t('classify_which_layer_clear'));
-            UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => {
-              const selEntry = window.MAP?.getActiveLayers?.()[selectedMapKey];
-              if (!selEntry?.classification) {
-                UI.addMessage('assistant', t('classify_not_classified'));
-                return;
-              }
-              window.MAP?.clearClassification?.(selectedMapKey);
-              UI.addMessage('assistant', t('classify_cleared'));
-            });
-            history.push({ role: 'assistant', content: t('classify_which_layer_clear'), time: new Date().toISOString() });
-          } else {
-            const _entryClasif = window.MAP?.getActiveLayers?.()[mapKey];
-            if (!_entryClasif?.classification) {
-              UI.addMessage('assistant', t('classify_not_classified'));
-              history.push({ role: 'assistant', content: t('classify_not_classified'), time: new Date().toISOString(), model: 'pim' });
-              return;
-            }
-            window.MAP?.clearClassification?.(mapKey);
-            UI.addMessage('assistant', t('classify_cleared'));
-            history.push({ role: 'assistant', content: '[intent] clear classification', time: new Date().toISOString(), model: 'pim' });
-          }
-          // Persistir
-          const planClasif = window.APP?.getCurrentPlan?.();
-          if (planClasif?.instrucciones && mapKey) {
-            const instClasif = planClasif.instrucciones.find(i => i.mapKey === mapKey);
-            if (instClasif) delete instClasif.classification;
-          }
-          const _ucl = window.AUTH?.currentUser?.();
-          const _ccl = window.CHAT?.getChatId?.();
-          if (_ucl && _ccl && planClasif) {
-            window.FB?.updateChat?.(_ucl.uid, _ccl, { lastMap: planClasif }).catch(() => {});
-          }
           return;
         }
 
@@ -609,38 +491,14 @@ window.CHAT = (() => {
           }
           const msgEl = UI.addMessage('assistant', t('selector_capa_msg'));
           UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
-          // Capturar el texto original para re-ejecutar el intent con la capa elegida
           const _textoOriginal = userText;
-          // accionOrigen viene del resolver: el grupo verbal que originó el selector_capa.
-          // Ej: CLASIFICAR+AMBIGUO → accionOrigen='clasificar'.
-          // Es más fiable que re-detectar el intent con el título de la capa.
           const _accionOrigen = intencion.parametros?.accionOrigen || null;
           UI.showLayerSelectorForAction(msgEl, async (selectedMapKey) => {
             const activeLayers = window.MAP?.getActiveLayers?.() || {};
             const entry = activeLayers[selectedMapKey];
             if (!entry) return;
 
-            // Clasificación deshabilitada por chat — redirigir al panel
-            if (_accionOrigen === 'clasificar') {
-              UI.addMessage('assistant', t('classify_use_panel'));
-              return;
-            }
-
-            // Para limpiar_clasificacion: verificar que hay clasificación antes de ejecutar
-            if (_accionOrigen === 'limpiar_clasificacion') {
-              if (!entry.classification) {
-                UI.addMessage('assistant', t('classify_not_classified'));
-                return;
-              }
-              window.MAP?.clearClassification?.(selectedMapKey);
-              const tituloLC = entry.titulo || selectedMapKey;
-              const msgLC = UI.addMessage('assistant', t('classification_cleared', { titulo: tituloLC }));
-              UI.setMessageMeta(msgLC, { time: new Date(), model: 'pim' });
-              history.push({ role: 'assistant', content: `[intent] clear-classify ${tituloLC}`, time: new Date().toISOString(), model: 'pim' });
-              return;
-            }
-
-            // Para el resto: re-detectar con la capa resuelta
+            // Re-detectar con la capa resuelta añadida al texto
             const intentCorregido = window.INTENT?.detectarIntencion?.(_textoOriginal + ' ' + (entry.titulo || selectedMapKey), history);
             if (intentCorregido && intentCorregido.tipo !== 'selector_capa') {
               if (intentCorregido.parametros) intentCorregido.parametros.mapKey = selectedMapKey;
@@ -652,11 +510,6 @@ window.CHAT = (() => {
               } else if (intentCorregido.tipo === 'estilo') {
                 const int2 = { ...intentCorregido, parametros: { ...intentCorregido.parametros, mapKey: selectedMapKey } };
                 UI.showStyleFlowForLayer(int2, selectedMapKey);
-              } else if (intentCorregido.tipo === 'toggle_visibilidad') {
-                const vis = intentCorregido.parametros?.visible;
-                _toggleVisibilidad(selectedMapKey, vis);
-                const titulo2 = entry.titulo || selectedMapKey;
-                UI.addMessage('assistant', vis ? t('layer_shown', { titulo: titulo2 }) : t('layer_hidden', { titulo: titulo2 }));
               } else {
                 UI.addMessage('assistant', t('selector_capa_selected'));
               }
@@ -779,12 +632,7 @@ window.CHAT = (() => {
       // ── Sin intención detectada o intención que pasa al LLM ──
       const activeLayers = window.MAP?.getActiveLayers?.() || {};
       const activeLayersSummary = Object.entries(activeLayers).map(([, v]) => {
-        // Bug C fix: incluir estado de clasificación para que el LLM sepa que existe
-        const clInfo = v.classification?.field
-          ? ` [classified by ${v.classification.field}, ${v.classification.type}]`
-          : '';
-        const visInfo = v.visible === false ? ' [hidden]' : '';
-        return `${v.layerKey}: ${v.titulo} (${v.geomType})${clInfo}${visInfo}`;
+        return `${v.layerKey}: ${v.titulo} (${v.geomType})`;
       }).join(', ');
 
       _abortController = new AbortController();
@@ -847,7 +695,6 @@ window.CHAT = (() => {
               fullText = json.fullText || fullText;
               const mapPlan      = extractMapPlan(fullText);
               const stylePlan    = extractStylePlan(fullText);
-              const classifyPlan = extractClassifyPlan(fullText);
               const basemapPlan  = extractBasemapPlan(fullText);
               const chatTitle    = extractChatTitle(fullText);
               if (chatTitle) _pendingChatTitle = chatTitle;
@@ -876,8 +723,6 @@ window.CHAT = (() => {
                 if (mapPlan[0]?.error) {
                   UI.addMessage('assistant', mapPlan[0].error);
                 } else {
-                  // Si ya hay un chat con mapa previo y el LLM no sugirió título,
-                  // preservar el título actual del chat (es un refinamiento, no un mapa nuevo).
                   const tituloExistente = currentChatId
                     ? (window.APP?.getCurrentPlan?.()?.titulo || null)
                     : null;
@@ -899,28 +744,13 @@ window.CHAT = (() => {
                     });
                   }
 
-                  // Bug A fix: si classify viene junto con map, embeber en instrucciones
-                  // para que renderMap lo aplique DESPUÉS de cargar las capas.
-                  // Si se aplica antes (orden original), la capa aún no existe en activeLayers.
-                  if (classifyPlan?.length) {
-                    plan.instrucciones = plan.instrucciones.map(inst => {
-                      const cl = classifyPlan.find(c => c.layerKey === inst.layerKey);
-                      if (cl) return { ...inst, classification: cl };
-                      return inst;
-                    });
-                  }
-
                   UI.showMapReady(plan);
                   if (!window.MAP_CONTROLS?.isMobile?.()) window.MAP_CONTROLS?.setMapVisible(true);
                   await window.APP.renderMap(plan);
-                  // Bug A fix: classifyPlan embebido en instrucciones — renderMap lo aplica
                   await saveChat(userText, plan);
                   return;
                 }
               }
-
-              // classifyPlan sin mapPlan = clasificar capa ya cargada
-              if (classifyPlan?.length) window.APP?.applyClassifyPlan?.(classifyPlan);
 
               // stylePlan sin mapPlan = cambio de estilo sobre capas existentes
               if (stylePlan?.length) window.APP?.applyStylePlan?.(stylePlan);
@@ -1121,15 +951,6 @@ window.CHAT = (() => {
 
   function extractStylePlan(text) {
     const match = text.match(/```style\s*([\s\S]*?)```/);
-    if (!match) return null;
-    try {
-      const parsed = JSON.parse(match[1].trim());
-      return Array.isArray(parsed) ? parsed : null;
-    } catch { return null; }
-  }
-
-  function extractClassifyPlan(text) {
-    const match = text.match(/```classify\s*([\s\S]*?)```/);
     if (!match) return null;
     try {
       const parsed = JSON.parse(match[1].trim());
@@ -2569,75 +2390,6 @@ window.UI = (() => {
     scrollBottom();
   }
 
-  // ── showFieldSelectorForClassify ─────────────────────────────
-  //
-  // Muestra los campos clasificables de la capa para que el usuario elija.
-  // Solo muestra atributos con label no vacío o classifiable:true.
-
-  function showFieldSelectorForClassify(msgEl, mapKey, layerKey) {
-    const layerDef = window.LAYERS?.[layerKey];
-    if (!layerDef?.attributes?.length) {
-      // Capa sin atributos definidos en el catálogo → no se puede clasificar
-      if (msgEl) msgEl.remove(); // sacar el "¿Por qué campo?" que quedó huérfano
-      addMessage('assistant', t('classify_no_classifiable_fields'));
-      scrollBottom();
-      return;
-    }
-
-    // Mostrar todos los atributos visibles.
-    // - numeric:true o tipo numérico → graduated
-    // - resto → categorized
-    // La cardinalidad se valida en applyClassification — no restringir aquí.
-    const NUMERIC_TIPOS = new Set(['int','integer','float','double','number','numeric','long']);
-    const attrs = layerDef.attributes.filter(a => a.visible === true);
-    if (!attrs.length) {
-      // Ningún campo marcado como clasificable — sacar la pregunta huérfana y avisar
-      if (msgEl) msgEl.remove();
-      addMessage('assistant', t('classify_no_classifiable_fields'));
-      scrollBottom();
-      return;
-    }
-
-    const _lang = window.I18N?.getLang?.() || 'es';
-
-    const card = document.createElement('div');
-    card.className = 'msg-export-choice';
-
-    card.innerHTML = attrs.map(a => {
-      const labelI18n = _lang === 'en' ? (a.labelEn || a.label) : (a.label || a.labelEn);
-      const displayLabel = (labelI18n && labelI18n.trim()) ? labelI18n : a.campo;
-      // Tipo: numeric flag o tipo numérico → graduated; classifiable → categorized
-      const isNumeric = a.numeric === true || NUMERIC_TIPOS.has(a.tipo?.toLowerCase());
-      const tipoClasif = isNumeric ? 'graduated' : 'categorized';
-      const tipoLabel  = isNumeric ? 'graduado' : 'categorizado';
-      return `<button class="export-choice-btn"
-        data-campo="${a.campo}"
-        data-label="${displayLabel}"
-        data-type="${tipoClasif}">
-        <span class="export-choice-label">${displayLabel}</span>
-        <span class="export-choice-sub">${tipoLabel}</span>
-      </button>`;
-    }).join('');
-
-    card.querySelectorAll('.export-choice-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const field = btn.dataset.campo;
-        const label = btn.dataset.label;
-        const type  = btn.dataset.type;
-        // No hardcodear paleta — applyClassifyPlan asigna automáticamente
-        // por rotación según las capas ya clasificadas del mismo tipo.
-        card.remove();
-        window.APP?.applyClassifyPlan?.([{ layerKey, field, type }]);
-        addMessage('assistant', t('classify_done', { label }));
-        scrollBottom();
-      });
-    });
-
-    if (msgEl) msgEl.after(card);
-    else $msgs()?.appendChild(card);
-    scrollBottom();
-  }
-
   function showClassifiedStyleChoice(msgEl, mapKey, onKeep, onReplace) {
     const card = document.createElement('div');
     card.className = 'msg-export-choice';
@@ -2724,6 +2476,6 @@ window.UI = (() => {
     scrollBottom();
   }
 
-    return { addMessage, setMessageText, setMessageMeta, showThinking, hideThinking, showMapReady, showViewMapBtn, showErrorCard, showModeSelector, showExportChoice, showStyleButtons, showStyleFlow, showStyleFlowForLayer, showBasemapButtons, showLayerSelectorForAction, showRenameInput, showFieldSelectorForClassify, showClassifiedStyleChoice, showNumberInput, showConfirmChoice, setSendEnabled };
+    return { addMessage, setMessageText, setMessageMeta, showThinking, hideThinking, showMapReady, showViewMapBtn, showErrorCard, showModeSelector, showExportChoice, showStyleButtons, showStyleFlow, showStyleFlowForLayer, showBasemapButtons, showLayerSelectorForAction, showRenameInput, showClassifiedStyleChoice, showNumberInput, showConfirmChoice, setSendEnabled };
 
 })();
