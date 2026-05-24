@@ -412,6 +412,17 @@ window.MAP = (() => {
 
   const GEOM_ORDER = { polygon: 0, line: 1, point: 2 };
 
+  // Reaplica el z-order de Leaflet respetando el orden actual de activeLayers,
+  // sin reordenar. Usar cuando una capa se reconstruye (clasificación, estilo)
+  // para no pisar el orden manual del usuario.
+  function _reapplyZOrder() {
+    Object.values(activeLayers).forEach(layer => {
+      if (layer.leafletLayer && layer.visible !== false) {
+        layer.leafletLayer.bringToFront();
+      }
+    });
+  }
+
   function _reorderLayers() {
     // Ordenar por geomType: polígonos abajo, líneas medio, puntos arriba
     const sorted = Object.entries(activeLayers)
@@ -840,11 +851,41 @@ window.MAP = (() => {
     return palette[palette.length-1];
   }
 
+  // Para capas de polígonos clasificadas, ordena los features de mayor a menor
+  // área aproximada (bounding box) para que los features pequeños queden encima.
+  function _sortFeaturesByAreaDesc(geojson) {
+    if (!geojson?.features?.length) return geojson;
+    const bboxArea = (f) => {
+      const coords = f.geometry?.type === 'Polygon'
+        ? f.geometry.coordinates[0]
+        : f.geometry?.type === 'MultiPolygon'
+          ? f.geometry.coordinates.flat(2)
+          : null;
+      if (!coords?.length) return 0;
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const [x, y] of coords) {
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+      }
+      return (maxX - minX) * (maxY - minY);
+    };
+    return {
+      ...geojson,
+      features: [...geojson.features].sort((a, b) => bboxArea(b) - bboxArea(a))
+    };
+  }
+
   function rebuildLayer(entry, mapKey) {
     if (entry.leafletLayer) leafletMap.removeLayer(entry.leafletLayer);
     const geom = entry.geomType || 'polygon';
     const cl   = entry.classification;
     let newLayer;
+
+    // Para polígonos clasificados, renderizar de mayor a menor área para que
+    // los features pequeños (ej: CABA) queden encima de los grandes (ej: provincia).
+    const geojson = (cl && geom === 'polygon')
+      ? _sortFeaturesByAreaDesc(entry.geojson)
+      : entry.geojson;
 
     const getStyle = (feat) => {
       if (!cl) return entry.style;
@@ -872,24 +913,24 @@ window.MAP = (() => {
     };
 
     if (geom === 'point') {
-      newLayer = L.geoJSON(entry.geojson, {
+      newLayer = L.geoJSON(geojson, {
         pointToLayer:  (feat, latlng) => _pointToLayer(feat, latlng, getStyle(feat)),
         onEachFeature: bindIdentify
       });
     } else if (geom === 'line') {
-      newLayer = L.geoJSON(entry.geojson, {
+      newLayer = L.geoJSON(geojson, {
         style:         feat => lineStyle(getStyle(feat)),
         onEachFeature: bindIdentify
       });
     } else {
-      newLayer = L.geoJSON(entry.geojson, {
+      newLayer = L.geoJSON(geojson, {
         style:         feat => polygonStyle(getStyle(feat)),
         onEachFeature: bindIdentify
       });
     }
     newLayer.addTo(leafletMap);
     entry.leafletLayer = newLayer;
-    _reorderLayers();
+    _reapplyZOrder();
   }
 
   async function applyClassification(mapKey, opts) {
@@ -1558,7 +1599,10 @@ window.MAP = (() => {
     if (!layer) return;
     if (layer.visible === false) {
       layer.visible = true;
-      if (layer.leafletLayer) leafletMap.addLayer(layer.leafletLayer);
+      if (layer.leafletLayer) {
+        leafletMap.addLayer(layer.leafletLayer);
+        _reapplyZOrder();
+      }
     } else {
       layer.visible = false;
       if (layer.leafletLayer) leafletMap.removeLayer(layer.leafletLayer);
