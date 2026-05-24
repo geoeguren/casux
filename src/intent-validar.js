@@ -79,16 +79,25 @@ window.INTENT_VALIDAR = (() => {
     // ── clasificar ──────────────────────────────────────────────
     clasificar: [
       {
+        // mapKey=null con capas activas → chat.js muestra selector de capa. No bloquear.
         bloquea: true,
         error:   'validate_no_layer',
-        check:   (p, ctx) => !!p.mapKey && !!ctx.activeLayers[p.mapKey],
+        check:   (p, ctx) => {
+          const keys = Object.keys(ctx.activeLayers);
+          if (keys.length === 0) return false;
+          if (p.mapKey && !ctx.activeLayers[p.mapKey]) return false;
+          return true;
+        },
       },
       {
+        // field=null con mapKey conocido → chat.js muestra selector de campo. No bloquear.
+        // Solo bloquear si field está definido pero es inválido (vacío/whitespace).
         bloquea: true,
         error:   'validate_classify_no_field',
-        check:   (p) => !!p.field,
-        // No bloqueante a nivel de validar — si field es null, el handler
-        // muestra el selector de campo. Esta validación es para cuando field está definido.
+        check:   (p) => {
+          if (!p.field) return true; // null/undefined → selector en chat, dejar pasar
+          return p.field.trim().length > 0;
+        },
       },
       {
         bloquea: true,
@@ -133,18 +142,31 @@ window.INTENT_VALIDAR = (() => {
     // ── limpiar_clasificacion ────────────────────────────────────
     limpiar_clasificacion: [
       {
+        // Solo bloquear si no hay ninguna capa activa o si mapKey es inválido.
+        // mapKey=null con capas activas → chat.js muestra selector de capa.
         bloquea: true,
         error:   'validate_no_classification',
-        check:   (p, ctx) => !!ctx.activeLayers[p.mapKey]?.classification,
+        check:   (p, ctx) => {
+          const keys = Object.keys(ctx.activeLayers);
+          if (keys.length === 0) return false;
+          if (!p.mapKey) return true;  // mapKey null → selector en chat, dejar pasar
+          return !!ctx.activeLayers[p.mapKey]?.classification;
+        },
       },
     ],
 
     // ── limpiar_estilo ───────────────────────────────────────────
     limpiar_estilo: [
       {
+        // mapKey=null con capas activas → chat.js muestra selector. No bloquear.
         bloquea: true,
         error:   'validate_no_layer',
-        check:   (p, ctx) => !!p.mapKey && !!ctx.activeLayers[p.mapKey],
+        check:   (p, ctx) => {
+          const keys = Object.keys(ctx.activeLayers);
+          if (keys.length === 0) return false;
+          if (p.mapKey && !ctx.activeLayers[p.mapKey]) return false;
+          return true;
+        },
       },
     ],
 
@@ -164,9 +186,16 @@ window.INTENT_VALIDAR = (() => {
     // ── estilo_vago / estilo_resuelto ────────────────────────────
     estilo_vago: [
       {
+        // Bloquea solo si NO hay ninguna capa en el mapa.
+        // Si mapKey es null pero hay capas activas, chat.js mostrará el selector — no bloquear.
         bloquea: true,
         error:   'validate_no_layer',
-        check:   (p, ctx) => !!p.mapKey && !!ctx.activeLayers[p.mapKey],
+        check:   (p, ctx) => {
+          const keys = Object.keys(ctx.activeLayers);
+          if (keys.length === 0) return false;          // sin capas → bloquear
+          if (p.mapKey && !ctx.activeLayers[p.mapKey]) return false; // mapKey inválido → bloquear
+          return true;                                  // mapKey null con capas → ok (selector en chat)
+        },
       },
       {
         bloquea: true,
@@ -195,37 +224,55 @@ window.INTENT_VALIDAR = (() => {
     // ── quitar ───────────────────────────────────────────────────
     quitar: [
       {
+        // mapKey=null con capas activas → chat.js muestra selector. No bloquear.
         bloquea: true,
         error:   'validate_layer_not_found',
-        check:   (p, ctx) => !!p.mapKey && !!ctx.activeLayers[p.mapKey],
+        check:   (p, ctx) => {
+          const keys = Object.keys(ctx.activeLayers);
+          if (keys.length === 0) return false;
+          if (p.mapKey && !ctx.activeLayers[p.mapKey]) return false;
+          return true;
+        },
       },
     ],
 
     // ── toggle_vis_off ───────────────────────────────────────────
     toggle_vis_off: [
       {
+        // mapKey=null con capas activas → chat.js muestra selector. No bloquear.
         bloquea: true,
         error:   'validate_layer_not_found',
-        check:   (p, ctx) => !!p.mapKey && !!ctx.activeLayers[p.mapKey],
+        check:   (p, ctx) => {
+          const keys = Object.keys(ctx.activeLayers);
+          if (keys.length === 0) return false;
+          if (p.mapKey && !ctx.activeLayers[p.mapKey]) return false;
+          return true;
+        },
       },
       {
         bloquea: false,
         error:   'validate_already_hidden',
-        check:   (p, ctx) => ctx.activeLayers[p.mapKey]?.visible !== false,
+        check:   (p, ctx) => !p.mapKey || ctx.activeLayers[p.mapKey]?.visible !== false,
       },
     ],
 
     // ── toggle_vis_on ────────────────────────────────────────────
     toggle_vis_on: [
       {
+        // mapKey=null con capas activas → chat.js muestra selector. No bloquear.
         bloquea: true,
         error:   'validate_layer_not_found',
-        check:   (p, ctx) => !!p.mapKey && !!ctx.activeLayers[p.mapKey],
+        check:   (p, ctx) => {
+          const keys = Object.keys(ctx.activeLayers);
+          if (keys.length === 0) return false;
+          if (p.mapKey && !ctx.activeLayers[p.mapKey]) return false;
+          return true;
+        },
       },
       {
         bloquea: false,
         error:   'validate_already_visible',
-        check:   (p, ctx) => ctx.activeLayers[p.mapKey]?.visible === false,
+        check:   (p, ctx) => !p.mapKey || ctx.activeLayers[p.mapKey]?.visible === false,
       },
     ],
 
@@ -286,11 +333,6 @@ window.INTENT_VALIDAR = (() => {
 
     // ── agregar ──────────────────────────────────────────────────
     agregar: [
-      {
-        bloquea: true,
-        error:   'validate_no_active_layers_to_add',
-        check:   (p, ctx) => Object.keys(ctx.activeLayers).length > 0,
-      },
       {
         bloquea: false,
         error:   'validate_layer_already_on_map',
