@@ -247,6 +247,11 @@ window.INTENT_CAPA = (() => {
     // GUARDIA: si el texto coincide con el nombre genérico de la capa,
     // el usuario pide la capa completa, no un subtipo.
     // Ej: "áreas protegidas de Córdoba" NO debe filtrar por gna='Area Protegida'.
+    // ── A) Filtro por filterField/filterValues (subtipos predefinidos) ──────
+    const _isArcgis = window.SOURCES?.[capa.source]?.tipo === 'arcgis';
+    const _lowerFn  = _isArcgis
+      ? (field, val) => `LOWER(${field})='${val}'`
+      : (field, val) => `strToLowerCase(${field})='${val}'`;
     if (capa.filterField && Array.isArray(capa.filterValues) && capa.filterValues.length) {
       const nombreCapa       = normalizar(capa.tituloUI || capa.titulo || '');
       const tokensNombreCapa = tokenizar(nombreCapa);
@@ -255,7 +260,6 @@ window.INTENT_CAPA = (() => {
       const textoSinArea = areaVal ? textoNorm.replace(areaVal, '').trim() : textoNorm;
       const tokensTexto  = tokenizar(textoSinArea);
 
-      // Verifica si un token del usuario está cubierto por los tokens del nombre de la capa
       const cubreNombreCapa = (token) =>
         tokensNombreCapa.some(t =>
           t === token ||
@@ -268,12 +272,62 @@ window.INTENT_CAPA = (() => {
         (tokensTexto.length > 0 && tokensTexto.every(t => cubreNombreCapa(t)));
 
       if (!esPedidoGenerico) {
-        const isArcgis   = window.SOURCES?.[capa.source]?.tipo === 'arcgis';
-        const filtroAttr = _detectarFiltroAtributo(textoNorm, capa.filterField, capa.filterValues, isArcgis);
+        const filtroAttr = _detectarFiltroAtributo(textoNorm, capa.filterField, capa.filterValues, _isArcgis);
         if (filtroAttr) instruccion.filtro = filtroAttr;
       }
+      console.log(`[CAPA] filtro por tipo: esPedidoGenerico=${esPedidoGenerico}${instruccion.filtro ? ' → ' + instruccion.filtro : ' → sin filtro'}`);
+    }
 
-      console.log(`[CAPA] filtro atributo: esPedidoGenerico=${esPedidoGenerico}${instruccion.filtro ? ' → ' + instruccion.filtro : ' → sin filtro'}`);
+    // ── B) Filtro por geoFields (ej: pvecino='Chile' en pasos) ─────────────
+    // Si la capa tiene geoFields.pais y el texto menciona un país vecino,
+    // generar un filtro de atributo sobre ese campo.
+    if (!instruccion.filtro && capa.geoFields?.pais) {
+      const campoGeo = capa.geoFields.pais;
+      // Países a detectar: extraer del texto buscando gentilicios y nombres de países
+      const PAISES_VECINOS = {
+        'chile':    'Chile',    'chileno': 'Chile',   'chilena':  'Chile',
+        'bolivia':  'Bolivia',  'boliviano':'Bolivia','boliviana':'Bolivia',
+        'paraguay': 'Paraguay', 'paraguayo':'Paraguay','paraguaya':'Paraguay',
+        'brasil':   'Brasil',   'brazil':  'Brazil',  'brasileño':'Brasil',
+        'uruguay':  'Uruguay',  'uruguayo':'Uruguay', 'uruguaya': 'Uruguay',
+        'peru':     'Perú',     'peruano': 'Perú',    'peruana':  'Perú',
+      };
+      for (const [token, paisVal] of Object.entries(PAISES_VECINOS)) {
+        if (textoNorm.includes(token)) {
+          instruccion.filtro = _lowerFn(campoGeo, paisVal.toLowerCase());
+          console.log(`[CAPA] filtro por geoFields: ${campoGeo}='${paisVal}'`);
+          break;
+        }
+      }
+    }
+
+    // ── C) Filtro por nombre propio (labelField) ────────────────────────────
+    // Si el texto contiene un nombre propio que aparece como valor del labelField,
+    // intentar construir un filtro CQL de igualdad exacta.
+    // Solo aplica si no hay ya un filtro y el texto parece muy específico
+    // (tiene un término de ≥4 chars que no es parte del nombre de la capa).
+    if (!instruccion.filtro && capa.labelField) {
+      const nombreCapa2 = normalizar(capa.tituloUI || capa.titulo || '');
+      const areaVal2    = typeof area === 'object' && area !== null ? (area.valorNorm || '') : '';
+      let textoResiduall = textoNorm;
+      if (nombreCapa2) textoResiduall = textoResiduall.replace(nombreCapa2, '').trim();
+      if (areaVal2)    textoResiduall = textoResiduall.replace(areaVal2, '').trim();
+
+      // Quitar stopwords y palabras de pedido
+      const STOPWORDS_FILTRO = /\b(el|la|los|las|de|del|un|una|quiero|ver|mostrar|dame|muestra|filtra|solo|unico|especifico|the|show|filter|only)\b/gi;
+      const textoPropio = textoResiduall.replace(STOPWORDS_FILTRO, '').trim();
+
+      // Si queda texto significativo (≥4 chars) → candidato a nombre propio
+      if (textoPropio.length >= 4) {
+        // Construir filtro LIKE (contiene) en lugar de igualdad exacta
+        // para ser más tolerante con nombres parciales
+        if (_isArcgis) {
+          instruccion.filtro = `UPPER(${capa.labelField}) LIKE UPPER('%${textoPropio}%')`;
+        } else {
+          instruccion.filtro = `strToLowerCase(${capa.labelField}) LIKE '%${textoPropio}%'`;
+        }
+        console.log(`[CAPA] filtro por nombre propio (labelField=${capa.labelField}): "${textoPropio}"`);
+      }
     }
 
     if (!area) return instruccion;
