@@ -502,55 +502,13 @@ window.CHAT = (() => {
 
         // CLASIFICAR → clasificación cromática de capa activa sin LLM
         else if (intencion.tipo === 'clasificar') {
+          // Clasificación deshabilitada temporalmente por chat.
+          // Usá el panel de edición avanzada para clasificar capas.
           isStreaming = false;
           UI.setSendEnabled(true);
-          const { mapKey, layerKey, field, label, type, palette } = intencion.parametros;
-
-          if (!field) {
-            // Campo no identificado.
-            // Resolver la capa: si mapKey es null pero hay exactamente 1 capa activa,
-            // usarla directamente sin selector. Si hay varias → selector de capa.
-            const _resolvedMapKey = mapKey || (() => {
-              const keys = Object.keys(activeLayers);
-              return keys.length === 1 ? keys[0] : null;
-            })();
-            const _resolvedLayerKey = layerKey || activeLayers[_resolvedMapKey]?.layerKey;
-
-            if (!_resolvedMapKey) {
-              // Varias capas y mapKey null → selector de capa primero, luego campo
-              const msgEl = UI.addMessage('assistant', t('style_which_layer'));
-              UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
-              UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => {
-                const selectedEntry = window.MAP?.getActiveLayers?.()[selectedMapKey];
-                const selectedLayerKey = selectedEntry?.layerKey;
-                if (!selectedLayerKey) return;
-                const fieldMsgEl = UI.addMessage('assistant', t('classify_which_field'));
-                UI.showFieldSelectorForClassify(fieldMsgEl, selectedMapKey, selectedLayerKey);
-              });
-              history.push({ role: 'assistant', content: t('style_which_layer'), time: new Date().toISOString() });
-            } else {
-              // Capa resuelta → ir directo al selector de campo
-              const msgEl = UI.addMessage('assistant', t('classify_which_field'));
-              UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
-              UI.showFieldSelectorForClassify(msgEl, _resolvedMapKey, _resolvedLayerKey);
-              history.push({ role: 'assistant', content: t('classify_which_field'), time: new Date().toISOString() });
-            }
-            return;
-          }
-
-          const paletteColors = window.PALETTES?.[palette] || window.PALETTES?.qualitative;
-          const classifyPlan = [{ layerKey, field, type, palette, paletteColors }];
-          window.APP?.applyClassifyPlan?.(classifyPlan);
-          const msg = t('classify_done', { label: label || field });
-          const msgElClasif = UI.addMessage('assistant', msg);
-          UI.setMessageMeta(msgElClasif, { time: new Date(), model: 'pim' });
-          history.push({ role: 'assistant', content: `[intent] classify ${layerKey} by ${field}`, time: new Date().toISOString(), model: 'pim' });
-
-          // En móvil: mostrar botón "Ver mapa" si el panel está oculto
-          if (window.MAP_CONTROLS?.isMobile?.()) {
-            const mapPanel = document.getElementById('map-panel');
-            if (mapPanel?.style.display === 'none') UI.showViewMapBtn?.();
-          }
+          const msgEl = UI.addMessage('assistant', t('classify_use_panel'));
+          UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
+          history.push({ role: 'assistant', content: t('classify_use_panel'), time: new Date().toISOString(), model: 'pim' });
           return;
         }
 
@@ -662,12 +620,9 @@ window.CHAT = (() => {
             const entry = activeLayers[selectedMapKey];
             if (!entry) return;
 
-            // Para clasificar: ir directamente al selector de campo sin re-detectar.
+            // Clasificación deshabilitada por chat — redirigir al panel
             if (_accionOrigen === 'clasificar') {
-              const selectedLayerKey = entry.layerKey;
-              const fieldMsgEl = UI.addMessage('assistant', t('classify_which_field'));
-              UI.setMessageMeta(fieldMsgEl, { time: new Date(), model: 'pim' });
-              UI.showFieldSelectorForClassify(fieldMsgEl, selectedMapKey, selectedLayerKey);
+              UI.addMessage('assistant', t('classify_use_panel'));
               return;
             }
 
