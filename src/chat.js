@@ -339,11 +339,14 @@ window.CHAT = (() => {
 
           const _proceedStyleVago = (selectedMapKey, msgElRef) => {
             const entry = window.MAP?.getActiveLayers?.()[selectedMapKey];
-            if (entry?.classification?.field) {
+            // Solo avisar si el cambio podría afectar el color (prop=color o prop desconocida)
+            const _paramProceed = intencion?.parametros?.param;
+            const _affectsColor = !_paramProceed || _paramProceed === 'color';
+            if (entry?.classification?.field && _affectsColor) {
               const warnEl = UI.addMessage('assistant', t('style_classified_warning'));
               UI.showClassifiedStyleChoice(warnEl, selectedMapKey,
                 () => {
-                  // Mantener clasificación → flujo sin color (no toca la clasificación)
+                  // Mantener clasificación → flujo sin color
                   const int2 = { ...intencion, parametros: { ...intencion.parametros, _mapKey: selectedMapKey, _excludeColor: true } };
                   UI.showStyleFlowForLayer(int2, selectedMapKey);
                 },
@@ -367,7 +370,9 @@ window.CHAT = (() => {
             history.push({ role: 'assistant', content: t('style_which_layer'), time: new Date().toISOString() });
           } else if (layerEntries.length === 1) {
             const [[singleMapKey, singleEntry]] = layerEntries;
-            if (singleEntry?.classification?.field) {
+            const _paramSingle = intencion?.parametros?.param;
+            const _affectsColorSingle = !_paramSingle || _paramSingle === 'color';
+            if (singleEntry?.classification?.field && _affectsColorSingle) {
               const warnEl = UI.addMessage('assistant', t('style_classified_warning'));
               UI.showClassifiedStyleChoice(warnEl, singleMapKey,
                 () => UI.showStyleFlow({ ...intencion, parametros: { ...intencion.parametros, _excludeColor: true } }),
@@ -2624,16 +2629,12 @@ window.UI = (() => {
       return;
     }
 
-    // Filtrar solo atributos clasificables:
-    // - classifiable:true  → categórico con pocos valores conocidos
-    // - numeric:true       → numérico → graduated
-    // - tipo int/float/double/number → numérico → graduated
-    // Los campos con visible:false o sin ninguno de estos flags no se muestran.
+    // Mostrar todos los atributos visibles.
+    // - numeric:true o tipo numérico → graduated
+    // - resto → categorized
+    // La cardinalidad se valida en applyClassification — no restringir aquí.
     const NUMERIC_TIPOS = new Set(['int','integer','float','double','number','numeric','long']);
-    const attrs = layerDef.attributes.filter(a => {
-      if (!a.visible) return false;
-      return a.classifiable === true || a.numeric === true || NUMERIC_TIPOS.has(a.tipo?.toLowerCase());
-    });
+    const attrs = layerDef.attributes.filter(a => a.visible === true);
     if (!attrs.length) {
       // Ningún campo marcado como clasificable — sacar la pregunta huérfana y avisar
       if (msgEl) msgEl.remove();
