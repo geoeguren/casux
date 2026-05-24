@@ -281,21 +281,52 @@ window.CHAT = (() => {
           UI.setSendEnabled(true);
           const activeLayers = window.MAP?.getActiveLayers?.() || {};
           const layerEntries = Object.entries(activeLayers);
+          const _PARAM_KEY = { color: 'style_ask_color', radius: 'style_ask_size', weight: 'style_ask_weight', icon: 'style_ask_icon', geom: 'style_ask_geom' };
+
+          const _proceedStyleVago = (selectedMapKey, msgElRef) => {
+            const entry = window.MAP?.getActiveLayers?.()[selectedMapKey];
+            if (entry?.classification?.field) {
+              const warnEl = UI.addMessage('assistant', t('style_classified_warning'));
+              UI.showClassifiedStyleChoice(warnEl, selectedMapKey,
+                () => {
+                  // Mantener clasificación → flujo normal (color bloqueado por _showParamButtons)
+                  const int2 = { ...intencion, parametros: { ...intencion.parametros, _mapKey: selectedMapKey } };
+                  UI.showStyleFlowForLayer(int2, selectedMapKey);
+                },
+                () => {
+                  // Reemplazar → limpiar clasificación y abrir flujo
+                  window.MAP?.clearClassification?.(selectedMapKey);
+                  const int2 = { ...intencion, parametros: { ...intencion.parametros, _mapKey: selectedMapKey } };
+                  UI.showStyleFlowForLayer(int2, selectedMapKey);
+                }
+              );
+              history.push({ role: 'assistant', content: t('style_classified_warning'), time: new Date().toISOString() });
+            } else {
+              const int2 = { ...intencion, parametros: { ...intencion.parametros, _mapKey: selectedMapKey } };
+              UI.showStyleFlowForLayer(int2, selectedMapKey);
+            }
+          };
+
           if (layerEntries.length > 1) {
-            // Varias capas → selector de capa primero, luego flujo de estilo
             const msgEl = UI.addMessage('assistant', t('style_which_layer'));
-            UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => {
-              const intencionConCapa = { ...intencion, parametros: { ...intencion.parametros, _mapKey: selectedMapKey } };
-              UI.showStyleFlowForLayer(intencionConCapa, selectedMapKey);
-            });
+            UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => _proceedStyleVago(selectedMapKey));
             history.push({ role: 'assistant', content: t('style_which_layer'), time: new Date().toISOString() });
-          } else {
-            const msgEl = UI.showStyleFlow(intencion);
-            const _PARAM_KEY = { color: 'style_ask_color', radius: 'style_ask_size', weight: 'style_ask_weight', icon: 'style_ask_icon', geom: 'style_ask_geom' };
-            const histContent = intencion?.parametros?.param
-              ? t(_PARAM_KEY[intencion.parametros.param] || 'style_what_to_change')
-              : t('style_what_to_change');
-            history.push({ role: 'assistant', content: histContent, time: new Date().toISOString() });
+          } else if (layerEntries.length === 1) {
+            const [[singleMapKey, singleEntry]] = layerEntries;
+            if (singleEntry?.classification?.field) {
+              const warnEl = UI.addMessage('assistant', t('style_classified_warning'));
+              UI.showClassifiedStyleChoice(warnEl, singleMapKey,
+                () => UI.showStyleFlow(intencion),
+                () => { window.MAP?.clearClassification?.(singleMapKey); UI.showStyleFlow(intencion); }
+              );
+              history.push({ role: 'assistant', content: t('style_classified_warning'), time: new Date().toISOString() });
+            } else {
+              UI.showStyleFlow(intencion);
+              const histContent = intencion?.parametros?.param
+                ? t(_PARAM_KEY[intencion.parametros.param] || 'style_what_to_change')
+                : t('style_what_to_change');
+              history.push({ role: 'assistant', content: histContent, time: new Date().toISOString() });
+            }
           }
           return;
         }
@@ -1712,6 +1743,20 @@ window.UI = (() => {
     window.MAP?.updateLegend?.();
     window.ANALYTICS?.styleChanged?.('button');
 
+    // Persistir en currentPlan y en Turso
+    const _planApply = window.APP?.getCurrentPlan?.();
+    if (_planApply?.instrucciones) {
+      const _instApply = _planApply.instrucciones.find(i => i.mapKey === mapKey);
+      if (_instApply) _instApply.style = { ...newStyle };
+    }
+    const _userApply   = window.AUTH?.currentUser?.();
+    const _chatIdApply = window.CHAT?.getChatId?.();
+    if (_userApply && _chatIdApply && _planApply) {
+      window.SIDEBAR?.updateCachedChat?.(_chatIdApply, { lastMap: _planApply });
+      window.FB?.updateChat?.(_userApply.uid, _chatIdApply, { lastMap: _planApply })
+        .catch(e => console.warn('[CHAT] Error persistiendo estilo:', e));
+    }
+
     // En móvil: si el mapa está oculto, mostrar botón "Ver mapa"
     if (window.MAP_CONTROLS?.isMobile?.()) {
       const mapPanel = document.getElementById('map-panel');
@@ -1883,6 +1928,16 @@ window.UI = (() => {
   }
 
   function _showParamControl(container, mapKey, layer, param, chatTitulo, containerRef) {
+    const geom = layer.geomType || 'polygon';
+    const validParams = { point: ['color','radius','icon','geom'], line: ['color','weight'], polygon: ['color'] };
+    const allowed = validParams[geom] || validParams.polygon;
+    if (!allowed.includes(param)) {
+      const geomKey = geom === 'point' ? 'geom_point' : geom === 'line' ? 'geom_line' : 'geom_polygon';
+      const paramKey = param === 'radius' ? 'style_size' : param === 'weight' ? 'style_weight' : 'style_' + param;
+      addMessage('assistant', t('style_param_not_valid', { param: t(paramKey), geom: t(geomKey) }));
+      _showParamButtons(container, mapKey, layer, chatTitulo, containerRef);
+      return;
+    }
     if (param === 'color')  _showColorPicker(container, mapKey, layer, containerRef);
     if (param === 'radius') _showSlider(container, mapKey, layer, 'radius', containerRef);
     if (param === 'weight') _showSlider(container, mapKey, layer, 'weight', containerRef);
@@ -2233,9 +2288,7 @@ window.UI = (() => {
     const layerDef = window.LAYERS?.[layerKey];
     if (!layerDef?.attributes?.length) return;
 
-    const attrs = layerDef.attributes.filter(a =>
-      (a.label && a.label.trim()) || (a.labelEn && a.labelEn.trim()) || a.classifiable === true
-    );
+    const attrs = layerDef.attributes.filter(a => a.visible === true);
     if (!attrs.length) return;
 
     const _lang = window.I18N?.getLang?.() || 'es';
@@ -2276,6 +2329,25 @@ window.UI = (() => {
     scrollBottom();
   }
 
-    return { addMessage, setMessageText, setMessageMeta, showThinking, hideThinking, showMapReady, showViewMapBtn, showErrorCard, showModeSelector, showExportChoice, showStyleButtons, showStyleFlow, showStyleFlowForLayer, showBasemapButtons, showLayerSelectorForAction, showRenameInput, showFieldSelectorForClassify, setSendEnabled };
+  function showClassifiedStyleChoice(msgEl, mapKey, onKeep, onReplace) {
+    const card = document.createElement('div');
+    card.className = 'msg-export-choice';
+    card.innerHTML = `
+      <button class="export-choice-btn" data-action="keep">
+        <span class="export-choice-label">${t('style_keep_classification')}</span>
+        <span class="export-choice-sub">${t('style_keep_classification_sub')}</span>
+      </button>
+      <button class="export-choice-btn" data-action="replace">
+        <span class="export-choice-label">${t('style_replace_classification')}</span>
+        <span class="export-choice-sub">${t('style_replace_classification_sub')}</span>
+      </button>`;
+    card.querySelector('[data-action="keep"]').addEventListener('click', () => { card.remove(); onKeep(); });
+    card.querySelector('[data-action="replace"]').addEventListener('click', () => { card.remove(); onReplace(); });
+    if (msgEl) msgEl.after(card);
+    else $msgs()?.appendChild(card);
+    scrollBottom();
+  }
+
+    return { addMessage, setMessageText, setMessageMeta, showThinking, hideThinking, showMapReady, showViewMapBtn, showErrorCard, showModeSelector, showExportChoice, showStyleButtons, showStyleFlow, showStyleFlowForLayer, showBasemapButtons, showLayerSelectorForAction, showRenameInput, showFieldSelectorForClassify, showClassifiedStyleChoice, setSendEnabled };
 
 })();
