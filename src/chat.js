@@ -608,19 +608,36 @@ window.CHAT = (() => {
           UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
           // Capturar el texto original para re-ejecutar el intent con la capa elegida
           const _textoOriginal = userText;
+          const _tipoOriginal  = intencion.tipo; // capturar antes del async
           UI.showLayerSelectorForAction(msgEl, async (selectedMapKey) => {
-            // Re-ejecutar la intención original inyectando el mapKey elegido
             const activeLayers = window.MAP?.getActiveLayers?.() || {};
             const entry = activeLayers[selectedMapKey];
             if (!entry) return;
-            // Construir intent corregido según la acción pendiente original
-            // Detectar de nuevo pero forzando la capa seleccionada
-            const intentCorregido = window.INTENT?.detectarIntencionConCapa?.(_textoOriginal, history, selectedMapKey)
-              || window.INTENT?.detectarIntencion?.(_textoOriginal + ' ' + (entry.titulo || selectedMapKey), history);
+
+            // Para clasificar: ir directamente al selector de campo sin re-detectar.
+            // Re-detectar con el título de la capa puede fallar validaciones (ej: too_few_values).
+            if (_tipoOriginal === 'clasificar') {
+              const selectedLayerKey = entry.layerKey;
+              const fieldMsgEl = UI.addMessage('assistant', t('classify_which_field'));
+              UI.setMessageMeta(fieldMsgEl, { time: new Date(), model: 'pim' });
+              UI.showFieldSelectorForClassify(fieldMsgEl, selectedMapKey, selectedLayerKey);
+              return;
+            }
+
+            // Para limpiar_clasificacion: ejecutar directamente
+            if (_tipoOriginal === 'limpiar_clasificacion') {
+              window.MAP?.clearClassification?.(selectedMapKey);
+              const tituloLC = entry.titulo || selectedMapKey;
+              const msgLC = UI.addMessage('assistant', t('classification_cleared', { titulo: tituloLC }));
+              UI.setMessageMeta(msgLC, { time: new Date(), model: 'pim' });
+              history.push({ role: 'assistant', content: `[intent] clear-classify ${tituloLC}`, time: new Date().toISOString(), model: 'pim' });
+              return;
+            }
+
+            // Para el resto: re-detectar con la capa resuelta
+            const intentCorregido = window.INTENT?.detectarIntencion?.(_textoOriginal + ' ' + (entry.titulo || selectedMapKey), history);
             if (intentCorregido && intentCorregido.tipo !== 'selector_capa') {
-              // Forzar mapKey en parámetros y re-dispatchar
               if (intentCorregido.parametros) intentCorregido.parametros.mapKey = selectedMapKey;
-              // Simular el envío para re-procesar (método simplificado)
               if (intentCorregido.tipo === 'quitar') {
                 _quitarCapa(selectedMapKey);
                 const tituloQ = entry.titulo || selectedMapKey;
@@ -629,10 +646,6 @@ window.CHAT = (() => {
               } else if (intentCorregido.tipo === 'estilo') {
                 const int2 = { ...intentCorregido, parametros: { ...intentCorregido.parametros, mapKey: selectedMapKey } };
                 UI.showStyleFlowForLayer(int2, selectedMapKey);
-              } else if (intentCorregido.tipo === 'clasificar') {
-                const selectedLayerKey = entry.layerKey;
-                const fieldMsgEl = UI.addMessage('assistant', t('classify_which_field'));
-                UI.showFieldSelectorForClassify(fieldMsgEl, selectedMapKey, selectedLayerKey);
               } else if (intentCorregido.tipo === 'toggle_visibilidad') {
                 const vis = intentCorregido.parametros?.visible;
                 _toggleVisibilidad(selectedMapKey, vis);
@@ -2582,7 +2595,7 @@ window.UI = (() => {
       // Tipo: numeric flag o tipo numérico → graduated; classifiable → categorized
       const isNumeric = a.numeric === true || NUMERIC_TIPOS.has(a.tipo?.toLowerCase());
       const tipoClasif = isNumeric ? 'graduated' : 'categorized';
-      const tipoLabel  = isNumeric ? '📊 graduado' : '🎨 categorizado';
+      const tipoLabel  = isNumeric ? 'graduado' : 'categorizado';
       return `<button class="export-choice-btn"
         data-campo="${a.campo}"
         data-label="${displayLabel}"
