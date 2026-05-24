@@ -2356,7 +2356,7 @@ window.UI = (() => {
         confirm.className = 'msg assistant msg-export-confirm';
         confirm.textContent = t('basemap_changed');
         card.replaceWith(confirm);
-        history.push({ role: 'assistant', content: t('basemap_changed'), time: new Date().toISOString() });
+        window.CHAT?.getHistory?.()?.push({ role: 'assistant', content: t('basemap_changed'), time: new Date().toISOString() });
         scrollBottom();
       });
     });
