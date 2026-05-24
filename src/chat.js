@@ -288,11 +288,36 @@ window.CHAT = (() => {
               history.push({ role: 'assistant', content: _limitMsg, time: new Date().toISOString(), model: 'pim' });
               return;
             }
+            // Si el prop es color y la capa tiene clasificación activa → advertir antes de aplicar
+            if (prop === 'color' && activeLayers[mapKey]?.classification?.field) {
+              const warnEl = UI.addMessage('assistant', t('style_classified_warning'));
+              UI.showClassifiedStyleChoice(warnEl, mapKey,
+                () => {
+                  // Mantener clasificación → no hacer nada con el color
+                  UI.addMessage('assistant', t('style_reset_done'));
+                },
+                () => {
+                  // Reemplazar clasificación → aplicar color y limpiar
+                  window.MAP?.clearClassification?.(mapKey);
+                  _applyStyleProp(mapKey, prop, value);
+                  const _entryA = window.MAP?.getActiveLayers?.()[mapKey];
+                  const _titA   = _entryA?.tituloUI || _entryA?.titulo || mapKey;
+                  UI.addMessage('assistant', t('style_applied_layer', { titulo: _titA }));
+                }
+              );
+              history.push({ role: 'assistant', content: t('style_classified_warning'), time: new Date().toISOString() });
+              return;
+            }
             // Una sola capa activa → aplicar directo
             _applyStyleProp(mapKey, prop, value);
-            const msgEl = UI.addMessage('assistant', t('style_applied'));
+            const _entryApply = activeLayers[mapKey];
+            const _titApply   = _entryApply?.tituloUI || _entryApply?.titulo || mapKey;
+            const _appliedMsg = Object.keys(activeLayers).length > 1
+              ? t('style_applied_layer', { titulo: _titApply })
+              : t('style_applied');
+            const msgEl = UI.addMessage('assistant', _appliedMsg);
             UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
-            history.push({ role: 'assistant', content: t('style_applied'), time: new Date().toISOString(), model: 'pim' });
+            history.push({ role: 'assistant', content: _appliedMsg, time: new Date().toISOString(), model: 'pim' });
           } else {
             // Varias capas → selector de capa, luego aplicar
             const msgEl = UI.addMessage('assistant', t('style_which_layer'));
@@ -463,13 +488,17 @@ window.CHAT = (() => {
           if (!mapKey) {
             const msgEl = UI.addMessage('assistant', t('style_which_layer'));
             UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => {
+              const _entryReset = window.MAP?.getActiveLayers?.()[selectedMapKey];
+              const _titReset   = _entryReset?.tituloUI || _entryReset?.titulo || selectedMapKey;
               _resetEstilo(selectedMapKey);
-              UI.addMessage('assistant', t('style_reset_done'));
+              UI.addMessage('assistant', t('style_reset_done_layer', { titulo: _titReset }));
             });
             history.push({ role: 'assistant', content: t('style_which_layer'), time: new Date().toISOString() });
           } else {
+            const _entryReset = window.MAP?.getActiveLayers?.()[mapKey];
+            const _titReset   = _entryReset?.tituloUI || _entryReset?.titulo || mapKey;
             _resetEstilo(mapKey);
-            UI.addMessage('assistant', t('style_reset_done'));
+            UI.addMessage('assistant', t('style_reset_done_layer', { titulo: _titReset }));
             history.push({ role: 'assistant', content: '[intent] reset style', time: new Date().toISOString(), model: 'pim' });
           }
           return;
@@ -2131,13 +2160,35 @@ window.UI = (() => {
     const validLayers = param
       ? Object.fromEntries(Object.entries(layers).filter(([, l]) => _validateParam(param, l.geomType)))
       : layers;
-    card.innerHTML = Object.entries(validLayers)
+
+    const validEntries = Object.entries(validLayers);
+
+    // Si después de filtrar queda una sola capa, no mostrar botonera — explicar y mostrar control
+    if (param && validEntries.length === 1) {
+      const [mapKey, layer] = validEntries[0];
+      const _geom    = layer.geomType || 'polygon';
+      const _geomKey = _geom === 'point' ? 'geom_point' : _geom === 'line' ? 'geom_line' : 'geom_polygon';
+      const _tit     = layer.tituloUI || layer.titulo || mapKey;
+      const _autoMsg = document.createElement('div');
+      _autoMsg.className = 'msg-export-confirm';
+      _autoMsg.textContent = t('style_auto_layer', { geom: t(_geomKey), titulo: _tit });
+      container.appendChild(_autoMsg);
+      _showParamControl(container, mapKey, layer, param, chatTitulo, containerRef);
+      scrollBottom();
+      return;
+    }
+
+    card.innerHTML = validEntries
       .sort(([, a], [, b]) => (a.titulo || a.layerKey).localeCompare(b.titulo || b.layerKey, undefined, { sensitivity: 'base' }))
-      .map(([mapKey, layer]) => `
+      .map(([mapKey, layer]) => {
+        const _g = layer.geomType || '';
+        const _gl = _g === 'point' ? t('geom_point') : _g === 'line' ? t('geom_line') : _g === 'polygon' ? t('geom_polygon') : _g;
+        return `
       <button class="export-choice-btn" data-mapkey="${mapKey}">
         <span class="export-choice-label">${layer.titulo || layer.layerKey}</span>
-        <span class="export-choice-sub">${layer.geomType || ''}</span>
-      </button>`).join('');
+        <span class="export-choice-sub">${_gl}</span>
+      </button>`;
+      }).join('');
 
     card.querySelectorAll('.export-choice-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -2249,8 +2300,14 @@ window.UI = (() => {
         if (targetGeom) {
           const matching = layerEntries.filter(([, l]) => l.geomType === targetGeom);
           if (matching.length === 1) {
-            // Caso 2c-i: única capa con esa geometría
+            // Caso 2c-i: única capa con esa geometría → explicar al usuario por qué se elige esa capa
             const [mapKey, layer] = matching[0];
+            const _geomKey  = targetGeom === 'point' ? 'geom_point' : targetGeom === 'line' ? 'geom_line' : 'geom_polygon';
+            const _layerTit = layer.tituloUI || layer.titulo || mapKey;
+            const _autoMsg  = document.createElement('div');
+            _autoMsg.className = 'msg-export-confirm';
+            _autoMsg.textContent = t('style_auto_layer', { geom: t(_geomKey), titulo: _layerTit });
+            container.appendChild(_autoMsg);
             _showParamControl(container, mapKey, layer, param, chatTitulo, container);
           } else {
             // Caso 2c-ii: múltiples capas con esa geometría → elegir capa
@@ -2357,11 +2414,15 @@ window.UI = (() => {
 
     card.innerHTML = entries
       .sort(([, a], [, b]) => (a.titulo || a.layerKey).localeCompare(b.titulo || b.layerKey, undefined, { sensitivity: 'base' }))
-      .map(([mapKey, layer]) => `
+      .map(([mapKey, layer]) => {
+        const _g = layer.geomType || '';
+        const _gl = _g === 'point' ? t('geom_point') : _g === 'line' ? t('geom_line') : _g === 'polygon' ? t('geom_polygon') : _g;
+        return `
       <button class="export-choice-btn" data-mapkey="${mapKey}">
         <span class="export-choice-label">${layer.titulo || layer.layerKey}</span>
-        <span class="export-choice-sub">${layer.geomType || ''}</span>
-      </button>`).join('');
+        <span class="export-choice-sub">${_gl}</span>
+      </button>`;
+      }).join('');
 
     card.querySelectorAll('.export-choice-btn').forEach(btn => {
       btn.addEventListener('click', () => {
