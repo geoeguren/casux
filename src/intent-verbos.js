@@ -60,7 +60,7 @@ window.INTENT_VERBOS = (() => {
     // BORRAR — eliminar / quitar / limpiar
     // El OBJETO define qué se elimina: capa, mapa, clasificación, estilo
     // ─────────────────────────────────────────────────────────────
-    BORRAR: /\b(?:borr[ae](r|lo|la|los|las|me|le|nos|te|se)?|elimin[ae](r|lo|la|los|las|me|le|nos)?|quit[ae](r|lo|la|los|las|me|le|nos)?|sac[ae](r|lo|la|los|las|me|le|nos)?|limpi[ae](r|lo|la|los|las|me|le|nos|te)?|vaci[ae](r|lo|la|me|le)?|tir[ae](r|lo|la|los|las|me|le|nos)?|remov[ae](r|lo|la|los|las|me)?|reset[ae](r|lo|la|me)?|reinici[ae](r|lo|la|me)?|drop(?:\s+the)?|delete(?:\s+the)?|remove(?:\s+the)?|clear(?:\s+the)?|erase(?:\s+the)?|wipe(?:\s+the)?|clean(?:\s+the)?|clean\s+up|get\s+rid\s+of|take\s+off|remov[ae](r|me)?|delet[ae](r|me)?|apag[ae](r|lo|la|los|las|me|le)?|descart[ae](r|lo|la|me)?)\b/i,
+    BORRAR: /\b(?:borr[ae](r|lo|la|los|las|me|le|nos|te|se)?|elimin[ae](r|lo|la|los|las|me|le|nos)?|quit[ae](r|lo|la|los|las|me|le|nos)?|sac[ae](r|lo|la|los|las|me|le|nos)?|limpi[ae](r|lo|la|los|las|me|le|nos|te)?|vaci[ae](r|lo|la|me|le)?|tir[ae](r|lo|la|los|las|me|le|nos)?|remov[ae](r|lo|la|los|las|me)?|reset[ae](r|lo|la|me)?|reinici[ae](r|lo|la|me)?|drop(?:\s+the)?|delete(?:\s+the)?|remove(?:\s+the)?|clear(?:\s+the)?|erase(?:\s+the)?|wipe(?:\s+the)?|clean(?:\s+the)?|clean\s+up|get\s+rid\s+of|take\s+off|remov[ae](r|me)?|delet[ae](r|me)?|apag[ae](r|lo|la|los|las|me|le)?|descart[ae](r|lo|la|me)?|reset\b|start\s+over\b)\b/i,
 
     // ─────────────────────────────────────────────────────────────
     // OCULTAR — hacer invisible (reversible, no elimina)
@@ -92,13 +92,13 @@ window.INTENT_VERBOS = (() => {
     // ─────────────────────────────────────────────────────────────
     // EXPORTAR — descargar el mapa o sus datos
     // ─────────────────────────────────────────────────────────────
-    EXPORTAR: /\b(?:export[ae](r|lo|la|me)?|exporte|exportá|descarg[ae](r|lo|la|me)?|descargue|descargá|guard[ae](r|lo|la|me)?\s+(?:como|el\s+mapa|los\s+datos)?|guarde|guardá|baj[ae](r|lo|la|me)?|guardar\s+como|descargar\s+como|download(?:\s+the)?|save(?:\s+as)?(?:\s+the)?|get\s+the\s+(?:map|data)|baixa(r|me)?|salva(r|me)?|descarrega(r|me)?|gravar?)\b/i,
+    EXPORTAR: /\b(?:export[ae](r|lo|la|me)?|exports?\b|exporte|exportá|descarg[ae](r|lo|la|me)?|descargue|descargá|guard[ae](r|lo|la|me)?\s+(?:como|el\s+mapa|los\s+datos)?|guarde|guardá|baj[ae](r|lo|la|me)?|guardar\s+como|descargar\s+como|download(?:\s+the)?|save(?:\s+as)?(?:\s+the)?|get\s+the\s+(?:map|data)|baixa(r|me)?|salva(r|me)?|descarrega(r|me)?|gravar?)\b/i,
 
     // ─────────────────────────────────────────────────────────────
     // BASEMAP — cambiar el mapa de fondo
     // Requiere objeto BASEMAP para activarse
     // ─────────────────────────────────────────────────────────────
-    BASEMAP: /\b(?:cambi[ae](r|lo|la|me)?|cambie|cambiá|pon[ae](r|lo|la|me)?|us[ae](r|lo|la|me)?|use|switch(?:\s+to)?|change(?:\s+the)?|set(?:\s+the)?|mud[ae](r|lo|la|me)?|mude|troca(r|me)?|activ[ae](r|lo|la|me)?)\b/i,
+    BASEMAP: /\b(?:cambi[ae](r|lo|la|me)?|cambie|cambiá|pon[ae](r|lo|la|me)?|us[ae](r|lo|la|me)?|use|switch(?:\s+to)?|change(?:\s+the)?|set(?:\s+the)?|mud[ae](r|lo|la|me)?|mude|troca(r|me)?|activ[ae](r|lo|la|me)?|basemap\b|base\s+map\b|mapa\s+(?:base|de\s+fondo|fondo)\b|fondo\b|background(?:\s+map)?\b|dark\s+(?:matter|mode|theme|background)?\b|positron\b|voyager\b)\b/i,
 
     // ─────────────────────────────────────────────────────────────
     // RENOMBRAR — cambiar el nombre del chat o mapa
@@ -112,6 +112,12 @@ window.INTENT_VERBOS = (() => {
 
   };
 
+
+  // ── BASEMAP_VERBLESS — frases sin verbo que son unívocamente basemap ─
+  // "fondo oscuro", "dark background", "mapa fondo con colores", etc.
+  // Se evalúan ANTES de la tabla (Verbo × Objeto) porque no tienen verbo.
+  const BASEMAP_VERBLESS = /\b(?:fondo\s+(?:oscuro|claro|con\s+colores?|de\s+colores?|neutro|blanco|negro)?|mapa\s+(?:base|de\s+fondo|fondo)\s+(?:oscuro|claro|con\s+colores?|voyager|positron|dark|gray|grey)?|background\s+(?:map\s+)?(?:dark|light|gray|grey)?|dark\s+matter\b|positron\b|voyager\b|dark\s+background\b|light\s+background\b)\b/i;
+
   // ── Prioridad de grupos (de más específico a más general) ────
   // Cuando un texto matchea múltiples grupos, se elige el más específico.
   // LIMPIAR_PROP es más específico que BORRAR (incluye el objeto en el patrón).
@@ -122,7 +128,7 @@ window.INTENT_VERBOS = (() => {
     'CLASIFICAR',     // "pinta por" → más específico que ESTILO
     'RENOMBRAR',      // específico
     'EXPORTAR',       // específico
-    'ESTILO',         // specific style changes (moved above BASEMAP to avoid cambiá+color→BASEMAP)
+    'ESTILO',         // antes de BASEMAP: cambiá+color→ESTILO, no BASEMAP
     'BASEMAP',        // específico
     'AGREGAR',        // específico (^ al inicio)
     'OCULTAR',        // específico
@@ -137,7 +143,14 @@ window.INTENT_VERBOS = (() => {
    * Evalúa el texto normalizado y devuelve el grupo más específico que matchea.
    * Usa el orden de PRIORIDAD para desambiguar cuando hay múltiples matches.
    */
+  function detectarBasemapVerbless(textoNorm) {
+    return BASEMAP_VERBLESS.test(textoNorm);
+  }
+
   function detectarGrupo(textoNorm) {
+    // Caso especial: frases verbless unívocamente basemap
+    if (BASEMAP_VERBLESS.test(textoNorm)) return 'BASEMAP';
+
     const matches = Object.entries(GRUPOS)
       .filter(([, patron]) => patron.test(textoNorm))
       .map(([nombre]) => nombre);
