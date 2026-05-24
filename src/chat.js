@@ -2617,11 +2617,10 @@ window.UI = (() => {
         const field = btn.dataset.campo;
         const label = btn.dataset.label;
         const type  = btn.dataset.type;
-        // Para graduated: paleta secuencial. Para categorized: rotación automática
-        // (applyClassifyPlan la asigna internamente según las capas ya clasificadas).
-        const palette = type === 'graduated' ? 'seq_blues' : 'qualitative';
+        // No hardcodear paleta — applyClassifyPlan asigna automáticamente
+        // por rotación según las capas ya clasificadas del mismo tipo.
         card.remove();
-        window.APP?.applyClassifyPlan?.([{ layerKey, field, type, palette }]);
+        window.APP?.applyClassifyPlan?.([{ layerKey, field, type }]);
         addMessage('assistant', t('classify_done', { label }));
         scrollBottom();
       });
