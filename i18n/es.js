@@ -319,6 +319,7 @@ window.I18N_ES = {
   rename_placeholder:        'Nuevo nombre…',
   rename_confirm:            'RENOMBRAR',
   classify_done:             'Listo, clasifiqué la capa por {label}.',
+  classify_no_classifiable_fields: 'Esta capa no tiene campos clasificables. Solo se pueden clasificar capas con atributos categóricos o numéricos definidos.',
   classify_cleared:           'Listo, quité la clasificación.',
   classify_which_layer_clear: '¿De qué capa querés quitar la clasificación?',
   style_reset_done:           'Listo, restauré el estilo original.',
