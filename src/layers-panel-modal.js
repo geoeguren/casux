@@ -161,7 +161,6 @@ window.LP_MODAL = (() => {
       wrap.innerHTML = `
         <div class="adv-ramp-trigger" id="adv-ramp-trigger-${k}">
           <div class="adv-ramp-preview">${makeRamp(cur)}</div>
-          <span class="adv-ramp-trigger-spacer"></span>
           <span class="adv-ramp-arrow">▾</span>
         </div>
         <div class="adv-ramp-dropdown hidden" id="adv-ramp-dd-${k}">
