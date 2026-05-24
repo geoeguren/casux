@@ -343,6 +343,17 @@ window.I18N_ES = {
   validate_no_active_layers_to_add:   'No hay capas cargadas en el mapa para agregar.',
   validate_layer_already_on_map:      'Esa capa ya está en el mapa.',
   validate_filter_no_filterable_fields: 'Esta capa no tiene campos filtrables definidos.',
+  validate_op_adjacent_not_polygon:   'La operación "limítrofe con" solo aplica a capas de polígonos.',
+  op_ask_distance:     '¿A qué distancia (en km) querés buscar {titulo}?',
+  op_distance_placeholder: 'Ej: 100',
+  op_ask_n:            '¿Cuántos resultados más cercanos querés traer de {titulo}?',
+  op_n_placeholder:    'Ej: 5',
+  op_ask_area:         '¿Respecto a qué área o lugar querés aplicar la operación sobre {titulo}?',
+  op_ask_dissolve_all: '¿Querés unir todos los objetos de {titulo} en uno solo, o solo los de un área específica?',
+  op_dissolve_all_yes: 'Unir todos',
+  op_dissolve_all_no:  'Elegir un área',
+  confirm_btn:         'CONFIRMAR',
+
 
   classify_which_field:      '¿Por qué campo querés clasificar?',
   style_classified_warning:  'Esta capa tiene una clasificación activa. ¿Qué querés hacer?',
