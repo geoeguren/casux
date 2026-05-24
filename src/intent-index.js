@@ -1,78 +1,34 @@
 /**
- * src/intent/index.js — Orquestador del motor de intenciones
+ * src/intent/intent-index.js — Orquestador del motor de intenciones v2
  *
  * Punto de entrada único: window.INTENT.detectarIntencion(texto, historial)
  *
- * Responsabilidad:
- *   Evaluar los detectores en orden de prioridad y devolver la primera
- *   intención detectada, o null si ninguna aplica (→ LLM).
+ * Arquitectura:
+ *   1. INTENT_RESOLVER.detectar() — modelo (Verbo × Objeto)
+ *      Si no encuentra nada → paso 2
+ *   2. INTENT_CAPA.detectarCapa() — pedido de nueva capa (scorer TF-IDF)
+ *      Si no encuentra nada → null → LLM
  *
- * Orden de evaluación (de mayor a menor prioridad):
- *   1. limpiar             → borrar/vaciar el mapa
- *   2. export              → descargar/exportar
- *   3. basemap             → cambiar mapa de fondo
- *   4. renombrar           → cambiar nombre del chat/mapa
- *   5. estilo (resuelto)   → cambio de estilo con valor resuelto localmente
- *   6. estilo (vago)       → cambio de estilo que necesita interacción
- *   7. toggle_visibilidad  → mostrar/ocultar capa activa (sin historial guard)
- *   8. agregar             → sumar una capa al mapa activo (sin historial guard)
- *   9. quitar              → eliminar una capa del mapa activo (sin historial guard)
- *  10. clasificar          → clasificación cromática de capa activa (sin historial guard)
- *  11. capa                → cargar una capa nueva (con historial guard)
- *
- * Los detectores 7–10 van antes de capa porque operan sobre el mapa activo
- * y deben evaluarse incluso cuando ya hubo conversación con el LLM.
- *
- * Si ningún detector devuelve un resultado → null → el mensaje se envía
- * al LLM con el historial completo.
- *
- * Dependencias (deben cargarse antes que este archivo):
- *   - src/intent/intent-utils.js   → window.INTENT_UTILS
- *   - src/intent/intent-scorer.js  → window.INTENT_SCORER
- *   - src/intent/intent-capa.js    → window.INTENT_CAPA
- *   - src/intent/intent-acciones.js → window.INTENT_ACCIONES
+ * Dependencias (orden de carga en HTML):
+ *   intent-utils.js, intent-scorer.js, intent-capa.js,
+ *   intent-verbos.js, intent-objeto.js, intent-tabla.js,
+ *   intent-validar.js, intent-resolver.js, intent-index.js
  */
 
 window.INTENT = (() => {
 
-  // Aliases locales de los módulos — facilitan la lectura del orquestador
-  const Acciones = window.INTENT_ACCIONES;
-  const Capa     = window.INTENT_CAPA;
-
-  // ── detectarIntencion ─────────────────────────────────────────
-  //
-  // Evalúa todos los detectores en orden y devuelve el primer match.
-  // Cada detector devuelve { tipo, subtipo?, parametros? } o null.
-  //
-  // @param texto     {string} Mensaje del usuario (texto original, sin normalizar)
-  // @param historial {Array}  Historial de la conversación actual
-  // @returns         {Object|null}
-
   function detectarIntencion(texto, historial = []) {
-    const resultado =
-      Acciones.detectarLimpiar(texto)             ||
-      Acciones.detectarExport(texto)              ||
-      Acciones.detectarBasemap(texto)             ||
-      Acciones.detectarRenombrar(texto)           ||
-      Acciones.detectarEstiloResuelto(texto)      ||
-      Acciones.detectarEstilo(texto)              ||
-      Acciones.detectarToggleVisibilidad(texto)   ||
-      Acciones.detectarAgregar(texto)             ||
-      Acciones.detectarQuitar(texto)              ||
-      Acciones.detectarClasificar(texto)          ||
-      Capa.detectarCapa(texto, historial);
+    const norm = window.INTENT_UTILS?.normalizarSimple?.(texto) || texto.toLowerCase();
 
-    // Log de diagnóstico — visible en la consola del browser durante desarrollo
+    // ── Resolver con el modelo Verbo × Objeto ─────────────────────
+    const resultado = window.INTENT_RESOLVER?.detectar?.(texto, historial);
+
+    // Log de diagnóstico
     if (resultado) {
-      const extra =
-        resultado.tipo === 'capa'               ? ` → ${resultado.parametros?.instruccion?.layerKey || '?'}` :
-        resultado.tipo === 'agregar'            ? ` → ${resultado.parametros?.instruccion?.layerKey || '?'}` :
-        resultado.tipo === 'quitar'             ? ` → ${resultado.parametros?.mapKey || '?'}` :
-        resultado.tipo === 'toggle_visibilidad' ? ` → ${resultado.parametros?.mapKey || '?'} (${resultado.parametros?.visible ? 'mostrar' : 'ocultar'})` :
-        resultado.tipo === 'estilo' && resultado.subtipo === 'resuelto' ? ` → ${resultado.parametros?.prop}=${resultado.parametros?.value}${resultado.parametros?.mapKey ? ' [' + resultado.parametros.mapKey + ']' : ' [selector]'}` :
-        resultado.tipo === 'clasificar'         ? ` → ${resultado.parametros?.layerKey || '?'} por ${resultado.parametros?.field || '?'}` :
-        resultado.subtipo                       ? ` (${resultado.subtipo})` : '';
-      console.log(`[INTENT] ✓ ${resultado.tipo}${extra} | "${texto.slice(0, 60)}"`);
+      const extra = resultado.parametros
+        ? ` | ref=${resultado.parametros.mapKey || resultado.parametros.layerKey || '?'}`
+        : '';
+      console.log(`[INTENT] ✓ ${resultado.tipo}${resultado.subtipo ? '/' + resultado.subtipo : ''}${extra} | "${texto.slice(0, 60)}"`);
     } else {
       console.log(`[INTENT] → LLM | "${texto.slice(0, 60)}"`);
     }
@@ -80,26 +36,6 @@ window.INTENT = (() => {
     return resultado;
   }
 
-  // ── API de compatibilidad ─────────────────────────────────────
-  //
-  // Estas funciones se mantienen para no romper llamadas existentes
-  // en otros módulos (chat.js, app.js) que usaban la API anterior.
-  // No deben usarse en código nuevo — usar detectarIntencion.
-
-  // resolver(): alias legacy de detectarCapa — devuelve solo la instrucción
-  function resolver(textoUsuario, historial = []) {
-    const intencion = Capa.detectarCapa(textoUsuario, historial);
-    return intencion?.parametros?.instruccion || null;
-  }
-
-  // detectarIntencionEstilo(): alias legacy para detectar estilo vago/especifico
-  function detectarIntencionEstilo(texto) {
-    const r = Acciones.detectarEstilo(texto);
-    if (!r) return null;
-    return r.subtipo === 'vago' ? 'vaga' : 'especifica';
-  }
-
-  // ── API pública ───────────────────────────────────────────────
-  return { detectarIntencion, resolver, detectarIntencionEstilo };
+  return { detectarIntencion };
 
 })();
