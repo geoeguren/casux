@@ -300,6 +300,19 @@ window.CHAT = (() => {
           UI.setSendEnabled(true);
           const { prop, value, mapKey } = intencion.parametros;
           if (mapKey) {
+            // Chequear si el valor ya está en el límite (para tamaño/grosor relativos)
+            const _curStyle = activeLayers[mapKey]?.style || {};
+            const _curValue = prop === 'radius' ? (_curStyle.radius ?? 5)
+                            : prop === 'weight' ? (_curStyle.weight ?? 2)
+                            : null;
+            if (_curValue !== null && Math.abs(value - _curValue) < 0.01) {
+              // El valor no cambió — está en el límite
+              const _limitMsg = value <= 0.5 ? t('style_already_min') : t('style_already_max');
+              const msgLim = UI.addMessage('assistant', _limitMsg);
+              UI.setMessageMeta(msgLim, { time: new Date(), model: 'pim' });
+              history.push({ role: 'assistant', content: _limitMsg, time: new Date().toISOString(), model: 'pim' });
+              return;
+            }
             // Una sola capa activa → aplicar directo
             _applyStyleProp(mapKey, prop, value);
             const msgEl = UI.addMessage('assistant', t('style_applied'));
@@ -624,6 +637,13 @@ window.CHAT = (() => {
         else if (intencion.tipo === 'selector_capa') {
           isStreaming = false;
           UI.setSendEnabled(true);
+          // Si no hay capas, no tiene sentido mostrar el selector
+          if (Object.keys(activeLayers).length === 0) {
+            const msgVacío = UI.addMessage('assistant', t('validate_no_layer'));
+            UI.setMessageMeta(msgVacío, { time: new Date(), model: 'pim' });
+            history.push({ role: 'assistant', content: t('validate_no_layer'), time: new Date().toISOString(), model: 'pim' });
+            return;
+          }
           const msgEl = UI.addMessage('assistant', t('selector_capa_msg'));
           UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
           // Capturar el texto original para re-ejecutar el intent con la capa elegida
