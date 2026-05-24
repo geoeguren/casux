@@ -19,7 +19,7 @@ window.SETTINGS = (() => {
     // Si no hay preferencias guardadas y el usuario es anónimo, usar defaults ligeros
     const isAnon = window.AUTH?.isAnon?.() ?? false;
     const anonDefaults = isAnon && !localStorage.getItem(KEY)
-      ? { tone: 'efficient', model: 'mistral', theme: 'auto',
+      ? { tone: 'eficiente', model: 'mistral', theme: 'auto',
           lang: (navigator.language || 'es').slice(0,2).toLowerCase() }
       : {};
     try { return { ...defaults, ...anonDefaults, ...saved }; }
