@@ -638,7 +638,7 @@ window.CHAT = (() => {
           isStreaming = false;
           UI.setSendEnabled(true);
           // Si no hay capas, no tiene sentido mostrar el selector
-          if (Object.keys(activeLayers).length === 0) {
+          if (Object.keys(window.MAP?.getActiveLayers?.() || {}).length === 0) {
             const msgVacío = UI.addMessage('assistant', t('validate_no_layer'));
             UI.setMessageMeta(msgVacío, { time: new Date(), model: 'pim' });
             history.push({ role: 'assistant', content: t('validate_no_layer'), time: new Date().toISOString(), model: 'pim' });
