@@ -352,6 +352,9 @@ window.I18N_EN = {
   op_ask_dissolve_all: 'Do you want to merge all features of {titulo} into one, or only those in a specific area?',
   op_dissolve_all_yes: 'Merge all',
   op_dissolve_all_no:  'Choose an area',
+  selector_capa_msg:      'Which layer do you want to apply this action to?',
+  selector_capa_selected: 'Done.',
+
   confirm_btn:         'CONFIRM',
 
 
