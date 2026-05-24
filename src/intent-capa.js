@@ -66,7 +66,7 @@ window.INTENT_CAPA = (() => {
 
   const PATRON_INTERSECT = /\b(pasan?\s+por|tocan?|atraviesan?|cruzan?|intersectan?|que\s+recorren?|que\s+bordean?|pass\s+(through|by)|cross(es)?|go\s+through|traverse|intersect|run\s+through|border|passam?\s+por|cruzam?|atravessam?|intersectam?|percorrem?|margeiam?)\b/;
 
-  const PATRON_WITHIN    = /\b(a\s+\d[\d.,]*\s*km|cerca\s+de|distancia\s+de|radio\s+de|a\s+menos\s+de|within\s+\d[\d.,]*\s*km|near|within\s+distance|less\s+than\s+\d[\d.,]*\s*km|around|close\s+to|perto\s+de|distância\s+de|raio\s+de)\b/;
+  const PATRON_WITHIN    = /\b(a\s+\d[\d.,]*\s*km|cerca\s+de[l]?|distancia\s+de[l]?|radio\s+de[l]?|a\s+menos\s+de|within\s+\d[\d.,]*\s*km|near(?:\s+the)?|within\s+distance|less\s+than\s+\d[\d.,]*\s*km|around|close\s+to|perto\s+d[oe]|distância\s+d[oe]|raio\s+de)\b/;
 
   const PATRON_DISTANCIA = /(\d[\d.,]*)\s*km/;
 
@@ -100,7 +100,7 @@ window.INTENT_CAPA = (() => {
 
   const PATRON_INTERSECT_EXCLUDE = /\b(no\s+pasan?\s+por|no\s+tocan?|no\s+atraviesan?|no\s+cruzan?|que\s+evitan?|que\s+no\s+recorren?|not\s+pass(ing)?\s+through|not\s+cross(ing)?|not\s+go(ing)?\s+through|avoid(ing)?|that\s+don'?t?\s+(pass|cross|go\s+through)|não\s+passam?\s+por|não\s+cruzam?|não\s+atravessam?|evitam?)\b/i;
 
-  const PATRON_WITHIN_EXCLUDE = /\b(a\s+m[aá]s\s+de\s+\d[\d.,]*\s*km|lejos\s+de|fuera\s+del?\s+radio|m[aá]s\s+de\s+\d[\d.,]*\s*km|more\s+than\s+\d[\d.,]*\s*km\s+(from|away)|outside\s+(a\s+)?\d[\d.,]*\s*km|far\s+(from|away)|beyond\s+\d[\d.,]*\s*km|a\s+mais\s+de\s+\d[\d.,]*\s*km|longe\s+de|fora\s+do\s+raio)\b/i;
+  const PATRON_WITHIN_EXCLUDE = /\b(a\s+m[aá]s\s+de\s+\d[\d.,]*\s*km|fuera\s+de[l]?\s+(?:(?:los?|las?|un|una)\s+)?(?:radio\s+de\s+)?\d[\d.,]*\s*km|fuera\s+del?\s+radio|lejos\s+de|m[aá]s\s+de\s+\d[\d.,]*\s*km|more\s+than\s+\d[\d.,]*\s*km\s+(from|away)|outside\s+(a\s+)?\d[\d.,]*\s*km|far\s+(from|away)|beyond\s+\d[\d.,]*\s*km|a\s+mais\s+de\s+\d[\d.,]*\s*km|longe\s+de|fora\s+do\s+raio\s+de\s+\d[\d.,]*\s*km)\b/i;
 
   function detectarOpEspacial(textoNorm) {
     // Exclude siempre antes que su par de inclusión para evitar falsos positivos.
@@ -122,7 +122,7 @@ window.INTENT_CAPA = (() => {
   // Si no se menciona distancia, devuelve 50 km como valor razonable por defecto.
   function extraerDistanciaKm(textoNorm) {
     const match = textoNorm.match(PATRON_DISTANCIA);
-    if (!match) return 50;
+    if (!match) return null;  // null → preguntar al usuario
     return parseFloat(match[1].replace(',', '.'));
   }
 
@@ -134,7 +134,7 @@ window.INTENT_CAPA = (() => {
                || textoNorm.match(/\b(\d+)\s+m[aá]s\s+(?:cercanos?|pr[oó]ximos?|lejanos?|distantes?)\b/i)
                || textoNorm.match(/\bthe\s+(\d+)\s+(?:nearest|closest|furthest|farthest)\b/i)
                || textoNorm.match(/\b(\d+)\s+(?:nearest|closest|furthest|farthest)\b/i);
-    if (!match) return 1;
+    if (!match) return null;  // null → preguntar al usuario
     return parseInt(match[1], 10);
   }
 
@@ -530,6 +530,41 @@ window.INTENT_CAPA = (() => {
   //   4. Guardia de país ambiguo.
   //   5. Construir instrucción.
 
+
+  // ── _validarYRetornar ─────────────────────────────────────────
+  //
+  // Valida la instrucción espacial construida. Si falta un dato necesario
+  // (distancia, área, N), devuelve una intención especial 'capa_preguntar'
+  // para que chat.js muestre el input apropiado al usuario.
+  // Si hay un error bloqueante, devuelve '_validacion_error'.
+  // Si es válida, devuelve { tipo: 'capa', parametros: { instruccion } }.
+
+  function _validarYRetornar(instruccion, layerDef) {
+    const op = instruccion.op || 'clip';
+    const validacion = window.INTENT_VALIDAR?.validarOpEspacial?.(op, instruccion, layerDef);
+
+    if (!validacion || validacion.valida) {
+      return { tipo: 'capa', parametros: { instruccion } };
+    }
+
+    if (validacion.bloquea) {
+      return {
+        tipo:       '_validacion_error',
+        parametros: { error: validacion.error, errorParams: validacion.errorParams || {} },
+      };
+    }
+
+    // Preguntar al usuario el dato faltante
+    return {
+      tipo:       'capa_preguntar',
+      parametros: {
+        preguntar:   validacion.preguntar,
+        instruccion, // instrucción parcial — se completará con la respuesta
+        layerKey:    instruccion.layerKey,
+      },
+    };
+  }
+
   // ── Paso D: _intentarResolverMultiple ─────────────────────────
   //
   // Si PATRON_MULTIPLE matcheó, intenta verificar si el "y"/"and"/"e" conecta
@@ -704,7 +739,7 @@ window.INTENT_CAPA = (() => {
         if (op === 'nearest' || op === 'nearest_exclude') {
           instruccion.nearestCount = extraerNearestCount(textoNorm);
         }
-        return { tipo: 'capa', parametros: { instruccion } };
+        return _validarYRetornar(instruccion, refResult.capa);
       }
     }
 
@@ -729,7 +764,7 @@ window.INTENT_CAPA = (() => {
     }
 
     const instruccion = construirInstruccion(resultado.key, resultado.capa, areaFinal, textoUsuario);
-    return { tipo: 'capa', parametros: { instruccion } };
+    return _validarYRetornar(instruccion, resultado.capa);
   }
 
   // ── detectarCapa ─────────────────────────────────────────────
@@ -822,7 +857,7 @@ window.INTENT_CAPA = (() => {
           instruccion.nearestCount = extraerNearestCount(textoNorm);
         }
         console.log(`[CAPA] ✓ ${refResult.layerKey} + refLayerKey=${refResult.refLayerKey} (score: ${refResult.capa ? 'ok' : '?'})`);
-        return { tipo: 'capa', parametros: { instruccion } };
+        return _validarYRetornar(instruccion, refResult.capa);
       }
     }
 
@@ -834,7 +869,7 @@ window.INTENT_CAPA = (() => {
 
     const instruccion = construirInstruccion(resultado.key, resultado.capa, areaFinal, textoUsuario);
     console.log(`[CAPA] ✓ ${resultado.key}${areaFinal?.valorOriginal ? ' + ' + (Array.isArray(areaFinal.valorOriginal) ? areaFinal.valorOriginal.join(', ') : areaFinal.valorOriginal) : ''} (score: ${resultado.score.toFixed(2)})`);
-    return { tipo: 'capa', parametros: { instruccion } };
+    return _validarYRetornar(instruccion, resultado.capa);
   }
 
   // ── API pública ───────────────────────────────────────────────
