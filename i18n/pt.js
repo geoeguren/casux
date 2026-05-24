@@ -318,7 +318,7 @@ window.I18N_PT = {
   rename_ask:                'Como você quer chamar o mapa?',
   rename_placeholder:        'Novo nome…',
   rename_confirm:            'RENOMEAR',
-  classify_done:             'Pronto, classifiquei a camada por {label}.',
+  classify_done:             'Pronto, classifiquei a camada por {label}. Você pode ajustar a paleta e os estilos no painel de edição avançada.',
   classify_no_classifiable_fields: 'Esta camada não tem campos classificáveis. Só é possível classificar camadas com atributos categóricos ou numéricos definidos.',
   classify_cleared:           'Pronto, removi a classificação.',
   classify_which_layer_clear: 'De qual camada você quer remover a classificação?',
