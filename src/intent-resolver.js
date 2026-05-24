@@ -375,7 +375,7 @@ window.INTENT_RESOLVER = (() => {
     if (accion === 'basemap' && params.subtipo) base.subtipo = params.subtipo;
     if (accion === 'export'  && params.subtipo) base.subtipo = params.subtipo;
     if (accion === 'renombrar') base.subtipo = params.subtipo;
-    if (accion === 'estilo_vago') {
+    if (accion === 'estilo_vago' || accion === 'estilo_resuelto') {
       params = { param: objeto.propEstilo, ...params };
     }
 
