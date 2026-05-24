@@ -319,6 +319,7 @@ window.I18N_EN = {
   rename_placeholder:        'New name…',
   rename_confirm:            'RENAME',
   classify_done:             'Done, classified the layer by {label}.',
+  classify_no_classifiable_fields: 'This layer has no classifiable fields. Only layers with defined categorical or numeric attributes can be classified.',
   classify_cleared:           'Done, removed the classification.',
   classify_which_layer_clear: 'Which layer do you want to clear the classification from?',
   style_reset_done:           'Done, restored the original style.',
