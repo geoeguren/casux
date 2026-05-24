@@ -343,8 +343,8 @@ window.CHAT = (() => {
               const warnEl = UI.addMessage('assistant', t('style_classified_warning'));
               UI.showClassifiedStyleChoice(warnEl, selectedMapKey,
                 () => {
-                  // Mantener clasificación → flujo normal (color bloqueado por _showParamButtons)
-                  const int2 = { ...intencion, parametros: { ...intencion.parametros, _mapKey: selectedMapKey } };
+                  // Mantener clasificación → flujo sin color (no toca la clasificación)
+                  const int2 = { ...intencion, parametros: { ...intencion.parametros, _mapKey: selectedMapKey, _excludeColor: true } };
                   UI.showStyleFlowForLayer(int2, selectedMapKey);
                 },
                 () => {
@@ -370,7 +370,7 @@ window.CHAT = (() => {
             if (singleEntry?.classification?.field) {
               const warnEl = UI.addMessage('assistant', t('style_classified_warning'));
               UI.showClassifiedStyleChoice(warnEl, singleMapKey,
-                () => UI.showStyleFlow(intencion),
+                () => UI.showStyleFlow({ ...intencion, parametros: { ...intencion.parametros, _excludeColor: true } }),
                 () => { window.MAP?.clearClassification?.(singleMapKey); UI.showStyleFlow(intencion); }
               );
               history.push({ role: 'assistant', content: t('style_classified_warning'), time: new Date().toISOString() });
@@ -2222,16 +2222,16 @@ window.UI = (() => {
 
   // ── Paso B: elegir parámetro ──────────────────────────────────
 
-  function _showParamButtons(container, mapKey, layer, chatTitulo, containerRef) {
+  function _showParamButtons(container, mapKey, layer, chatTitulo, containerRef, opts = {}) {
     const geom = layer.geomType || 'polygon';
     const params = [];
-    if (geom === 'point')   params.push({ key: 'color',  label: t('style_color')    });
+    if (geom === 'point' && !opts.excludeColor) params.push({ key: 'color',  label: t('style_color')    });
     if (geom === 'point')   params.push({ key: 'radius', label: t('style_size')     });
     if (geom === 'point')   params.push({ key: 'icon',   label: t('adv_svg_title')  });
     if (geom === 'point')   params.push({ key: 'geom',   label: t('style_geometry') });
-    if (geom === 'line')    params.push({ key: 'color',  label: t('style_color')   });
+    if (geom === 'line' && !opts.excludeColor) params.push({ key: 'color',  label: t('style_color')   });
     if (geom === 'line')    params.push({ key: 'weight', label: t('style_weight')  });
-    if (geom === 'polygon') params.push({ key: 'color',  label: t('style_color')   });
+    if (geom === 'polygon' && !opts.excludeColor) params.push({ key: 'color',  label: t('style_color')   });
 
     const card = document.createElement('div');
     card.className = 'msg-export-choice';
@@ -2376,15 +2376,17 @@ window.UI = (() => {
     container.className = 'style-flow-container';
     msgEl.after(container);
 
+    const _excludeColor = intencion?.parametros?._excludeColor === true;
+
     if (layerEntries.length === 1) {
       const [mapKey, layer] = layerEntries[0];
       const validParam = param ? _validateParam(param, layer.geomType) : null;
-      if (validParam) {
+      if (validParam && !(validParam === 'color' && _excludeColor)) {
         // Caso 1b: parámetro conocido y válido para esta geometría
         _showParamControl(container, mapKey, layer, validParam, chatTitulo, container);
       } else {
         // Caso 1a: sin parámetro o parámetro inválido → mostrar parámetros disponibles
-        _showParamButtons(container, mapKey, layer, chatTitulo, container);
+        _showParamButtons(container, mapKey, layer, chatTitulo, container, { excludeColor: _excludeColor });
       }
     } else {
       // Múltiples capas
@@ -2548,10 +2550,11 @@ window.UI = (() => {
     container.className = 'style-flow-container';
     msgEl.after(container);
 
-    if (param) {
+    const _excColor = intencion?.parametros?._excludeColor === true;
+    if (param && !(param === 'color' && _excColor)) {
       _showParamControl(container, mapKey, layer, param, chatTitulo, container);
     } else {
-      _showParamButtons(container, mapKey, layer, chatTitulo, container);
+      _showParamButtons(container, mapKey, layer, chatTitulo, container, { excludeColor: _excColor });
     }
     scrollBottom();
   }
