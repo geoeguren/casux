@@ -750,9 +750,14 @@ window.CHAT = (() => {
 
       // ── Sin intención detectada o intención que pasa al LLM ──
       const activeLayers = window.MAP?.getActiveLayers?.() || {};
-      const activeLayersSummary = Object.entries(activeLayers).map(([, v]) => 
-        `${v.layerKey}: ${v.titulo} (${v.geomType})`
-      ).join(', ');
+      const activeLayersSummary = Object.entries(activeLayers).map(([, v]) => {
+        // Bug C fix: incluir estado de clasificación para que el LLM sepa que existe
+        const clInfo = v.classification?.field
+          ? ` [classified by ${v.classification.field}, ${v.classification.type}]`
+          : '';
+        const visInfo = v.visible === false ? ' [hidden]' : '';
+        return `${v.layerKey}: ${v.titulo} (${v.geomType})${clInfo}${visInfo}`;
+      }).join(', ');
 
       _abortController = new AbortController();
       const resp = await fetch('/api/llm', {
@@ -824,9 +829,6 @@ window.CHAT = (() => {
               UI.setMessageMeta(msgEl, { time: msgTime, model: _lastModel });
               history.push({ role: 'assistant', content: fullText, time: msgTime.toISOString(), model: _lastModel, fromLLM: true });
 
-              // classifyPlan se aplica siempre que venga (no depende del mapa)
-              if (classifyPlan?.length) window.APP?.applyClassifyPlan?.(classifyPlan);
-
               // basemapPlan — cambiar mapa base
               if (basemapPlan) window.MAP?.setBasemap?.(basemapPlan);
 
@@ -869,13 +871,28 @@ window.CHAT = (() => {
                     });
                   }
 
+                  // Bug A fix: si classify viene junto con map, embeber en instrucciones
+                  // para que renderMap lo aplique DESPUÉS de cargar las capas.
+                  // Si se aplica antes (orden original), la capa aún no existe en activeLayers.
+                  if (classifyPlan?.length) {
+                    plan.instrucciones = plan.instrucciones.map(inst => {
+                      const cl = classifyPlan.find(c => c.layerKey === inst.layerKey);
+                      if (cl) return { ...inst, classification: cl };
+                      return inst;
+                    });
+                  }
+
                   UI.showMapReady(plan);
                   if (!window.MAP_CONTROLS?.isMobile?.()) window.MAP_CONTROLS?.setMapVisible(true);
                   await window.APP.renderMap(plan);
+                  // Bug A fix: classifyPlan embebido en instrucciones — renderMap lo aplica
                   await saveChat(userText, plan);
                   return;
                 }
               }
+
+              // classifyPlan sin mapPlan = clasificar capa ya cargada
+              if (classifyPlan?.length) window.APP?.applyClassifyPlan?.(classifyPlan);
 
               // stylePlan sin mapPlan = cambio de estilo sobre capas existentes
               if (stylePlan?.length) window.APP?.applyStylePlan?.(stylePlan);
