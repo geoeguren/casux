@@ -107,7 +107,8 @@ window.INTENT_ACCIONES = (() => {
 
     // Intentar extraer el nombre deseado del texto original
     const matchNombre =
-      texto.match(/(?:llamalo?|renombralo?\s+(?:como\s+)?|titulalo?\s*|el\s+nombre\s+(?:es|sera|va\s+a\s+ser)\s+|llam[aá]\s+(?:a\s+)?(?:este|ese|el|un|al?)?\s*(?:mapa|chat)\s+)["]?([^"'\n]{2,40})["]?/i) ||
+      texto.match(/(?:llamalo?|renombralo?\s+(?:como\s+)?|titulalo?\s*|el\s+nombre\s+(?:es|sera|va\s+a\s+ser)\s+|llam[aáa]\s+(?:a\s+)?(?:este|ese|el|un|al?)?\s*(?:mapa|chat|este)\s+)["]?([^"'\n]{2,40})["]?/i) ||
+      texto.match(/(?:llam[aá]\s+(?:a\s+)?(?:este|ese)\s+(?:mapa|chat)\s*["']?)([^"'\n]{2,40})['"]/i) ||
       texto.match(/(?:como\s+)["]([^"'\n]{2,40})["]/i) ||
       texto.match(/(?:call\s+(?:it|the\s+map)\s+|rename\s+(?:it\s+)?(?:to\s+)?|name\s+it\s+|the\s+name\s+is\s+)["]?([^"'\n]{2,40})["]?/i) ||
       texto.match(/(?:chama(?:r)?\s+(?:o\s+mapa\s+)?(?:de\s+)?|renomeia(?:r)?\s+(?:para\s+)?|o\s+nome\s+(?:e|vai\s+ser)\s+)["]?([^"'\n]{2,40})["]?/i);
@@ -136,7 +137,7 @@ window.INTENT_ACCIONES = (() => {
   const PATRON_ESTILO = /\b(estilo|color(es)?|relleno|borde|grosor|tamano|icono|simbolo|apariencia|aspecto|hacelo\s+mas|ponelo|ponerlo|forma|geometria|style|fill|stroke|outline|thickness|weight|icon|symbol|appearance|make\s+it|shape|circle|square|size|radius|radio|cor|cores|preenchimento|borda|espessura|ícone|símbolo|aparência|forma|geometria|circulo|quadrado|tamanho)\b/i;
 
   // Valores concretos que confirman que el usuario ya sabe qué quiere cambiar
-  const PATRON_ESTILO_ESPECIFICO = /\b(rojo|azul|verde|amarillo|naranja|violeta|rosa|negro|blanco|gris|celeste|marron|mas\s+(grande|chico|grueso|fino|oscuro|claro|transparente)|tambien|lo\s+mismo|idem|opacidad|transparencia|red|blue|green|yellow|orange|purple|pink|black|white|gray|grey|cyan|brown|bigger|smaller|larger|thicker|thinner|darker|lighter|transparent|opacity|same|vermelho|azul|verde|amarelo|laranja|violeta|rosa|preto|branco|cinza|ciano|marrom|maior|menor|mais\s+(grosso|fino|escuro|claro|transparente)|transparencia|opacidade|#[0-9a-fA-F]{3,6}|\d+(\.\d+)?\s*(px|pt|puntos?))\b/i;
+  const PATRON_ESTILO_ESPECIFICO = /\b(rojo|azul|verde|amarillo|naranja|violeta|rosa|negro|blanco|gris|celeste|marron|mas\s+(grandes?|chicos?|gruesos?|finos?|oscuro|claro|transparente)|tambien|lo\s+mismo|idem|opacidad|transparencia|red|blue|green|yellow|orange|purple|pink|black|white|gray|grey|cyan|brown|bigger|smaller|larger|thicker|thinner|darker|lighter|transparent|opacity|same|vermelho|azul|verde|amarelo|laranja|violeta|rosa|preto|branco|cinza|ciano|marrom|maior|menor|mais\s+(grosso|fino|escuro|claro|transparente)|transparencia|opacidade|#[0-9a-fA-F]{3,6}|\d+(\.\d+)?\s*(px|pt|puntos?))\b/i;
 
   // Función auxiliar: obtiene los textos de los botones rápidos de estilo
   // para detectar clicks directos en ellos (llegan como texto exacto al chat)
@@ -515,16 +516,16 @@ window.INTENT_ACCIONES = (() => {
             : (activeLayers[mapKey]?.style?.weight ?? 2))
         : (prop === 'radius' ? 5 : 2);
       // ES: más grande/chico/grueso/fino  EN: bigger/smaller/thicker/thinner  PT: maior/menor/mais grosso/mais fino
-      if (/\b(mas\s+grande|aumenta[r]?|sube[r]?|subir|bigger|larger|increase|more\s+big|maior|aumentar?|mais\s+grande)\b/.test(norm)) {
+      if (/\b(mas\s+grandes?|aumenta[r]?|sube[r]?|subir|bigger|larger|increase|more\s+big|maior|aumentar?|mais\s+grande)\b/.test(norm)) {
         return Math.min(prop === 'radius' ? 25 : 10, +(cur + 2).toFixed(1));
       }
-      if (/\b(mas\s+chico|mas\s+pequ|achica[r]?|reduce[r]?|reducir|baja[r]?|smaller|decrease|menor|reduzir?|mais\s+pequen)\b/.test(norm)) {
+      if (/\b(mas\s+chicos?|mas\s+pequ|achica[r]?|reduce[r]?|reducir|baja[r]?|smaller|decrease|menor|reduzir?|mais\s+pequen)\b/.test(norm)) {
         return Math.max(0.5, +(cur - 2).toFixed(1));
       }
-      if (/\b(mas\s+grueso|mas\s+gordo|thicker|mais\s+gross|mais\s+espess|mas\s+espeso)\b/.test(norm)) {
+      if (/\b(mas\s+gruesos?|mas\s+gordos?|thicker|mais\s+gross|mais\s+espess|mas\s+espeso)\b/.test(norm)) {
         return Math.min(10, +(cur + 1.5).toFixed(1));
       }
-      if (/\b(mas\s+fino|mas\s+delgado|thinner|mais\s+fin|mais\s+delgad|mais\s+fino)\b/.test(norm)) {
+      if (/\b(mas\s+finos?|mas\s+delgados?|thinner|mais\s+fin|mais\s+delgad|mais\s+fino)\b/.test(norm)) {
         return Math.max(0.5, +(cur - 1.5).toFixed(1));
       }
       return null;
