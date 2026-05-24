@@ -155,10 +155,10 @@ window.CHAT = (() => {
     const activeLayers = window.MAP?.getActiveLayers?.() || {};
     const entry = activeLayers[mapKey];
     if (!entry) return;
-    const layerDef = window.LAYERS?.[entry.layerKey];
-    if (!layerDef) return;
-    // Estilo por defecto: lo que usaría renderMap si no hubiera estilo guardado
-    const defaultStyle = layerDef.style || {};
+    // Restaurar el estilo original guardado al cargar la capa.
+    // También limpia la clasificación si la hubiera.
+    const defaultStyle = entry._defaultStyle || {};
+    if (entry.classification) window.MAP?.clearClassification?.(mapKey);
     window.MAP?.updateLayerStyle?.(mapKey, defaultStyle);
     window.MAP?.updateLegend?.();
     // Persistir
@@ -200,6 +200,13 @@ window.CHAT = (() => {
         if (intencion.tipo === 'limpiar') {
           isStreaming = false;
           UI.setSendEnabled(true);
+          // B1 fix: si el mapa ya estaba vacío, avisar sin limpiar de nuevo
+          if (intencion.parametros?._advertencia === 'validate_map_empty') {
+            const msgVacio = UI.addMessage('assistant', t('map_already_empty'));
+            UI.setMessageMeta(msgVacio, { time: new Date(), model: 'pim' });
+            history.push({ role: 'assistant', content: t('map_already_empty'), time: new Date().toISOString(), model: 'pim' });
+            return;
+          }
           window.MAP?.clearAll?.();
           window.MAP?.resetView?.();
           window.MAP?.updateLegend?.();
@@ -265,11 +272,13 @@ window.CHAT = (() => {
         else if (intencion.tipo === 'renombrar' && intencion.subtipo === 'especifico') {
           isStreaming = false;
           UI.setSendEnabled(true);
-          const nombreRenombrar = intencion.parametros.nombre;
+          const nombreRenombrarRaw = intencion.parametros.nombre || '';
+          // Capitalizar primera letra del nombre
+          const nombreRenombrar = nombreRenombrarRaw.charAt(0).toUpperCase() + nombreRenombrarRaw.slice(1);
           window.CHAT_HEADER?.startRename?.(nombreRenombrar);
           // Actualizar también el título del mapa activo
           const planRenombrar = window.APP?.getCurrentPlan?.();
-          if (planRenombrar) planRenombrar.titulo = toTitleCase(nombreRenombrar);
+          if (planRenombrar) planRenombrar.titulo = nombreRenombrar;
           UI.addMessage('assistant', t('chat_renamed', { nombre: nombreRenombrar }));
           history.push({ role: 'assistant', content: t('chat_renamed', { nombre: nombreRenombrar }), time: new Date().toISOString() });
           return;
@@ -544,14 +553,25 @@ window.CHAT = (() => {
           UI.setSendEnabled(true);
           const { mapKey } = intencion.parametros;
           if (!mapKey) {
-            // Varias capas → selector
+            // Varias capas → selector, luego verificar clasificación
             const msgEl = UI.addMessage('assistant', t('classify_which_layer_clear'));
             UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => {
+              const selEntry = window.MAP?.getActiveLayers?.()[selectedMapKey];
+              if (!selEntry?.classification) {
+                UI.addMessage('assistant', t('classify_not_classified'));
+                return;
+              }
               window.MAP?.clearClassification?.(selectedMapKey);
               UI.addMessage('assistant', t('classify_cleared'));
             });
             history.push({ role: 'assistant', content: t('classify_which_layer_clear'), time: new Date().toISOString() });
           } else {
+            const _entryClasif = window.MAP?.getActiveLayers?.()[mapKey];
+            if (!_entryClasif?.classification) {
+              UI.addMessage('assistant', t('classify_not_classified'));
+              history.push({ role: 'assistant', content: t('classify_not_classified'), time: new Date().toISOString(), model: 'pim' });
+              return;
+            }
             window.MAP?.clearClassification?.(mapKey);
             UI.addMessage('assistant', t('classify_cleared'));
             history.push({ role: 'assistant', content: '[intent] clear classification', time: new Date().toISOString(), model: 'pim' });
@@ -626,8 +646,12 @@ window.CHAT = (() => {
               return;
             }
 
-            // Para limpiar_clasificacion: ejecutar directamente
+            // Para limpiar_clasificacion: verificar que hay clasificación antes de ejecutar
             if (_accionOrigen === 'limpiar_clasificacion') {
+              if (!entry.classification) {
+                UI.addMessage('assistant', t('classify_not_classified'));
+                return;
+              }
               window.MAP?.clearClassification?.(selectedMapKey);
               const tituloLC = entry.titulo || selectedMapKey;
               const msgLC = UI.addMessage('assistant', t('classification_cleared', { titulo: tituloLC }));
@@ -2532,8 +2556,10 @@ window.UI = (() => {
     btn.textContent = t('rename_confirm');
 
     const apply = () => {
-      const nombre = input.value.trim();
-      if (!nombre) return;
+      const nombreRaw = input.value.trim();
+      if (!nombreRaw) return;
+      // Capitalizar primera letra, igual que el título del chat
+      const nombre = nombreRaw.charAt(0).toUpperCase() + nombreRaw.slice(1);
       card.remove();
       window.CHAT_HEADER?.startRename?.(nombre);
       const planApply = window.APP?.getCurrentPlan?.();
