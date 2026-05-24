@@ -416,6 +416,12 @@ window.MAP = (() => {
     // Ordenar por geomType: polígonos abajo, líneas medio, puntos arriba
     const sorted = Object.entries(activeLayers)
       .sort((a, b) => (GEOM_ORDER[a[1].geomType] ?? 1) - (GEOM_ORDER[b[1].geomType] ?? 1));
+
+    // Reordenar el objeto activeLayers para que la leyenda refleje el mismo orden
+    Object.keys(activeLayers).forEach(k => delete activeLayers[k]);
+    sorted.forEach(([k, v]) => { activeLayers[k] = v; });
+
+    // Aplicar z-order en Leaflet (el último en bringToFront queda más arriba)
     sorted.forEach(([, layer]) => {
       if (layer.leafletLayer && layer.visible !== false) {
         layer.leafletLayer.bringToFront();
