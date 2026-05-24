@@ -2554,8 +2554,22 @@ window.UI = (() => {
     const layerDef = window.LAYERS?.[layerKey];
     if (!layerDef?.attributes?.length) return;
 
-    const attrs = layerDef.attributes.filter(a => a.visible === true);
-    if (!attrs.length) return;
+    // Filtrar solo atributos clasificables:
+    // - classifiable:true  → categórico con pocos valores conocidos
+    // - numeric:true       → numérico → graduated
+    // - tipo int/float/double/number → numérico → graduated
+    // Los campos con visible:false o sin ninguno de estos flags no se muestran.
+    const NUMERIC_TIPOS = new Set(['int','integer','float','double','number','numeric','long']);
+    const attrs = layerDef.attributes.filter(a => {
+      if (!a.visible) return false;
+      return a.classifiable === true || a.numeric === true || NUMERIC_TIPOS.has(a.tipo?.toLowerCase());
+    });
+    if (!attrs.length) {
+      // Ningún campo marcado como clasificable — avisar al usuario
+      addMessage('assistant', t('classify_no_classifiable_fields'));
+      scrollBottom();
+      return;
+    }
 
     const _lang = window.I18N?.getLang?.() || 'es';
 
@@ -2565,14 +2579,16 @@ window.UI = (() => {
     card.innerHTML = attrs.map(a => {
       const labelI18n = _lang === 'en' ? (a.labelEn || a.label) : (a.label || a.labelEn);
       const displayLabel = (labelI18n && labelI18n.trim()) ? labelI18n : a.campo;
-      const tipoClasif = /num|area|longitud|pobla|cant|total|valor|porc|dens|super/i.test(a.campo || '')
-        ? 'graduated' : 'categorized';
+      // Tipo: numeric flag o tipo numérico → graduated; classifiable → categorized
+      const isNumeric = a.numeric === true || NUMERIC_TIPOS.has(a.tipo?.toLowerCase());
+      const tipoClasif = isNumeric ? 'graduated' : 'categorized';
+      const tipoLabel  = isNumeric ? '📊 graduado' : '🎨 categorizado';
       return `<button class="export-choice-btn"
         data-campo="${a.campo}"
         data-label="${displayLabel}"
         data-type="${tipoClasif}">
         <span class="export-choice-label">${displayLabel}</span>
-        <span class="export-choice-sub">${a.tipo || ''}</span>
+        <span class="export-choice-sub">${tipoLabel}</span>
       </button>`;
     }).join('');
 
