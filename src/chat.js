@@ -2120,7 +2120,11 @@ window.UI = (() => {
   function _showLayerButtons(container, layers, param, chatTitulo, containerRef) {
     const card = document.createElement('div');
     card.className = 'msg-export-choice';
-    card.innerHTML = Object.entries(layers)
+    // Si viene con param, mostrar solo las capas cuya geometría admite ese parámetro
+    const validLayers = param
+      ? Object.fromEntries(Object.entries(layers).filter(([, l]) => _validateParam(param, l.geomType)))
+      : layers;
+    card.innerHTML = Object.entries(validLayers)
       .sort(([, a], [, b]) => (a.titulo || a.layerKey).localeCompare(b.titulo || b.layerKey, undefined, { sensitivity: 'base' }))
       .map(([mapKey, layer]) => `
       <button class="export-choice-btn" data-mapkey="${mapKey}">
@@ -2131,16 +2135,10 @@ window.UI = (() => {
     card.querySelectorAll('.export-choice-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const mapKey = btn.dataset.mapkey;
-        const layer  = layers[mapKey];
+        const layer  = validLayers[mapKey];
         card.innerHTML = '';
         if (param) {
-          // Validar que el parámetro aplique para esta geometría
-          const validParam = _validateParam(param, layer.geomType);
-          if (validParam) {
-            _showParamControl(card, mapKey, layer, validParam, chatTitulo, containerRef);
-          } else {
-            _showParamButtons(card, mapKey, layer, chatTitulo, containerRef);
-          }
+          _showParamControl(card, mapKey, layer, param, chatTitulo, containerRef);
         } else {
           _showParamButtons(card, mapKey, layer, chatTitulo, containerRef);
         }
