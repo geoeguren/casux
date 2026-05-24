@@ -244,7 +244,7 @@ window.INTENT_VALIDAR = (() => {
         bloquea: true,
         error:   'validate_export_format_not_supported',
         errorParams: (p) => ({ formato: p.subtipo }),
-        check:   (p) => !p.subtipo || FORMATOS_SOPORTADOS.has(p.subtipo),
+        check:   (p) => !p.subtipo || p.subtipo === 'vago' || FORMATOS_SOPORTADOS.has(p.subtipo),
       },
       {
         bloquea: true,
