@@ -867,7 +867,7 @@ window.MAP = (() => {
       features: [...geojson.features].sort((a, b) => {
         const ra = rank[String(a.properties?.[field])] ?? -1;
         const rb = rank[String(b.properties?.[field])] ?? -1;
-        return ra - rb; // menor rank → se pinta antes → queda abajo
+        return rb - ra; // mayor rank → se pinta último → queda arriba (= primero en la lista del panel)
       })
     };
   }
