@@ -204,7 +204,8 @@ window.CHAT = (() => {
           window.MAP?.resetView?.();
           window.MAP?.updateLegend?.();
           const msgEl = UI.addMessage('assistant', t('map_cleared'));
-          history.push({ role: 'assistant', content: t('map_cleared'), time: new Date().toISOString() });
+          UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
+          history.push({ role: 'assistant', content: t('map_cleared'), time: new Date().toISOString(), model: 'pim' });
           return;
         }
 
@@ -213,8 +214,9 @@ window.CHAT = (() => {
           isStreaming = false;
           UI.setSendEnabled(true);
           const msgEl = UI.addMessage('assistant', t('export_choose_format'));
+          UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
           UI.showExportChoice(msgEl);
-          history.push({ role: 'assistant', content: t('export_choose_format'), time: new Date().toISOString() });
+          history.push({ role: 'assistant', content: t('export_choose_format'), time: new Date().toISOString(), model: 'pim' });
           return;
         }
 
@@ -239,8 +241,9 @@ window.CHAT = (() => {
           isStreaming = false;
           UI.setSendEnabled(true);
           const msgEl = UI.addMessage('assistant', t('basemap_choose'));
+          UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
           UI.showBasemapButtons(msgEl);
-          history.push({ role: 'assistant', content: t('basemap_choose'), time: new Date().toISOString() });
+          history.push({ role: 'assistant', content: t('basemap_choose'), time: new Date().toISOString(), model: 'pim' });
           return;
         }
 
@@ -250,7 +253,8 @@ window.CHAT = (() => {
           UI.setSendEnabled(true);
           window.MAP?.setBasemap?.(intencion.subtipo);
           const msgEl = UI.addMessage('assistant', t('basemap_changed'));
-          history.push({ role: 'assistant', content: t('basemap_changed'), time: new Date().toISOString() });
+          UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
+          history.push({ role: 'assistant', content: t('basemap_changed'), time: new Date().toISOString(), model: 'pim' });
           return;
         }
 
@@ -459,7 +463,8 @@ window.CHAT = (() => {
           }
           _quitarCapa(mapKey);
           const tituloEliminada = entry.titulo || mapKey;
-          UI.addMessage('assistant', t('layer_removed', { titulo: tituloEliminada }));
+          const msgElQuitar = UI.addMessage('assistant', t('layer_removed', { titulo: tituloEliminada }));
+          UI.setMessageMeta(msgElQuitar, { time: new Date(), model: 'pim' });
           history.push({ role: 'assistant', content: `[intent] -${tituloEliminada}`, time: new Date().toISOString(), model: 'pim' });
           return;
         }
@@ -497,7 +502,8 @@ window.CHAT = (() => {
           const classifyPlan = [{ layerKey, field, type, palette, paletteColors }];
           window.APP?.applyClassifyPlan?.(classifyPlan);
           const msg = t('classify_done', { label: label || field });
-          UI.addMessage('assistant', msg);
+          const msgElClasif = UI.addMessage('assistant', msg);
+          UI.setMessageMeta(msgElClasif, { time: new Date(), model: 'pim' });
           history.push({ role: 'assistant', content: `[intent] classify ${layerKey} by ${field}`, time: new Date().toISOString(), model: 'pim' });
 
           // En móvil: mostrar botón "Ver mapa" si el panel está oculto
