@@ -319,6 +319,7 @@ window.I18N_EN = {
   rename_ask:                'What do you want to call the map?',
   rename_placeholder:        'New name…',
   rename_confirm:            'RENAME',
+  classify_use_panel:         'Classification is available from the advanced editing panel.',
   classify_done:             'Done, classified the layer by {label}. You can adjust the palette and styles from the advanced editing panel.',
   classify_no_classifiable_fields: 'This layer has no classifiable fields. Only layers with defined categorical or numeric attributes can be classified.',
   classify_cleared:           'Done, removed the classification.',
