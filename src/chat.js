@@ -150,6 +150,30 @@ window.CHAT = (() => {
     }
   }
 
+  // Resetea el estilo de una capa al default del catálogo
+  function _resetEstilo(mapKey) {
+    const activeLayers = window.MAP?.getActiveLayers?.() || {};
+    const entry = activeLayers[mapKey];
+    if (!entry) return;
+    const layerDef = window.LAYERS?.[entry.layerKey];
+    if (!layerDef) return;
+    // Estilo por defecto: lo que usaría renderMap si no hubiera estilo guardado
+    const defaultStyle = layerDef.style || {};
+    window.MAP?.updateLayerStyle?.(mapKey, defaultStyle);
+    window.MAP?.updateLegend?.();
+    // Persistir
+    const planActual = window.APP?.getCurrentPlan?.();
+    if (planActual?.instrucciones) {
+      const inst = planActual.instrucciones.find(i => i.mapKey === mapKey);
+      if (inst) delete inst.style;
+    }
+    const _ur = window.AUTH?.currentUser?.();
+    const _cr = window.CHAT?.getChatId?.();
+    if (_ur && _cr && planActual) {
+      window.FB?.updateChat?.(_ur.uid, _cr, { lastMap: planActual }).catch(() => {});
+    }
+  }
+
   // ── Enviar mensaje ────────────────────────────────────────────
 
   async function send(userText) {
@@ -482,6 +506,76 @@ window.CHAT = (() => {
             if (mapPanel?.style.display === 'none') UI.showViewMapBtn?.();
           }
           return;
+        }
+
+        // VALIDACION ERROR → mostrar mensaje bloqueante
+        else if (intencion.tipo === '_validacion_error') {
+          isStreaming = false;
+          UI.setSendEnabled(true);
+          const { error, errorParams } = intencion.parametros;
+          const msg = t(error, errorParams);
+          UI.addMessage('assistant', msg || t('error_generic'));
+          history.push({ role: 'assistant', content: msg, time: new Date().toISOString() });
+          return;
+        }
+
+        // LIMPIAR CLASIFICACION → quitar clasificación de una capa
+        else if (intencion.tipo === 'limpiar_clasificacion') {
+          isStreaming = false;
+          UI.setSendEnabled(true);
+          const { mapKey } = intencion.parametros;
+          if (!mapKey) {
+            // Varias capas → selector
+            const msgEl = UI.addMessage('assistant', t('classify_which_layer_clear'));
+            UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => {
+              window.MAP?.clearClassification?.(selectedMapKey);
+              UI.addMessage('assistant', t('classify_cleared'));
+            });
+            history.push({ role: 'assistant', content: t('classify_which_layer_clear'), time: new Date().toISOString() });
+          } else {
+            window.MAP?.clearClassification?.(mapKey);
+            UI.addMessage('assistant', t('classify_cleared'));
+            history.push({ role: 'assistant', content: '[intent] clear classification', time: new Date().toISOString(), model: 'pim' });
+          }
+          // Persistir
+          const planClasif = window.APP?.getCurrentPlan?.();
+          if (planClasif?.instrucciones && mapKey) {
+            const instClasif = planClasif.instrucciones.find(i => i.mapKey === mapKey);
+            if (instClasif) delete instClasif.classification;
+          }
+          const _ucl = window.AUTH?.currentUser?.();
+          const _ccl = window.CHAT?.getChatId?.();
+          if (_ucl && _ccl && planClasif) {
+            window.FB?.updateChat?.(_ucl.uid, _ccl, { lastMap: planClasif }).catch(() => {});
+          }
+          return;
+        }
+
+        // LIMPIAR ESTILO → resetear estilo de una capa al default del catálogo
+        else if (intencion.tipo === 'limpiar_estilo') {
+          isStreaming = false;
+          UI.setSendEnabled(true);
+          const { mapKey } = intencion.parametros;
+          if (!mapKey) {
+            const msgEl = UI.addMessage('assistant', t('style_which_layer'));
+            UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => {
+              _resetEstilo(selectedMapKey);
+              UI.addMessage('assistant', t('style_reset_done'));
+            });
+            history.push({ role: 'assistant', content: t('style_which_layer'), time: new Date().toISOString() });
+          } else {
+            _resetEstilo(mapKey);
+            UI.addMessage('assistant', t('style_reset_done'));
+            history.push({ role: 'assistant', content: '[intent] reset style', time: new Date().toISOString(), model: 'pim' });
+          }
+          return;
+        }
+
+        // FILTRAR → filtrar objetos de una capa activa (recarga con filtro)
+        else if (intencion.tipo === 'filtrar') {
+          // Delegar al LLM — el filtrado desde intent ya está en construirInstruccion
+          // cuando la capa se carga. Para capas ya cargadas → LLM.
+          // (futuro: re-cargar la capa con el filtro detectado)
         }
 
         // CAPA → resolver sin LLM
