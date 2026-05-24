@@ -289,6 +289,7 @@ window.I18N_ES = {
   style_ask_weight:        '¿A qué grosor querés cambiarlo?',
   style_ask_icon:          '¿Qué ícono querés usar?',
   style_ask_geom:          '¿Qué forma querés usar?',
+  style_ask_opacity:       '¿A qué opacidad querés cambiarlo?',
   style_change_size:       'Cambiá el tamaño',
   style_change_color_point:'Cambiá el color',
   style_change_icon:       'Cambiá el ícono',
