@@ -37,7 +37,12 @@ window.INTENT_UTILS = (() => {
   // Versión más liviana usada por los detectores de acciones (limpiar,
   // exportar, etc.) donde no se necesita la normalización completa.
   // Solo quita tildes y pasa a minúsculas.
+  //
+  // Guarda defensiva: acepta null, undefined y no-strings sin crashear.
+  // INTENT.detectarIntencion() puede recibir inputs inesperados del usuario.
   function normalizarSimple(texto) {
+    if (texto === null || texto === undefined) return '';
+    if (typeof texto !== 'string') texto = String(texto);
     return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   }
 
