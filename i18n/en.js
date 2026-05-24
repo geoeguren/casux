@@ -321,8 +321,8 @@ window.I18N_EN = {
   rename_confirm:            'RENAME',
   classify_done:             'Done, classified the layer by {label}. You can adjust the palette and styles from the advanced editing panel.',
   classify_no_classifiable_fields: 'This layer has no classifiable fields. Only layers with defined categorical or numeric attributes can be classified.',
-  classify_cleared:           'Done, removed the classification.'
-  classify_not_classified:    'This layer has no active classification to remove.',,
+  classify_cleared:           'Done, removed the classification.',
+  classify_not_classified:    'This layer has no active classification to remove.',
   classify_which_layer_clear: 'Which layer do you want to clear the classification from?',
   style_reset_done:           'Done, restored the original style.',
   error_generic:              'Could not execute that action.',
