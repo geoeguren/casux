@@ -124,9 +124,12 @@ window.INTENT_VALIDAR = (() => {
         },
       },
       {
+        // Solo aplica a graduated: necesitás al menos 2 valores numéricos distintos
+        // para calcular breaks. Para categorized cualquier cantidad es válida.
         bloquea: true,
         error:   'validate_classify_too_few_values',
         check:   (p, ctx) => {
+          if (p.type !== 'graduated') return true; // categorized: siempre válido
           const entry = ctx.activeLayers[p.mapKey];
           if (!entry?.geojson?.features) return true;
           const valores = new Set(
