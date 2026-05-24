@@ -2386,8 +2386,9 @@ window.UI = (() => {
     const chatTitulo = window.APP?.getCurrentPlan?.()?.titulo || '';
     const param = intencion?.parametros?.param || null;
 
+    const _PARAM_QUESTIONS = { color: 'style_ask_color', radius: 'style_ask_size', weight: 'style_ask_weight', icon: 'style_ask_icon', geom: 'style_ask_geom', opacity: 'style_ask_opacity' };
     const msgEl = addMessage('assistant',
-      param ? t('style_ask_' + param) || t('style_what_to_change') : t('style_what_to_change')
+      param ? t(_PARAM_QUESTIONS[param] || 'style_what_to_change') : t('style_what_to_change')
     );
 
     // Crear un container hermano del msgEl (igual que showStyleFlow)
