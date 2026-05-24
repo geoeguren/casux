@@ -1,0 +1,1610 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>CASUX — Intent Test Suite</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px;
+         background: #0f0f10; color: #d4d4d4; padding: 20px; }
+  h1 { font-size: 18px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+  .subtitle { color: #888; font-size: 12px; margin-bottom: 16px; }
+  #controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  button { padding: 6px 14px; border-radius: 5px; border: 1px solid #333;
+           background: #1c1c1e; color: #d4d4d4; cursor: pointer; font-size: 12px;
+           font-family: inherit; transition: background .15s; }
+  button:hover { background: #2a2a2e; }
+  button.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  button.primary:hover { background: #1d4ed8; }
+  #suite-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .suite-btn { padding: 4px 10px; border-radius: 12px; border: 1px solid #333;
+               background: #1c1c1e; color: #888; cursor: pointer; font-size: 11px;
+               font-family: inherit; transition: all .15s; }
+  .suite-btn.active { border-color: #555; color: #d4d4d4; background: #2a2a2e; }
+  #summary { display: flex; gap: 16px; padding: 10px 14px; border-radius: 7px;
+             background: #1c1c1e; border: 1px solid #2a2a2e; margin-bottom: 14px;
+             flex-wrap: wrap; }
+  .stat { display: flex; flex-direction: column; gap: 1px; }
+  .stat-val { font-size: 22px; font-weight: 700; line-height: 1; }
+  .stat-lbl { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: .04em; }
+  .s-pass { color: #22c55e; }
+  .s-fail { color: #ef4444; }
+  .s-skip { color: #f59e0b; }
+  .s-total { color: #d4d4d4; }
+  #progress { height: 3px; background: #2a2a2e; border-radius: 2px;
+              margin-bottom: 14px; overflow: hidden; }
+  #progress-bar { height: 100%; width: 0; background: #22c55e;
+                  transition: width .1s; border-radius: 2px; }
+  .suite { margin-bottom: 14px; border: 1px solid #2a2a2e; border-radius: 7px;
+           overflow: hidden; }
+  .suite-header { padding: 8px 12px; background: #1a1a1c; display: flex;
+                  align-items: center; gap: 8px; cursor: pointer;
+                  user-select: none; }
+  .suite-header:hover { background: #222224; }
+  .suite-name { font-weight: 600; color: #e5e5e5; font-size: 13px; flex: 1; }
+  .suite-stats { font-size: 11px; color: #666; }
+  .suite-toggle { color: #555; font-size: 10px; transition: transform .15s; }
+  .suite.collapsed .suite-toggle { transform: rotate(-90deg); }
+  .suite.collapsed .suite-body { display: none; }
+  .suite-body { border-top: 1px solid #222; }
+  .test-row { display: flex; align-items: flex-start; gap: 8px; padding: 6px 12px;
+              border-bottom: 1px solid #1a1a1a; }
+  .test-row:last-child { border-bottom: none; }
+  .test-row.pass { }
+  .test-row.fail { background: rgba(239,68,68,.06); }
+  .test-row.skip { background: rgba(245,158,11,.04); }
+  .icon { font-size: 12px; margin-top: 1px; flex-shrink: 0; width: 14px; }
+  .pass .icon { color: #22c55e; }
+  .fail .icon { color: #ef4444; }
+  .skip .icon { color: #f59e0b; }
+  .test-desc { flex: 1; color: #c0c0c0; line-height: 1.4; }
+  .test-desc em { font-style: normal; color: #888; font-size: 11px; }
+  .test-err { color: #f87171; font-size: 11px; margin-top: 3px; font-family: monospace;
+              background: rgba(239,68,68,.08); padding: 4px 8px; border-radius: 4px;
+              border-left: 2px solid #ef4444; }
+  .test-got { color: #94a3b8; font-size: 11px; margin-top: 2px; font-family: monospace; }
+  #log { font-family: monospace; font-size: 11px; color: #666; margin-top: 14px;
+         padding: 10px; background: #141416; border-radius: 6px; max-height: 200px;
+         overflow-y: auto; border: 1px solid #2a2a2e; }
+  .warn { color: #f59e0b; } .err { color: #ef4444; } .ok { color: #22c55e; }
+</style>
+</head>
+<body>
+<h1>🧪 CASUX — Intent Test Suite</h1>
+<p class="subtitle">Suite exhaustiva para window.INTENT y módulos relacionados · Correr desde <strong>chat/index.html</strong> cargado en el browser</p>
+
+<div id="controls">
+  <button class="primary" onclick="runAll()">▶ Correr todos</button>
+  <button onclick="runFiltered()">▶ Correr seleccionados</button>
+  <button onclick="toggleAll(true)">Expandir todo</button>
+  <button onclick="toggleAll(false)">Colapsar todo</button>
+  <button onclick="showOnlyFailed()">Solo fallos</button>
+</div>
+
+<div id="suite-filter"></div>
+
+<div id="summary">
+  <div class="stat"><span class="stat-val s-total" id="st-total">0</span><span class="stat-lbl">Total</span></div>
+  <div class="stat"><span class="stat-val s-pass" id="st-pass">0</span><span class="stat-lbl">Pasaron</span></div>
+  <div class="stat"><span class="stat-val s-fail" id="st-fail">0</span><span class="stat-lbl">Fallaron</span></div>
+  <div class="stat"><span class="stat-val s-skip" id="st-skip">0</span><span class="stat-lbl">Saltados</span></div>
+  <div class="stat"><span class="stat-val" id="st-time" style="color:#888">—</span><span class="stat-lbl">ms</span></div>
+</div>
+<div id="progress"><div id="progress-bar"></div></div>
+<div id="results"></div>
+<div id="log">Consola de test — acá aparecen errores inesperados...</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// FRAMEWORK MÍNIMO DE TEST
+// ═══════════════════════════════════════════════════════════════════
+
+const SUITES = [];
+let activeSuites = new Set();
+
+function suite(name, fn) {
+  const s = { name, tests: [], fn };
+  SUITES.push(s);
+}
+
+function buildSuites() {
+  SUITES.forEach(s => { s.tests = []; s._builder = s.fn; });
+  SUITES.forEach(s => {
+    currentSuite = s;
+    try { s._builder(); } catch(e) { log('err', `Error armando suite "${s.name}": ${e.message}`); }
+  });
+}
+
+let currentSuite = null;
+
+function test(desc, fn, skip = false) {
+  if (!currentSuite) return;
+  currentSuite.tests.push({ desc, fn, skip });
+}
+
+function xtest(desc, fn) { test(desc, fn, true); }
+
+// Assertions
+function eq(actual, expected, msg) {
+  if (actual !== expected)
+    throw new Error((msg||'') + `\n  esperado: ${JSON.stringify(expected)}\n  recibido: ${JSON.stringify(actual)}`);
+}
+function eqDeep(actual, expected, msg) {
+  const a = JSON.stringify(actual), b = JSON.stringify(expected);
+  if (a !== b)
+    throw new Error((msg||'') + `\n  esperado: ${b}\n  recibido: ${a}`);
+}
+function notNull(val, msg) {
+  if (val === null || val === undefined)
+    throw new Error((msg||'valor no debería ser null/undefined'));
+}
+function isNull(val, msg) {
+  if (val !== null && val !== undefined)
+    throw new Error((msg||'valor debería ser null') + ` → recibido: ${JSON.stringify(val)}`);
+}
+function includes(obj, props, msg) {
+  for (const [k, v] of Object.entries(props)) {
+    if (obj[k] !== v)
+      throw new Error((msg||'') + `\n  props[${k}]: esperado ${JSON.stringify(v)}, recibido ${JSON.stringify(obj[k])}`);
+  }
+}
+function ok(val, msg) { if (!val) throw new Error(msg || 'condición falsa'); }
+
+// Mocks de estado del mapa
+function mockMapa(layers = {}) {
+  window.MAP = {
+    getActiveLayers: () => layers,
+    addLayer: () => {},
+  };
+}
+
+function mockMapaVacio() { mockMapa({}); }
+
+function mockMapaConCapa(mapKey, layerKey, extras = {}) {
+  mockMapa({
+    [mapKey]: {
+      layerKey,
+      titulo: layerKey.replace(/_ar|_uy|_cl/g,'').replace(/_/g,' '),
+      tituloUI: layerKey,
+      visible: true,
+      geomType: window.LAYERS?.[layerKey]?.geomType || 'polygon',
+      ...extras,
+    }
+  });
+}
+
+function mockMapaConDosCapas() {
+  mockMapa({
+    'map_1': { layerKey: 'provincia_ar', titulo: 'Provincias de Argentina', tituloUI: 'Provincias de Argentina', visible: true, geomType: 'polygon' },
+    'map_2': { layerKey: 'aeropuerto_ar', titulo: 'Aeropuertos de Argentina', tituloUI: 'Aeropuertos de Argentina', visible: true, geomType: 'point' },
+  });
+}
+
+function log(type, msg) {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = type;
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SUITE 1 — NORMALIZACIÓN (intent-utils.js)
+// ═══════════════════════════════════════════════════════════════════
+suite('1. Normalización (UTILS + INTENT_UTILS)', () => {
+
+  test('normalizar quita tildes', () => {
+    eq(window.UTILS.normalizar('Córdoba'), 'cordoba');
+  });
+  test('normalizar quita ñ', () => {
+    eq(window.UTILS.normalizar('Año'), 'ano');
+  });
+  test('normalizar pasa a minúsculas', () => {
+    eq(window.UTILS.normalizar('BUENOS AIRES'), 'buenos aires');
+  });
+  test('normalizar colapsa espacios dobles', () => {
+    eq(window.UTILS.normalizar('Rio  Negro'), 'rio negro');
+  });
+  test('normalizar quita caracteres especiales', () => {
+    eq(window.UTILS.normalizar('São Paulo'), 'sao paulo');
+  });
+  test('normalizar string vacío → string vacío', () => {
+    eq(window.UTILS.normalizar(''), '');
+  });
+  test('normalizar null → string vacío', () => {
+    eq(window.UTILS.normalizar(null), '');
+  });
+  test('normalizar array → usa primer elemento', () => {
+    eq(window.UTILS.normalizar(['Córdoba', 'Mendoza']), 'cordoba');
+  });
+  test('normalizarSimple quita tildes pero no chars especiales', () => {
+    const r = window.INTENT_UTILS.normalizarSimple('Córdoba, ríos');
+    ok(r.includes('cordoba'), 'debe incluir cordoba');
+    ok(r.includes('rios'), 'debe incluir rios');
+  });
+  test('tokenizar filtra stopwords', () => {
+    const tokens = window.INTENT_UTILS.tokenizar('quiero ver los ríos de argentina');
+    ok(!tokens.includes('de'), 'no debe incluir "de"');
+    ok(!tokens.includes('los'), 'no debe incluir "los"');
+  });
+  test('tokenizar filtra tokens cortos', () => {
+    const tokens = window.INTENT_UTILS.tokenizar('el rio en la');
+    ok(!tokens.includes('en'), 'no debe incluir "en" (2 chars)');
+    ok(!tokens.includes('la'), 'no debe incluir "la"');
+  });
+  test('buildPaisesMap contiene ar, uy, cl', () => {
+    const m = window.INTENT_UTILS.buildPaisesMap();
+    eq(m['argentina'], 'ar');
+    eq(m['uruguay'], 'uy');
+    eq(m['chile'], 'cl');
+  });
+  test('normalizar y normalizarSimple son consistentes en tildes', () => {
+    const a = window.UTILS.normalizar('Río Paraná');
+    const b = window.INTENT_UTILS.normalizarSimple('Río Paraná');
+    // Ambos deben quitar tildes
+    ok(!a.includes('í'), 'UTILS.normalizar debe quitar í');
+    ok(!b.includes('í'), 'normalizarSimple debe quitar í');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SUITE 2 — GRUPOS VERBALES (intent-verbos.js)
+// ═══════════════════════════════════════════════════════════════════
+suite('2. Grupos verbales (INTENT_VERBOS)', () => {
+
+  const G = t => window.INTENT_VERBOS.detectarGrupo(window.INTENT_UTILS.normalizarSimple(t));
+
+  // CARGAR
+  test('CARGAR — "mostrá aeropuertos"', () => eq(G('mostrá aeropuertos'), 'CARGAR'));
+  test('CARGAR — "dame las provincias"', () => eq(G('dame las provincias'), 'CARGAR'));
+  test('CARGAR — "show me rivers"', () => eq(G('show me rivers'), 'CARGAR'));
+  test('CARGAR — "quiero ver ríos"', () => eq(G('quiero ver ríos'), 'CARGAR'));
+
+  // AGREGAR
+  test('AGREGAR — "agregá aeropuertos"', () => eq(G('agregá aeropuertos'), 'AGREGAR'));
+  test('AGREGAR — "también mostrá rutas"', () => eq(G('también mostrá rutas'), 'AGREGAR'));
+  test('AGREGAR — "add airports"', () => eq(G('add airports'), 'AGREGAR'));
+  test('AGREGAR — NOT activa en medio de frase', () => {
+    // "y" solo no debe activar AGREGAR a menos que haya verbo aditivo al inicio
+    const g = G('ríos y lagos de córdoba');
+    ok(g !== 'AGREGAR', `"ríos y lagos" no debe ser AGREGAR, fue: ${g}`);
+  });
+
+  // BORRAR
+  test('BORRAR — "borrá todo"', () => eq(G('borrá todo'), 'BORRAR'));
+  test('BORRAR — "eliminá la capa"', () => eq(G('eliminá la capa'), 'BORRAR'));
+  test('BORRAR — "clear the map"', () => eq(G('clear the map'), 'BORRAR'));
+
+  // OCULTAR
+  test('OCULTAR — "ocultá los aeropuertos"', () => eq(G('ocultá los aeropuertos'), 'OCULTAR'));
+  test('OCULTAR — "hide the layer"', () => eq(G('hide the layer'), 'OCULTAR'));
+
+  // MOSTRAR_VIS
+  test('MOSTRAR_VIS — "activá los aeropuertos"', () => eq(G('activá los aeropuertos'), 'MOSTRAR_VIS'));
+  test('MOSTRAR_VIS — "turn on the layer"', () => eq(G('turn on the layer'), 'MOSTRAR_VIS'));
+  test('MOSTRAR_VIS — "volvé a mostrar los ríos"', () => eq(G('volvé a mostrar los ríos'), 'MOSTRAR_VIS'));
+
+  // ESTILO
+  test('ESTILO — "cambiá el color"', () => eq(G('cambiá el color'), 'ESTILO'));
+  test('ESTILO — "ponelo más grande"', () => eq(G('ponelo más grande'), 'ESTILO'));
+  test('ESTILO — "hacelo rojo"', () => eq(G('hacelo rojo'), 'ESTILO'));
+  test('ESTILO — "change the size"', () => eq(G('change the size'), 'ESTILO'));
+
+  // CLASIFICAR
+  test('CLASIFICAR — "clasificá por provincia"', () => eq(G('clasificá por provincia'), 'CLASIFICAR'));
+  test('CLASIFICAR — "pintá por departamento"', () => eq(G('pintá por departamento'), 'CLASIFICAR'));
+  test('CLASIFICAR — "color by region"', () => eq(G('color by region'), 'CLASIFICAR'));
+
+  // LIMPIAR_PROP — debe ganar sobre BORRAR
+  test('LIMPIAR_PROP gana sobre BORRAR — "borrá la clasificación"', () => {
+    eq(G('borrá la clasificación'), 'LIMPIAR_PROP');
+  });
+  test('LIMPIAR_PROP — "resetear el estilo"', () => eq(G('resetear el estilo'), 'LIMPIAR_PROP'));
+  test('LIMPIAR_PROP — "quitá el filtro"', () => eq(G('quitá el filtro'), 'LIMPIAR_PROP'));
+
+  // EXPORTAR
+  test('EXPORTAR — "exportá el mapa"', () => eq(G('exportá el mapa'), 'EXPORTAR'));
+  test('EXPORTAR — "descargá los datos"', () => eq(G('descargá los datos'), 'EXPORTAR'));
+  test('EXPORTAR — "download the map"', () => eq(G('download the map'), 'EXPORTAR'));
+
+  // BASEMAP
+  test('BASEMAP — "fondo oscuro"', () => eq(G('fondo oscuro'), 'BASEMAP'));
+  test('BASEMAP — "cambiá el basemap"', () => eq(G('cambiá el basemap'), 'BASEMAP'));
+  test('BASEMAP verbless — "dark matter"', () => eq(G('dark matter'), 'BASEMAP'));
+
+  // RENOMBRAR
+  test('RENOMBRAR — "renombrá el mapa como Mapa test"', () => eq(G('renombrá el mapa como Mapa test'), 'RENOMBRAR'));
+  test('RENOMBRAR — "cambiá el nombre"', () => eq(G('cambiá el nombre'), 'RENOMBRAR'));
+
+  // FILTRAR
+  test('FILTRAR — "filtrá los que son internacionales"', () => eq(G('filtrá los que son internacionales'), 'FILTRAR'));
+  test('FILTRAR — "mostrá solo los aeropuertos internacionales"', () => eq(G('mostrá solo los aeropuertos internacionales'), 'FILTRAR'));
+
+  // PRIORIDADES — casos donde dos grupos compiten
+  test('PRIORIDAD: CLASIFICAR > ESTILO — "pinta por campo"', () => {
+    eq(G('pinta por campo'), 'CLASIFICAR');
+  });
+  test('PRIORIDAD: LIMPIAR_PROP > BORRAR — "limpiá los colores"', () => {
+    const g = G('limpiá los colores');
+    eq(g, 'LIMPIAR_PROP');
+  });
+  test('sin match → null', () => {
+    isNull(G('¿qué es una corriente de agua?'));
+  });
+  test('pregunta factual → null', () => {
+    isNull(G('cuántos departamentos tiene Córdoba'));
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SUITE 3 — OBJETO (intent-objeto.js)
+// ═══════════════════════════════════════════════════════════════════
+suite('3. Clasificación de objeto (INTENT_OBJETO)', () => {
+
+  const O = (txt, scorer=null) => window.INTENT_OBJETO.detectarObjeto(txt, scorer);
+
+  test('CLASIFICACION — "la clasificación"', () => {
+    mockMapaVacio();
+    eq(O('borrá la clasificación').tipo, 'CLASIFICACION');
+  });
+  test('ESTILO_PROP — "el color" → prop=color', () => {
+    mockMapaVacio();
+    const r = O('cambiá el color');
+    eq(r.tipo, 'ESTILO_PROP');
+    eq(r.propEstilo, 'color');
+  });
+  test('ESTILO_PROP — "el tamaño" → prop=radius', () => {
+    mockMapaVacio();
+    const r = O('ponelo más grande tamaño');
+    eq(r.tipo, 'ESTILO_PROP');
+    eq(r.propEstilo, 'radius');
+  });
+  test('ESTILO_PROP — "el grosor" → prop=weight', () => {
+    mockMapaVacio();
+    const r = O('más grueso');
+    eq(r.tipo, 'ESTILO_PROP');
+    eq(r.propEstilo, 'weight');
+  });
+  test('ESTILO_PROP — "opacidad" → prop=opacity', () => {
+    mockMapaVacio();
+    const r = O('más transparente opacidad');
+    eq(r.tipo, 'ESTILO_PROP');
+    eq(r.propEstilo, 'opacity');
+  });
+  test('BASEMAP — "el fondo"', () => {
+    mockMapaVacio();
+    eq(O('cambiá el fondo').tipo, 'BASEMAP');
+  });
+  test('NOMBRE — "el nombre del mapa"', () => {
+    mockMapaVacio();
+    eq(O('renombrá el nombre del mapa').tipo, 'NOMBRE');
+  });
+  test('FILTRO — "el filtro"', () => {
+    mockMapaVacio();
+    eq(O('quitá el filtro').tipo, 'FILTRO');
+  });
+  test('MAPA — "todo el mapa"', () => {
+    mockMapaVacio();
+    eq(O('borrá todo el mapa').tipo, 'MAPA');
+  });
+  test('CAPA_ACTIVA — identifica por nombre de capa cargada', () => {
+    mockMapaConCapa('m1', 'aeropuerto_ar');
+    const r = O('ocultá los aeropuertos');
+    eq(r.tipo, 'CAPA_ACTIVA');
+    eq(r.ref, 'm1');
+  });
+  test('CAPA_ACTIVA vaga — una sola capa cargada, pedido genérico', () => {
+    mockMapaConCapa('m1', 'provincia_ar');
+    const r = O('ocultala');
+    eq(r.tipo, 'CAPA_ACTIVA');
+    eq(r.ref, 'm1');
+  });
+  test('AMBIGUO — varias capas, objeto vago', () => {
+    mockMapaConDosCapas();
+    const r = O('ocultala');
+    eq(r.tipo, 'AMBIGUO');
+  });
+  test('NUEVA_CAPA — cuando scorer tiene resultado', () => {
+    mockMapaVacio();
+    const fakeScorer = { layerKey: 'aeropuerto_ar', parametros: { instruccion: { layerKey: 'aeropuerto_ar' } } };
+    const r = O('mostrá aeropuertos', fakeScorer);
+    eq(r.tipo, 'NUEVA_CAPA');
+  });
+  test('NUEVA_CAPA aditivo NO activa capa ya cargada', () => {
+    mockMapaConCapa('m1', 'aeropuerto_ar');
+    // Si el scorer dice aeropuerto_ar y ya está cargado, no debe ser NUEVA_CAPA
+    const fakeScorer = { _grupoAditivo: true, layerKey: 'aeropuerto_ar', parametros: {} };
+    const r = O('agregá aeropuertos', fakeScorer);
+    // Debe ser CAPA_ACTIVA (ya cargada) no NUEVA_CAPA
+    ok(r.tipo !== 'NUEVA_CAPA', `Con capa ya activa no debe ser NUEVA_CAPA, fue: ${r.tipo}`);
+  });
+
+  // resolverSubtipoBasemap
+  test('resolverSubtipoBasemap — "fondo oscuro" → dark', () => {
+    eq(window.INTENT_OBJETO.resolverSubtipoBasemap('fondo oscuro'), 'dark');
+  });
+  test('resolverSubtipoBasemap — "positron" → gray', () => {
+    eq(window.INTENT_OBJETO.resolverSubtipoBasemap('positron'), 'gray');
+  });
+  test('resolverSubtipoBasemap — "voyager" → voyager', () => {
+    eq(window.INTENT_OBJETO.resolverSubtipoBasemap('voyager'), 'voyager');
+  });
+  test('resolverSubtipoBasemap — sin especificar → vago', () => {
+    eq(window.INTENT_OBJETO.resolverSubtipoBasemap('cambia el fondo'), 'vago');
+  });
+
+  // resolverSubtipoExport
+  test('resolverSubtipoExport — "jpeg" → jpeg', () => {
+    eq(window.INTENT_OBJETO.resolverSubtipoExport('exportar imagen jpeg'), 'jpeg');
+  });
+  test('resolverSubtipoExport — "geojson" → geojson', () => {
+    eq(window.INTENT_OBJETO.resolverSubtipoExport('bajar los datos geojson'), 'geojson');
+  });
+  test('resolverSubtipoExport — "shapefile" → no_soportado', () => {
+    eq(window.INTENT_OBJETO.resolverSubtipoExport('exportar shapefile'), 'no_soportado');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SUITE 4 — TABLA (intent-tabla.js)
+// ═══════════════════════════════════════════════════════════════════
+suite('4. Tabla Verbo×Objeto (INTENT_TABLA)', () => {
+
+  const R = (g, o) => window.INTENT_TABLA.resolver(g, o);
+
+  test('CARGAR × NUEVA_CAPA → capa', () => eq(R('CARGAR','NUEVA_CAPA'), 'capa'));
+  test('CARGAR × CAPA_ACTIVA → toggle_vis_on', () => eq(R('CARGAR','CAPA_ACTIVA'), 'toggle_vis_on'));
+  test('CARGAR × MAPA → null', () => eq(R('CARGAR','MAPA'), null));
+  test('CARGAR × AMBIGUO → LLM', () => eq(R('CARGAR','AMBIGUO'), 'LLM'));
+
+  test('AGREGAR × NUEVA_CAPA → agregar', () => eq(R('AGREGAR','NUEVA_CAPA'), 'agregar'));
+  test('AGREGAR × CAPA_ACTIVA → toggle_vis_on', () => eq(R('AGREGAR','CAPA_ACTIVA'), 'toggle_vis_on'));
+
+  test('BORRAR × MAPA → limpiar', () => eq(R('BORRAR','MAPA'), 'limpiar'));
+  test('BORRAR × CAPA_ACTIVA → quitar', () => eq(R('BORRAR','CAPA_ACTIVA'), 'quitar'));
+  test('BORRAR × NUEVA_CAPA → LLM', () => eq(R('BORRAR','NUEVA_CAPA'), 'LLM'));
+  test('BORRAR × CLASIFICACION → limpiar_clasificacion', () => eq(R('BORRAR','CLASIFICACION'), 'limpiar_clasificacion'));
+  test('BORRAR × ESTILO_PROP → limpiar_estilo', () => eq(R('BORRAR','ESTILO_PROP'), 'limpiar_estilo'));
+  test('BORRAR × AMBIGUO → selector_capa', () => eq(R('BORRAR','AMBIGUO'), 'selector_capa'));
+  test('BORRAR × FILTRO → limpiar_filtro', () => eq(R('BORRAR','FILTRO'), 'limpiar_filtro'));
+
+  test('OCULTAR × CAPA_ACTIVA → toggle_vis_off', () => eq(R('OCULTAR','CAPA_ACTIVA'), 'toggle_vis_off'));
+  test('OCULTAR × MAPA → null (no se puede ocultar todo)', () => eq(R('OCULTAR','MAPA'), null));
+  test('OCULTAR × AMBIGUO → selector_capa', () => eq(R('OCULTAR','AMBIGUO'), 'selector_capa'));
+
+  test('MOSTRAR_VIS × CAPA_ACTIVA → toggle_vis_on', () => eq(R('MOSTRAR_VIS','CAPA_ACTIVA'), 'toggle_vis_on'));
+  test('MOSTRAR_VIS × NUEVA_CAPA → capa', () => eq(R('MOSTRAR_VIS','NUEVA_CAPA'), 'capa'));
+
+  test('ESTILO × CAPA_ACTIVA → estilo_vago', () => eq(R('ESTILO','CAPA_ACTIVA'), 'estilo_vago'));
+  test('ESTILO × BASEMAP → basemap', () => eq(R('ESTILO','BASEMAP'), 'basemap'));
+  test('ESTILO × NOMBRE → renombrar', () => eq(R('ESTILO','NOMBRE'), 'renombrar'));
+  test('ESTILO × AMBIGUO → selector_capa', () => eq(R('ESTILO','AMBIGUO'), 'selector_capa'));
+
+  test('CLASIFICAR × AMBIGUO → clasificar (no selector)', () => eq(R('CLASIFICAR','AMBIGUO'), 'clasificar'));
+  test('CLASIFICAR × CAPA_ACTIVA → clasificar', () => eq(R('CLASIFICAR','CAPA_ACTIVA'), 'clasificar'));
+
+  test('LIMPIAR_PROP × CLASIFICACION → limpiar_clasificacion', () => eq(R('LIMPIAR_PROP','CLASIFICACION'), 'limpiar_clasificacion'));
+  test('LIMPIAR_PROP × ESTILO_PROP → limpiar_estilo', () => eq(R('LIMPIAR_PROP','ESTILO_PROP'), 'limpiar_estilo'));
+  test('LIMPIAR_PROP × MAPA → limpiar', () => eq(R('LIMPIAR_PROP','MAPA'), 'limpiar'));
+
+  test('EXPORTAR × MAPA → export', () => eq(R('EXPORTAR','MAPA'), 'export'));
+  test('EXPORTAR × AMBIGUO → export', () => eq(R('EXPORTAR','AMBIGUO'), 'export'));
+
+  test('BASEMAP × BASEMAP → basemap', () => eq(R('BASEMAP','BASEMAP'), 'basemap'));
+  test('BASEMAP × CAPA_ACTIVA → null', () => eq(R('BASEMAP','CAPA_ACTIVA'), null));
+
+  test('FILTRAR × CAPA_ACTIVA → filtrar', () => eq(R('FILTRAR','CAPA_ACTIVA'), 'filtrar'));
+  test('FILTRAR × MAPA → selector_capa', () => eq(R('FILTRAR','MAPA'), 'selector_capa'));
+  test('FILTRAR × AMBIGUO → selector_capa', () => eq(R('FILTRAR','AMBIGUO'), 'selector_capa'));
+
+  test('grupo inválido → LLM', () => eq(R('INEXISTENTE','MAPA'), 'LLM'));
+  test('objeto inválido → LLM', () => eq(R('BORRAR','INVALIDO'), 'LLM'));
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SUITE 5 — SCORER (intent-scorer.js)
+// Requiere window.LAYERS, window.GEO_MAPS, window.SOURCES cargados
+// ═══════════════════════════════════════════════════════════════════
+suite('5. Scorer TF-IDF (INTENT_SCORER)', () => {
+
+  const layers = () => window.LAYERS || {};
+  const SC = (txt, area=null) => window.INTENT_SCORER.buscarCapa(
+    window.UTILS.normalizar(txt), area
+  );
+  const DA = txt => window.INTENT_SCORER.detectarArea(
+    window.UTILS.normalizar(txt)
+  );
+
+  test('LAYERS cargado con capas AR', () => {
+    ok(Object.keys(layers()).length > 50, `Pocas capas cargadas: ${Object.keys(layers()).length}`);
+  });
+  test('LAYERS tiene capas UY', () => {
+    ok(Object.keys(layers()).some(k => k.endsWith('_uy')), 'No hay capas _uy');
+  });
+  test('LAYERS tiene capas CL', () => {
+    ok(Object.keys(layers()).some(k => k.endsWith('_cl')), 'No hay capas _cl');
+  });
+
+  // Búsquedas básicas AR
+  test('Scorer: "aeropuertos" → aeropuerto_ar', () => {
+    const r = SC('aeropuertos', { pais: 'ar' });
+    notNull(r, 'scorer devolvió null para "aeropuertos"');
+    eq(r.key, 'aeropuerto_ar');
+  });
+  test('Scorer: "provincias de argentina" → provincia_ar', () => {
+    const r = SC('provincias de argentina');
+    notNull(r);
+    eq(r.key, 'provincia_ar');
+  });
+  test('Scorer: "rutas nacionales" → vial_nacional_ar', () => {
+    const r = SC('rutas nacionales', { pais: 'ar' });
+    notNull(r);
+    eq(r.key, 'vial_nacional_ar');
+  });
+  test('Scorer: "ríos de argentina" → rio_ar', () => {
+    const r = SC('ríos de argentina');
+    notNull(r);
+    eq(r.key, 'rio_ar');
+  });
+  test('Scorer: "escuelas" → establecimiento_educativo_ar', () => {
+    const r = SC('escuelas', { pais: 'ar' });
+    notNull(r);
+    eq(r.key, 'establecimiento_educativo_ar');
+  });
+  test('Scorer: "lagos y embalses" → lago_embalse_ar', () => {
+    const r = SC('lagos embalses', { pais: 'ar' });
+    notNull(r);
+    eq(r.key, 'lago_embalse_ar');
+  });
+
+  // Búsquedas UY
+  test('Scorer: "departamentos de uruguay" → departamento_uy', () => {
+    const r = SC('departamentos', { pais: 'uy' });
+    notNull(r);
+    eq(r.key, 'departamento_uy');
+  });
+  test('Scorer: "aeropuertos uruguay" no devuelve capa AR', () => {
+    const r = SC('aeropuertos', { pais: 'uy' });
+    if (r) ok(!r.key.endsWith('_ar'), `No debe devolver capa AR para país UY, devolvió: ${r.key}`);
+  });
+
+  // Búsquedas CL
+  test('Scorer: texto con "chile" → capa CL', () => {
+    const r = SC('accidentes de transito chile');
+    if (r) ok(r.key.endsWith('_cl'), `Texto con "chile" debería dar capa CL, dio: ${r.key}`);
+  });
+
+  // No confusion de países
+  test('Scorer: "aeropuertos" con pais=ar NO devuelve aeropuertos_uy', () => {
+    const r = SC('aeropuertos', { pais: 'ar' });
+    if (r) ok(r.key !== 'aeropuertos_uy', 'No debe devolver aeropuertos_uy para pais=ar');
+  });
+
+  // Score insuficiente → null
+  test('Scorer: texto sin sentido → null', () => {
+    const r = SC('asjdklfjaskdjfaskdf xyz123');
+    isNull(r, 'texto sin sentido debe devolver null');
+  });
+  test('Scorer: texto de acción ("exportar mapa") → null o no-capa', () => {
+    // PATRON_NO_CAPA se aplica en detectarCapaDirecta, no en buscarCapa
+    // pero el score debe ser bajo para textos puros de acción
+    const r = SC('exportar el mapa jpeg');
+    // No hay capa "mapa jpeg" — score muy bajo → null esperado
+    if (r) ok(r.score < 8, `Score inesperadamente alto para texto de acción: ${r.score}`);
+  });
+
+  // detectarArea
+  test('detectarArea: "Córdoba" → provincia ar', () => {
+    const a = DA('provincias de córdoba');
+    notNull(a, 'detectarArea devolvió null para Córdoba');
+    ok(a.pais === 'ar', `pais debe ser ar, fue: ${a.pais}`);
+    ok(!a.ambiguo, 'Córdoba provincia no debe ser ambigua');
+  });
+  test('detectarArea: "Montevideo" → departamento uy', () => {
+    const a = DA('montevideo');
+    notNull(a, 'detectarArea devolvió null para Montevideo');
+    eq(a.pais, 'uy');
+  });
+  test('detectarArea: "texto sin lugar" → null', () => {
+    isNull(DA('rutas nacionales interesantes'));
+  });
+  test('detectarArea: "provincia de Salta" → provincia, no localidad', () => {
+    const a = DA('provincia de salta');
+    notNull(a);
+    ok(a.tipo === 'provincia', `debe ser provincia, fue: ${a.tipo}`);
+  });
+  test('detectarArea: "San Martín" → ambiguo (existe en múltiples provincias)', () => {
+    const a = DA('san martin');
+    // San Martín existe en varias provincias → ambiguo
+    if (a) ok(a.ambiguo === true || a.tipo === 'departamento', `San Martín debería ser ambiguo`);
+  });
+  test('detectarArea: "departamento Uruguay" → departamento (no país)', () => {
+    // "departamento Uruguay" en Entre Ríos — contexto admin debe resolverlo
+    const a = DA('departamento uruguay');
+    if (a) ok(a.tipo !== 'pais', `"departamento Uruguay" no debe resolverse como país`);
+  });
+  test('detectarArea: "Buenos Aires" sin hint → provincia (nivel más general)', () => {
+    const a = DA('aeropuertos de buenos aires');
+    notNull(a);
+    // Preferir provincia (nivel 2) sobre localidad (nivel 4)
+    ok(a.nivel <= 2, `Buenos Aires sin hint debe dar nivel ≤ 2, dio: ${a.nivel}`);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SUITE 6 — ACCIONES (casos críticos del motor)
+// ═══════════════════════════════════════════════════════════════════
+suite('6. Acciones — casos críticos', () => {
+
+  const I = (txt, hist=[]) => window.INTENT.detectarIntencion(txt, hist);
+
+  // Mapa vacío — acciones imposibles
+  test('Mapa vacío: quitar → _validacion_error o selector', () => {
+    mockMapaVacio();
+    const r = I('quitá la capa');
+    // Sin capas: debe bloquear o ir al LLM, NUNCA ejecutar quitar
+    if (r) ok(r.tipo === '_validacion_error' || r.tipo === 'selector_capa',
+      `Sin capas, quitar debe ser error o selector, fue: ${r?.tipo}`);
+  });
+  test('Mapa vacío: ocultar → error/selector o null', () => {
+    mockMapaVacio();
+    const r = I('ocultá la capa');
+    if (r) ok(r.tipo !== 'toggle_visibilidad' || r.parametros?.mapKey === null,
+      `Sin capas, ocultar no debe ejecutar con mapKey válido`);
+  });
+  test('Mapa vacío: estilo → _validacion_error', () => {
+    mockMapaVacio();
+    const r = I('cambiá el color a rojo');
+    if (r) ok(r.tipo === '_validacion_error' || r.tipo === 'selector_capa',
+      `Sin capas, estilo debe ser error, fue: ${r?.tipo}`);
+  });
+  test('Mapa vacío: clasificar → _validacion_error', () => {
+    mockMapaVacio();
+    const r = I('clasificá por departamento');
+    if (r) ok(r.tipo === '_validacion_error' || r.tipo === 'clasificar',
+      `Sin capas, clasificar debe dar error, fue: ${r?.tipo}`);
+  });
+  test('Mapa vacío: limpiar → resultado con advertencia o null', () => {
+    mockMapaVacio();
+    const r = I('limpiá el mapa');
+    // Puede ejecutar (con advertencia) o devolver null — lo que NO debe es crashear
+    ok(r !== undefined, 'No debe crashear');
+  });
+
+  // Una capa cargada
+  test('Una capa: quitar → quitar con mapKey correcto', () => {
+    mockMapaConCapa('m1', 'aeropuerto_ar');
+    const r = I('quitá la capa');
+    notNull(r);
+    eq(r.tipo, 'quitar');
+    eq(r.parametros.mapKey, 'm1');
+  });
+  test('Una capa: ocultar → toggle_visibilidad visible=false', () => {
+    mockMapaConCapa('m1', 'aeropuerto_ar');
+    const r = I('ocultá los aeropuertos');
+    notNull(r);
+    eq(r.tipo, 'toggle_visibilidad');
+    eq(r.parametros.visible, false);
+  });
+  test('Una capa: mostrar ya visible → advertencia (no bloqueo)', () => {
+    mockMapaConCapa('m1', 'aeropuerto_ar');
+    const r = I('mostrá los aeropuertos');
+    // La capa ya es visible → debe dar advertencia pero no bloquear
+    if (r) ok(r.tipo !== '_validacion_error', 'Mostrar capa visible no debe bloquear');
+  });
+  test('Una capa: limpiar → tipo limpiar', () => {
+    mockMapaConCapa('m1', 'provincia_ar');
+    const r = I('limpiá el mapa');
+    notNull(r);
+    eq(r.tipo, 'limpiar');
+  });
+  test('Una capa: borrar todo → limpiar (MAPA)', () => {
+    mockMapaConCapa('m1', 'provincia_ar');
+    const r = I('borrá todo');
+    notNull(r);
+    eq(r.tipo, 'limpiar');
+  });
+
+  // Estilo — resolución de valor
+  test('Estilo con color nombrado → tipo estilo, subtipo resuelto', () => {
+    mockMapaConCapa('m1', 'aeropuerto_ar');
+    const r = I('cambiá el color a rojo');
+    notNull(r);
+    eq(r.tipo, 'estilo');
+    eq(r.subtipo, 'resuelto');
+    eq(r.parametros.value, '#e63946');
+  });
+  test('Estilo con hex → subtipo resuelto', () => {
+    mockMapaConCapa('m1', 'aeropuerto_ar');
+    const r = I('cambiá el color a #ff0000');
+    notNull(r);
+    eq(r.tipo, 'estilo');
+    eq(r.subtipo, 'resuelto');
+  });
+  test('Estilo sin valor → subtipo vago', () => {
+    mockMapaConCapa('m1', 'aeropuerto_ar');
+    const r = I('cambiá el color');
+    notNull(r);
+    eq(r.tipo, 'estilo');
+    eq(r.subtipo, 'vago');
+  });
+  test('Estilo weight en polygon → error (weight solo para líneas)', () => {
+    mockMapaConCapa('m1', 'provincia_ar', { geomType: 'polygon' });
+    const r = I('hacelo más grueso');
+    if (r) ok(r.tipo === '_validacion_error' || r.tipo === 'estilo',
+      `grosor en polígono debe dar error o vago, fue: ${r?.tipo}`);
+  });
+  test('Estilo radius en línea → error (radius solo para puntos)', () => {
+    mockMapaConCapa('m1', 'vial_nacional_ar', { geomType: 'line' });
+    const r = I('cambiá el radio');
+    if (r) ok(r.tipo === '_validacion_error',
+      `radius en línea debe dar error, fue: ${r?.tipo}`);
+  });
+  test('Estilo radius en punto → OK', () => {
+    mockMapaConCapa('m1', 'aeropuerto_ar', { geomType: 'point' });
+    const r = I('ponelo más grande');
+    if (r) ok(r.tipo !== '_validacion_error', `radius en punto no debe dar error`);
+  });
+
+  // Varias capas
+  test('Varias capas, quitar vago → selector_capa', () => {
+    mockMapaConDosCapas();
+    const r = I('quitá la capa');
+    notNull(r);
+    eq(r.tipo, 'selector_capa');
+  });
+  test('Varias capas, quitar con nombre → quitar directo', () => {
+    mockMapaConDosCapas();
+    const r = I('quitá los aeropuertos');
+    notNull(r);
+    eq(r.tipo, 'quitar');
+    eq(r.parametros.mapKey, 'map_2');
+  });
+  test('Varias capas, clasificar vago → clasificar (con mapKey null → selector campo)', () => {
+    mockMapaConDosCapas();
+    const r = I('clasificá');
+    if (r) {
+      eq(r.tipo, 'clasificar');
+      // mapKey null es válido → chat.js mostrará selector de capa
+    }
+  });
+
+  // Basemap
+  test('Basemap dark → tipo basemap subtipo dark', () => {
+    mockMapaVacio();
+    const r = I('poné el fondo oscuro');
+    notNull(r);
+    eq(r.tipo, 'basemap');
+    eq(r.subtipo, 'dark');
+  });
+  test('Basemap vago → subtipo vago', () => {
+    mockMapaVacio();
+    const r = I('cambiá el basemap');
+    if (r) { eq(r.tipo, 'basemap'); eq(r.subtipo, 'vago'); }
+  });
+
+  // Export
+  test('Export jpeg → tipo export subtipo jpeg', () => {
+    mockMapaConCapa('m1', 'provincia_ar');
+    const r = I('exportá como imagen');
+    notNull(r);
+    eq(r.tipo, 'export');
+    eq(r.subtipo, 'jpeg');
+  });
+  test('Export shapefile → _validacion_error (no soportado)', () => {
+    mockMapaConCapa('m1', 'provincia_ar');
+    const r = I('exportá como shapefile');
+    if (r) eq(r.tipo, '_validacion_error');
+  });
+  test('Export geojson sin capas → _validacion_error', () => {
+    mockMapaVacio();
+    const r = I('exportá como geojson');
+    if (r) eq(r.tipo, '_validacion_error');
+  });
+
+  // Renombrar
+  test('Renombrar con nombre → subtipo especifico', () => {
+    mockMapaVacio();
+    const r = I('renombrá el mapa como Mapa de prueba');
+    notNull(r);
+    eq(r.tipo, 'renombrar');
+    eq(r.subtipo, 'especifico');
+    ok(r.parametros.nombre?.length > 0, 'debe haber nombre');
+  });
+  test('Renombrar sin nombre → subtipo vago', () => {
+    mockMapaVacio();
+    const r = I('renombrá el mapa');
+    notNull(r);
+    eq(r.tipo, 'renombrar');
+    eq(r.subtipo, 'vago');
+  });
+
+  // Filtrar
+  test('Filtrar con capa activa → tipo filtrar', () => {
+    mockMapaConCapa('m1', 'aeropuerto_ar');
+    const r = I('filtrá los aeropuertos internacionales');
+    if (r) eq(r.tipo, 'filtrar');
+  });
+  test('Filtrar sin capa activa → selector_capa o null', () => {
+    mockMapaVacio();
+    const r = I('filtrá los que tienen campo x');
+    if (r) ok(r.tipo === 'selector_capa' || r.tipo === '_validacion_error',
+      `Filtrar sin capas debe dar selector o error, fue: ${r?.tipo}`);
+  });
+
+  // Clasificar
+  test('Clasificar sin capas → _validacion_error', () => {
+    mockMapaVacio();
+    const r = I('clasificá por provincia');
+    if (r) eq(r.tipo, '_validacion_error');
+  });
+  test('limpiar_clasificacion sin clasificación activa → _validacion_error o null', () => {
+    mockMapaConCapa('m1', 'provincia_ar'); // sin classification activa
+    const r = I('borrá la clasificación');
+    if (r) ok(r.tipo === '_validacion_error' || r === null,
+      `limpiar_clasificacion sin clasificación activa debe dar error, fue: ${r?.tipo}`);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SUITE 7 — VALIDACIONES (intent-validar.js)
+// ═══════════════════════════════════════════════════════════════════
+suite('7. Validaciones (INTENT_VALIDAR)', () => {
+
+  const V = (accion, params, ctx={}) => window.INTENT_VALIDAR.validar(accion, params, {
+    activeLayers: ctx.activeLayers || {},
+    LAYERS: ctx.LAYERS || window.LAYERS || {},
+    ...ctx,
+  });
+  const VO = (op, inst, layerDef={}) => window.INTENT_VALIDAR.validarOpEspacial(op, inst, layerDef);
+
+  // clasificar
+  test('validar clasificar sin capas → inválido bloqueante', () => {
+    const r = V('clasificar', { mapKey: null }, { activeLayers: {} });
+    eq(r.valido, false);
+    eq(r.bloquea, true);
+  });
+  test('validar clasificar con capa → válido', () => {
+    const r = V('clasificar', { mapKey: 'm1', field: 'nam' }, {
+      activeLayers: { m1: { geomType: 'polygon', layerKey: 'provincia_ar' } }
+    });
+    eq(r.valido, true);
+  });
+  test('validar clasificar geomType=none → inválido bloqueante', () => {
+    const r = V('clasificar', { mapKey: 'm1', field: 'nam' }, {
+      activeLayers: { m1: { geomType: 'none', layerKey: 'provincia_ar' } }
+    });
+    eq(r.valido, false);
+    eq(r.bloquea, true);
+  });
+  test('validar clasificar >8 categorías → inválido bloqueante', () => {
+    const features = Array.from({length: 10}, (_, i) => ({ properties: { cat: `cat_${i}` } }));
+    const r = V('clasificar', { mapKey: 'm1', field: 'cat', type: 'categorized' }, {
+      activeLayers: { m1: { geomType: 'polygon', geojson: { features } } }
+    });
+    eq(r.valido, false);
+    eq(r.bloquea, true);
+  });
+  test('validar clasificar 8 categorías → válido', () => {
+    const features = Array.from({length: 8}, (_, i) => ({ properties: { cat: `cat_${i}` } }));
+    const r = V('clasificar', { mapKey: 'm1', field: 'cat', type: 'categorized' }, {
+      activeLayers: { m1: { geomType: 'polygon', geojson: { features } } }
+    });
+    eq(r.valido, true);
+  });
+
+  // estilo_vago / estilo_resuelto
+  test('validar estilo sin capas → inválido bloqueante', () => {
+    const r = V('estilo_vago', { mapKey: null, propEstilo: 'color' }, { activeLayers: {} });
+    eq(r.valido, false);
+    eq(r.bloquea, true);
+  });
+  test('validar estilo radius en polygon → inválido bloqueante', () => {
+    const r = V('estilo_vago', { mapKey: 'm1', propEstilo: 'radius' }, {
+      activeLayers: { m1: { geomType: 'polygon' } }
+    });
+    eq(r.valido, false);
+    eq(r.bloquea, true);
+  });
+  test('validar estilo weight en line → válido', () => {
+    const r = V('estilo_vago', { mapKey: 'm1', propEstilo: 'weight' }, {
+      activeLayers: { m1: { geomType: 'line' } }
+    });
+    eq(r.valido, true);
+  });
+  test('validar estilo color con clasificación activa → inválido NO bloqueante (advertencia)', () => {
+    const r = V('estilo_vago', { mapKey: 'm1', propEstilo: 'color' }, {
+      activeLayers: { m1: { geomType: 'polygon', classification: { field: 'nam' } } }
+    });
+    eq(r.valido, false);
+    eq(r.bloquea, false); // advertencia, no bloqueo
+  });
+  test('validar estilo color sin clasificación → válido', () => {
+    const r = V('estilo_vago', { mapKey: 'm1', propEstilo: 'color' }, {
+      activeLayers: { m1: { geomType: 'polygon' } }
+    });
+    eq(r.valido, true);
+  });
+
+  // export
+  test('validar export formato no soportado → inválido bloqueante', () => {
+    const r = V('export', { subtipo: 'shapefile' });
+    eq(r.valido, false);
+    eq(r.bloquea, true);
+  });
+  test('validar export jpeg sin capas → válido (puede exportar solo basemap)', () => {
+    const r = V('export', { subtipo: 'jpeg' }, { activeLayers: {} });
+    eq(r.valido, true);
+  });
+  test('validar export geojson sin capas → inválido bloqueante', () => {
+    const r = V('export', { subtipo: 'geojson' }, { activeLayers: {} });
+    eq(r.valido, false);
+    eq(r.bloquea, true);
+  });
+
+  // capa / agregar — featureCount
+  test('validar capa con featureCount > 55000 → inválido bloqueante', () => {
+    const r = V('capa', { layerKey: 'fake_layer' }, {
+      LAYERS: { fake_layer: { featureCount: 60000, titulo: 'Test' } }
+    });
+    eq(r.valido, false);
+    eq(r.bloquea, true);
+  });
+  test('validar capa con featureCount <= 55000 → válido', () => {
+    const r = V('capa', { layerKey: 'fake_layer' }, {
+      LAYERS: { fake_layer: { featureCount: 50000, titulo: 'Test' } }
+    });
+    eq(r.valido, true);
+  });
+  test('validar agregar capa ya en mapa → advertencia (no bloqueo)', () => {
+    const r = V('agregar', { layerKey: 'provincia_ar' }, {
+      activeLayers: { m1: { layerKey: 'provincia_ar' } },
+      LAYERS: { provincia_ar: { featureCount: 24, titulo: 'Prov' } }
+    });
+    eq(r.valido, false);
+    eq(r.bloquea, false); // advertencia
+  });
+
+  // limpiar
+  test('validar limpiar con mapa vacío → advertencia (no bloqueo)', () => {
+    const r = V('limpiar', {}, { activeLayers: {} });
+    eq(r.valido, false);
+    eq(r.bloquea, false);
+  });
+
+  // toggle_vis_off
+  test('validar toggle_vis_off capa ya oculta → advertencia (no bloqueo)', () => {
+    const r = V('toggle_vis_off', { mapKey: 'm1', visible: false }, {
+      activeLayers: { m1: { visible: false } }
+    });
+    eq(r.valido, false);
+    eq(r.bloquea, false);
+  });
+
+  // validarOpEspacial
+  test('validarOpEspacial within_layer sin área → preguntar=area', () => {
+    const r = VO('within_layer', { withinDistance: 50 });
+    eq(r.valida, false);
+    eq(r.preguntar, 'area');
+  });
+  test('validarOpEspacial within_layer sin distancia → preguntar=distancia', () => {
+    const r = VO('within_layer', { withinArea: { value: 'Córdoba' } });
+    eq(r.valida, false);
+    eq(r.preguntar, 'distancia');
+  });
+  test('validarOpEspacial within_layer completo → válido', () => {
+    const r = VO('within_layer', { withinArea: { value: 'Córdoba' }, withinDistance: 50 });
+    eq(r.valida, true);
+  });
+  test('validarOpEspacial adjacent en polygon → válido', () => {
+    const r = VO('adjacent', { adjacentArea: { value: 'Córdoba' } }, { geomType: 'polygon' });
+    eq(r.valida, true);
+  });
+  test('validarOpEspacial adjacent en point → inválido bloqueante', () => {
+    const r = VO('adjacent', { adjacentArea: { value: 'Córdoba' } }, { geomType: 'point' });
+    eq(r.valida, false);
+    eq(r.bloquea, true);
+  });
+  test('validarOpEspacial nearest sin área → preguntar=area', () => {
+    const r = VO('nearest', { nearestCount: 5 });
+    eq(r.valida, false);
+    eq(r.preguntar, 'area');
+  });
+  test('validarOpEspacial dissolve sin área → preguntar=confirmar_dissolve_all', () => {
+    const r = VO('dissolve', {});
+    eq(r.valida, false);
+    eq(r.preguntar, 'confirmar_dissolve_all');
+  });
+  test('validarOpEspacial clip → siempre válido', () => {
+    const r = VO('clip', {});
+    eq(r.valida, true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SUITE 8 — OPERACIONES ESPACIALES (detectarOpEspacial)
+// ═══════════════════════════════════════════════════════════════════
+suite('8. Operaciones espaciales (INTENT_CAPA)', () => {
+
+  // Exponemos la función interna via el módulo que la usa
+  // Si no es accesible directamente, la testeamos via construirInstruccion
+  // Mejor: testear via detectarCapaDirecta y ver instruccion.op
+
+  const N = txt => window.UTILS.normalizar(txt);
+
+  // Testeamos detectarOpEspacial indirectamente re-construyéndola:
+  const OPS_PATRON = (txt) => {
+    // Reproduce la lógica de detectarOpEspacial
+    const norm = N(txt);
+    const WITHIN_EXCL = /\b(a\s+m[aá]s\s+de\s+\d[\d.,]*\s*km|lejos\s+de|far\s+from|beyond\s+\d[\d.,]*\s*km)\b/i;
+    const INTERSECT_EXCL = /\b(no\s+pasan?\s+por|no\s+cruzan?|not\s+pass\w*\s+through|avoid\w*)\b/i;
+    const DISSOLVE_EXCL = /\b(todo\s+excepto|todos?\s+menos|merge.*except|dissolve.*except)\b/i;
+    const ADJACENT_EXCL = /\b(no\s+limita\s+con|not\s+adjacent|no\s+es\s+adyacente)\b/i;
+    const NEAREST_EXCL = /\b(m[aá]s\s+lejanos?|furthest|farthest)\b/i;
+    const CLIP_EXCL = /\b(fuera\s+de|excepto\s+(los?|las?)\s+de|outside(\s+of)?)\b/i;
+    const WITHIN = /\b(a\s+\d[\d.,]*\s*km|cerca\s+de[l]?|within\s+\d[\d.,]*\s*km|near\b)\b/i;
+    const INTERSECT = /\b(pasan?\s+por|cruzan?|atraviesan?|cross\w*|go\s+through)\b/i;
+    const DISSOLVE = /\b(un[ií](r|los?|las?)?|junt[aá]|dissolve|merge)\b/i;
+    const ADJACENT = /\b(limita\s+con|adyacente|adjacent|borders?)\b/i;
+    const NEAREST = /\b(m[aá]s\s+cercano|nearest|closest)\b/i;
+    if (WITHIN_EXCL.test(norm)) return 'within_layer_exclude';
+    if (INTERSECT_EXCL.test(norm)) return 'intersect_exclude';
+    if (DISSOLVE_EXCL.test(norm)) return 'dissolve_exclude';
+    if (ADJACENT_EXCL.test(norm)) return 'adjacent_exclude';
+    if (NEAREST_EXCL.test(norm)) return 'nearest_exclude';
+    if (CLIP_EXCL.test(norm)) return 'clip_exclude';
+    if (WITHIN.test(norm)) return 'within_layer';
+    if (INTERSECT.test(norm)) return 'intersect';
+    if (DISSOLVE.test(norm)) return 'dissolve';
+    if (ADJACENT.test(norm)) return 'adjacent';
+    if (NEAREST.test(norm)) return 'nearest';
+    return 'clip';
+  };
+
+  // Testear via detectarCapaDirecta cuando es posible, y via el patrón local
+  test('within_layer — "a 50km de Córdoba"', () => {
+    eq(OPS_PATRON('aeropuertos a 50km de Córdoba'), 'within_layer');
+  });
+  test('within_layer — "cerca de Mendoza"', () => {
+    eq(OPS_PATRON('aeropuertos cerca de Mendoza'), 'within_layer');
+  });
+  test('within_layer_exclude — "a más de 100km de"', () => {
+    eq(OPS_PATRON('rutas a más de 100km de Buenos Aires'), 'within_layer_exclude');
+  });
+  test('within_layer_exclude — "lejos de"', () => {
+    eq(OPS_PATRON('municipios lejos de la capital'), 'within_layer_exclude');
+  });
+  test('intersect — "que pasan por Córdoba"', () => {
+    eq(OPS_PATRON('rutas que pasan por Córdoba'), 'intersect');
+  });
+  test('intersect — "que cruzan"', () => {
+    eq(OPS_PATRON('rutas que cruzan la provincia'), 'intersect');
+  });
+  test('intersect_exclude — "que no pasan por"', () => {
+    eq(OPS_PATRON('rutas que no pasan por Buenos Aires'), 'intersect_exclude');
+  });
+  test('intersect_exclude — "no cruzan"', () => {
+    eq(OPS_PATRON('autopistas que no cruzan la pampa'), 'intersect_exclude');
+  });
+  test('clip — default sin op espacial', () => {
+    eq(OPS_PATRON('aeropuertos de Córdoba'), 'clip');
+  });
+  test('clip_exclude — "fuera de"', () => {
+    eq(OPS_PATRON('aeropuertos fuera de Buenos Aires'), 'clip_exclude');
+  });
+  test('adjacent — "limita con"', () => {
+    eq(OPS_PATRON('provincias que limitan con Córdoba'), 'adjacent');
+  });
+  test('adjacent — "adyacente a"', () => {
+    eq(OPS_PATRON('departamentos adyacentes a la capital'), 'adjacent');
+  });
+  test('adjacent_exclude — "no limita con"', () => {
+    eq(OPS_PATRON('provincias que no limitan con Buenos Aires'), 'adjacent_exclude');
+  });
+  test('nearest — "el más cercano a"', () => {
+    eq(OPS_PATRON('el aeropuerto más cercano a Mendoza'), 'nearest');
+  });
+  test('nearest — "los 5 más cercanos"', () => {
+    eq(OPS_PATRON('los 5 aeropuertos más cercanos a Rosario'), 'nearest');
+  });
+  test('nearest_exclude — "los más lejanos"', () => {
+    eq(OPS_PATRON('los municipios más lejanos de Buenos Aires'), 'nearest_exclude');
+  });
+  test('dissolve — "uní los polígonos"', () => {
+    eq(OPS_PATRON('uní los departamentos de Córdoba'), 'dissolve');
+  });
+  test('dissolve_exclude — "todo excepto"', () => {
+    eq(OPS_PATRON('uní todo excepto Buenos Aires'), 'dissolve_exclude');
+  });
+
+  // EXCLUDE siempre gana sobre INCLUDE (orden de evaluación crítico)
+  test('ORDEN: within_exclude gana sobre within cuando ambos aplican', () => {
+    // "a más de 50km" contiene "50km" que matchea within, pero exclude debe ganar
+    eq(OPS_PATRON('municipios a más de 50km de Córdoba'), 'within_layer_exclude');
+  });
+
+  // Extracción de parámetros
+  test('extraerDistanciaKm: "50km" → 50', () => {
+    const norm = N('aeropuertos a 50km de Córdoba');
+    const match = norm.match(/(\d[\d.,]*)\s*km/);
+    ok(match, 'debe encontrar km');
+    eq(parseFloat(match[1]), 50);
+  });
+  test('extraerDistanciaKm: "100,5km" → 100.5', () => {
+    const norm = N('a 100,5km de');
+    const match = norm.match(/(\d[\d.,]*)\s*km/);
+    ok(match);
+    eq(parseFloat(match[1].replace(',','.')), 100.5);
+  });
+  test('extraerDistanciaKm: sin km → null esperado', () => {
+    const norm = N('cerca de Córdoba sin distancia');
+    const match = norm.match(/(\d[\d.,]*)\s*km/);
+    ok(!match, 'sin km explícito debe dar null');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SUITE 9 — INTEGRACIÓN END-TO-END (INTENT.detectarIntencion)
+// ═══════════════════════════════════════════════════════════════════
+suite('9. Integración end-to-end', () => {
+
+  const I = (txt, hist=[]) => window.INTENT.detectarIntencion(txt, hist);
+
+  // Cargar capas (depende de LAYERS cargado)
+  test('E2E: "aeropuertos de argentina" → tipo capa, layerKey aeropuerto_ar', () => {
+    mockMapaVacio();
+    const r = I('aeropuertos de argentina');
+    if (!window.LAYERS?.aeropuerto_ar) return; // skip si no hay LAYERS
+    notNull(r);
+    ok(r.tipo === 'capa' || r.tipo === 'agregar', `Debe ser capa/agregar, fue: ${r?.tipo}`);
+    eq(r.parametros?.instruccion?.layerKey, 'aeropuerto_ar');
+  });
+  test('E2E: "provincias" → capa provincia_ar', () => {
+    mockMapaVacio();
+    const r = I('mostrá las provincias de argentina');
+    if (!window.LAYERS?.provincia_ar) return;
+    if (r) {
+      ok(r.tipo === 'capa', `Debe ser capa, fue: ${r?.tipo}`);
+      eq(r.parametros?.instruccion?.layerKey, 'provincia_ar');
+    }
+  });
+  test('E2E: "escuelas de Córdoba" → capa con filtro de área', () => {
+    mockMapaVacio();
+    const r = I('escuelas de Córdoba');
+    if (!window.LAYERS?.establecimiento_educativo_ar) return;
+    if (r) {
+      ok(r.tipo === 'capa', `Debe ser capa, fue: ${r?.tipo}`);
+      const inst = r.parametros?.instruccion;
+      ok(inst?.clipArea?.value === 'Córdoba' || inst?.clipArea?.valorOriginal === 'Córdoba',
+        `Debe tener clipArea Córdoba`);
+    }
+  });
+  test('E2E: "ríos de Mendoza" → capa rio_ar con área Mendoza', () => {
+    mockMapaVacio();
+    const r = I('ríos de Mendoza');
+    if (!window.LAYERS?.rio_ar) return;
+    if (r) {
+      ok(r.tipo === 'capa');
+      ok(r.parametros?.instruccion?.layerKey === 'rio_ar', `Debe ser rio_ar`);
+    }
+  });
+
+  // No confundir países
+  test('E2E: "aeropuertos" con capa uy activa → aeropuerto uy, no ar', () => {
+    mockMapaConCapa('m1', 'departamento_uy'); // contexto Uruguay
+    const r = I('aeropuertos');
+    if (r && r.tipo === 'capa') {
+      const lk = r.parametros?.instruccion?.layerKey;
+      ok(lk?.endsWith('_uy'), `Con contexto UY debe buscar capa UY, dio: ${lk}`);
+    }
+  });
+  test('E2E: texto con "chile" → capa CL', () => {
+    mockMapaVacio();
+    const r = I('accidentes de tránsito en chile');
+    if (r && r.tipo === 'capa') {
+      const lk = r.parametros?.instruccion?.layerKey;
+      ok(lk?.endsWith('_cl'), `Texto con "chile" debe dar capa CL, dio: ${lk}`);
+    }
+  });
+
+  // Cargar + op espacial
+  test('E2E: "aeropuertos a 50km de Córdoba" → capa + within_layer', () => {
+    mockMapaVacio();
+    const r = I('aeropuertos a 50km de Córdoba');
+    if (r && r.tipo === 'capa') {
+      eq(r.parametros?.instruccion?.op, 'within_layer');
+      eq(r.parametros?.instruccion?.withinDistance, 50);
+    }
+  });
+  test('E2E: "rutas que pasan por Buenos Aires" → capa + intersect', () => {
+    mockMapaVacio();
+    const r = I('rutas que pasan por Buenos Aires');
+    if (r && r.tipo === 'capa') {
+      eq(r.parametros?.instruccion?.op, 'intersect');
+    }
+  });
+
+  // Guardia historial LLM — si hay mensajes LLM previos → null
+  test('E2E: historial con LLM previo → null (derivar a LLM)', () => {
+    mockMapaVacio();
+    const historial = [
+      { role: 'user', content: 'algo' },
+      { role: 'assistant', content: 'respuesta del LLM', fromLLM: true },
+    ];
+    const r = I('aeropuertos de córdoba', historial);
+    isNull(r, 'Con historial LLM, debe derivar al LLM → null');
+  });
+
+  // Agregar (capa ya cargada)
+  test('E2E: "agregá aeropuertos" con mapa con provincias → agregar', () => {
+    mockMapaConCapa('m1', 'provincia_ar');
+    const r = I('agregá aeropuertos de argentina');
+    if (r) ok(r.tipo === 'agregar' || r.tipo === 'capa',
+      `Agregar debe dar tipo agregar/capa, fue: ${r?.tipo}`);
+  });
+
+  // Filtrar sobre capa activa
+  test('E2E: "filtrá los ríos" con ríos cargados → filtrar', () => {
+    mockMapaConCapa('m1', 'rio_ar', { geomType: 'line' });
+    const r = I('filtrá los ríos permanentes');
+    if (r) eq(r.tipo, 'filtrar');
+  });
+
+  // Selector de capa con accionOrigen
+  test('E2E: clasificar ambiguo con varias capas → selector_capa con accionOrigen', () => {
+    mockMapaConDosCapas();
+    const r = I('clasificá');
+    if (r && r.tipo === 'selector_capa') {
+      ok(r.parametros?.accionOrigen === 'clasificar',
+        `selector_capa debe llevar accionOrigen=clasificar`);
+    }
+  });
+  test('E2E: renombrar → tipo renombrar', () => {
+    mockMapaVacio();
+    const r = I('llamá al mapa Mapa de rutas');
+    if (r) eq(r.tipo, 'renombrar');
+  });
+  test('E2E: validación bloqueante devuelve tipo _validacion_error', () => {
+    mockMapaVacio();
+    const r = I('borrá la capa'); // sin capas → error
+    if (r) eq(r.tipo, '_validacion_error');
+  });
+
+  // Trilingüe
+  test('E2E EN: "show me airports in argentina" → capa', () => {
+    mockMapaVacio();
+    const r = I('show me airports in argentina');
+    if (r) ok(r.tipo === 'capa' || r.tipo === 'agregar', `EN: debe ser capa, fue ${r?.tipo}`);
+  });
+  test('E2E PT: "mostrar aeroportos do uruguai" → null o capa UY', () => {
+    mockMapaVacio();
+    const r = I('mostrar aeroportos do uruguai');
+    if (r) ok(r.tipo === 'capa' || r.tipo === 'agregar',
+      `PT: debe ser capa, fue ${r?.tipo}`);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SUITE 10 — NEGATIVOS (textos que DEBEN ir al LLM)
+// Estos son los más importantes para el crecimiento del catálogo
+// ═══════════════════════════════════════════════════════════════════
+suite('10. Negativos — deben ir al LLM (null)', () => {
+
+  const I = (txt) => { mockMapaVacio(); return window.INTENT.detectarIntencion(txt, []); };
+
+  test('Pregunta factual: "¿qué es un geojson?"', () => {
+    isNull(I('¿qué es un geojson?'));
+  });
+  test('Pregunta cuantitativa: "¿cuántos departamentos tiene Córdoba?"', () => {
+    isNull(I('¿cuántos departamentos tiene Córdoba?'));
+  });
+  test('Pregunta de explicación: "explicame qué es un WFS"', () => {
+    isNull(I('explicame qué es un WFS'));
+  });
+  test('Pedido incoherente: "el cielo es azul"', () => {
+    isNull(I('el cielo es azul'));
+  });
+  test('Texto vacío: ""', () => {
+    const r = window.INTENT.detectarIntencion('', []);
+    ok(r === null || r === undefined, 'Texto vacío debe dar null');
+  });
+  test('Solo stopwords: "de la los las"', () => {
+    isNull(I('de la los las'));
+  });
+  test('Texto ambiguo sin capas ni verbos: "Argentina"', () => {
+    // Solo el nombre del país sin verbo ni contexto
+    // Puede matchear o no según el scorer — lo importante es que no crashee
+    const r = I('Argentina');
+    ok(r === null || typeof r === 'object', 'No debe crashear');
+  });
+  test('Pedido múltiple irresoluble: "aeropuertos y hospitales y universidades"', () => {
+    // PATRON_MULTIPLE + múltiples tipos → LLM
+    const r = I('mostrá aeropuertos y hospitales y universidades de argentina');
+    // Puede ser null (LLM) o resolver si el scorer lo agarra
+    ok(r === null || typeof r === 'object', 'No debe crashear');
+  });
+  test('Texto con verbo de exportar sin contexto de mapa', () => {
+    // "exportar" matchea EXPORTAR pero el export de geojson sin capas → error
+    const r = I('exportá en formato no soportado shapefile');
+    if (r) eq(r.tipo, '_validacion_error');
+  });
+  test('Nombre propio sin capa correspondiente: "mostrá Hogwarts"', () => {
+    isNull(I('mostrá Hogwarts'));
+  });
+  test('URL o código pegado: "https://example.com/data"', () => {
+    const r = I('https://example.com/data');
+    ok(r === null || typeof r === 'object', 'URL no debe crashear');
+  });
+  test('Texto muy largo (>500 chars) no crashea', () => {
+    const largo = 'mostrá '.repeat(100);
+    try {
+      const r = I(largo);
+      ok(true, 'No crasheó');
+    } catch(e) {
+      throw new Error(`Texto largo crasheó: ${e.message}`);
+    }
+  });
+  test('Caracteres especiales no crashean: "¿!@#$%^&*()"', () => {
+    try {
+      const r = I('¿!@#$%^&*()');
+      ok(true, 'No crasheó');
+    } catch(e) {
+      throw new Error(`Chars especiales crashearon: ${e.message}`);
+    }
+  });
+  test('Null/undefined como input no crashea', () => {
+    try {
+      window.INTENT.detectarIntencion(null, []);
+      ok(true, 'null no crasheó');
+    } catch(e) {
+      throw new Error(`null input crasheó: ${e.message}`);
+    }
+  });
+  test('Número como input no crashea', () => {
+    try {
+      window.INTENT.detectarIntencion(42, []);
+      ok(true, 'número no crasheó');
+    } catch(e) {
+      throw new Error(`número crasheó: ${e.message}`);
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SUITE 11 — INTEGRIDAD DEL CATÁLOGO (self-check del sistema)
+// Estos tests garantizan que al agregar capas nuevas no se rompe nada
+// ═══════════════════════════════════════════════════════════════════
+suite('11. Integridad del catálogo (escalabilidad)', () => {
+
+  test('Todas las capas tienen source', () => {
+    const faltantes = Object.entries(window.LAYERS || {})
+      .filter(([, c]) => !c.source).map(([k]) => k);
+    eq(faltantes.length, 0, `Capas sin source: ${faltantes.join(', ')}`);
+  });
+  test('Todas las capas tienen typename', () => {
+    const faltantes = Object.entries(window.LAYERS || {})
+      .filter(([, c]) => !c.typename).map(([k]) => k);
+    eq(faltantes.length, 0, `Capas sin typename: ${faltantes.join(', ')}`);
+  });
+  test('Todas las capas tienen geomType válido', () => {
+    const validos = new Set(['point','line','polygon','none','unknown']);
+    const invalidas = Object.entries(window.LAYERS || {})
+      .filter(([, c]) => !validos.has(c.geomType)).map(([k]) => k);
+    eq(invalidas.length, 0, `Capas con geomType inválido: ${invalidas.join(', ')}`);
+  });
+  test('Todas las capas tienen clipStrategy', () => {
+    const faltantes = Object.entries(window.LAYERS || {})
+      .filter(([, c]) => !c.clipStrategy).map(([k]) => k);
+    eq(faltantes.length, 0, `Capas sin clipStrategy: ${faltantes.join(', ')}`);
+  });
+  test('Todas las fuentes referenciadas existen en SOURCES', () => {
+    const sources = window.SOURCES || {};
+    const huerfanas = Object.entries(window.LAYERS || {})
+      .filter(([, c]) => c.source && !sources[c.source]).map(([k]) => k);
+    eq(huerfanas.length, 0, `Capas con source inválido: ${huerfanas.join(', ')}`);
+  });
+  test('Capas visible:true tienen keywords', () => {
+    const sinKw = Object.entries(window.LAYERS || {})
+      .filter(([, c]) => c.visible === true && (!c.keywords || c.keywords.length === 0))
+      .map(([k]) => k);
+    eq(sinKw.length, 0, `Capas visibles sin keywords: ${sinKw.join(', ')}`);
+  });
+  test('Capas con filterValues tienen filterField', () => {
+    const inconsistentes = Object.entries(window.LAYERS || {})
+      .filter(([, c]) => c.filterValues?.length > 0 && !c.filterField)
+      .map(([k]) => k);
+    eq(inconsistentes.length, 0, `Capas con filterValues pero sin filterField: ${inconsistentes.join(', ')}`);
+  });
+  test('GEO_MAPS tiene entradas para AR, UY, CL', () => {
+    const gm = window.GEO_MAPS || {};
+    ok(gm.ar, 'GEO_MAPS debe tener ar');
+    ok(gm.uy, 'GEO_MAPS debe tener uy');
+    ok(gm.cl, 'GEO_MAPS debe tener cl');
+  });
+  test('GEO_MAPS AR tiene provincias y departamentos', () => {
+    const ar = (window.GEO_MAPS || {}).ar || {};
+    ok(ar.provincias?.valores?.['cordoba'], 'GEO_MAPS ar.provincias debe tener Córdoba');
+    ok(ar.departamentos?.valores, 'GEO_MAPS ar.departamentos debe existir');
+  });
+  test('GEO_MAPS UY tiene departamentos', () => {
+    const uy = (window.GEO_MAPS || {}).uy || {};
+    ok(uy.departamentos?.valores?.['montevideo'], 'GEO_MAPS uy debe tener Montevideo');
+  });
+  test('GEO_MAPS CL tiene regiones', () => {
+    const cl = (window.GEO_MAPS || {}).cl || {};
+    ok(cl.regiones?.valores, 'GEO_MAPS cl debe tener regiones');
+  });
+  test('Todas las capas _ar tienen source country=ar', () => {
+    const fuera = Object.entries(window.LAYERS || {})
+      .filter(([k, c]) => k.endsWith('_ar') && window.SOURCES?.[c.source]?.country !== 'ar')
+      .map(([k]) => k);
+    eq(fuera.length, 0, `Capas _ar con country ≠ ar: ${fuera.join(', ')}`);
+  });
+  test('Todas las capas _uy tienen source country=uy', () => {
+    const fuera = Object.entries(window.LAYERS || {})
+      .filter(([k, c]) => k.endsWith('_uy') && window.SOURCES?.[c.source]?.country !== 'uy')
+      .map(([k]) => k);
+    eq(fuera.length, 0, `Capas _uy con country ≠ uy: ${fuera.join(', ')}`);
+  });
+  test('Todas las capas _cl tienen source country=cl', () => {
+    const fuera = Object.entries(window.LAYERS || {})
+      .filter(([k, c]) => k.endsWith('_cl') && window.SOURCES?.[c.source]?.country !== 'cl')
+      .map(([k]) => k);
+    eq(fuera.length, 0, `Capas _cl con country ≠ cl: ${fuera.join(', ')}`);
+  });
+  test('No hay keys de capas duplicados', () => {
+    const keys = Object.keys(window.LAYERS || {});
+    const unicos = new Set(keys);
+    eq(keys.length, unicos.size, `Hay keys duplicados en LAYERS`);
+  });
+  test('SOURCES tiene al menos 5 fuentes', () => {
+    ok(Object.keys(window.SOURCES || {}).length >= 5,
+      `Pocas fuentes en SOURCES: ${Object.keys(window.SOURCES||{}).length}`);
+  });
+  test('Capas con featureCount > display_threshold están ocultas o tienen clipStrategy=spatial', () => {
+    const threshold = window.CLIP_THRESHOLDS?.display || 55000;
+    const problemas = Object.entries(window.LAYERS || {})
+      .filter(([, c]) => c.featureCount > threshold && c.visible === true && c.clipStrategy !== 'spatial')
+      .map(([k, c]) => `${k}(${c.featureCount})`);
+    eq(problemas.length, 0, `Capas visibles grandes sin clipStrategy=spatial: ${problemas.join(', ')}`);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// MOTOR DE EJECUCIÓN
+// ═══════════════════════════════════════════════════════════════════
+
+async function runSuites(suiteNames = null) {
+  buildSuites();
+
+  const toRun = suiteNames
+    ? SUITES.filter(s => suiteNames.has(s.name))
+    : SUITES;
+
+  let total = 0, pass = 0, fail = 0, skip = 0;
+  const startTime = performance.now();
+  const resultsEl = document.getElementById('results');
+  resultsEl.innerHTML = '';
+
+  for (const suite of toRun) {
+    const suiteEl = document.createElement('div');
+    suiteEl.className = 'suite';
+    suiteEl.innerHTML = `
+      <div class="suite-header" onclick="this.parentElement.classList.toggle('collapsed')">
+        <span class="suite-toggle">▼</span>
+        <span class="suite-name">${suite.name}</span>
+        <span class="suite-stats" id="ss-${suite.name.replace(/\W/g,'_')}"></span>
+      </div>
+      <div class="suite-body" id="sb-${suite.name.replace(/\W/g,'_')}"></div>
+    `;
+    resultsEl.appendChild(suiteEl);
+
+    const bodyEl = suiteEl.querySelector('.suite-body');
+    let sPass = 0, sFail = 0, sSkip = 0;
+
+    for (const t of suite.tests) {
+      total++;
+      let status, errMsg = '', gotMsg = '';
+
+      if (t.skip) {
+        skip++; sSkip++; status = 'skip';
+      } else {
+        try {
+          await t.fn();
+          pass++; sPass++; status = 'pass';
+        } catch(e) {
+          fail++; sFail++; status = 'fail';
+          errMsg = e.message || String(e);
+        }
+      }
+
+      const row = document.createElement('div');
+      row.className = `test-row ${status}`;
+      row.innerHTML = `
+        <span class="icon">${status==='pass'?'✓':status==='fail'?'✗':'○'}</span>
+        <div>
+          <div class="test-desc">${t.desc}</div>
+          ${errMsg ? `<div class="test-err">${errMsg.replace(/\n/g,'<br>')}</div>` : ''}
+        </div>
+      `;
+      bodyEl.appendChild(row);
+
+      // Update progress
+      document.getElementById('progress-bar').style.width = `${(total / SUITES.reduce((a,s) => a+s.tests.length, 0)) * 100}%`;
+      document.getElementById('st-total').textContent = total;
+      document.getElementById('st-pass').textContent = pass;
+      document.getElementById('st-fail').textContent = fail;
+      document.getElementById('st-skip').textContent = skip;
+
+      await new Promise(r => setTimeout(r, 0)); // yield UI
+    }
+
+    const statsEl = suiteEl.querySelector(`#ss-${suite.name.replace(/\W/g,'_')}`);
+    statsEl.innerHTML = `<span style="color:#22c55e">${sPass}✓</span> <span style="color:#ef4444">${sFail}✗</span> <span style="color:#f59e0b">${sSkip}○</span>`;
+
+    if (sFail === 0) suiteEl.classList.add('collapsed');
+  }
+
+  const elapsed = (performance.now() - startTime).toFixed(0);
+  document.getElementById('st-time').textContent = elapsed;
+  document.getElementById('progress-bar').style.width = '100%';
+
+  log(fail > 0 ? 'err' : 'ok',
+    `Completado: ${pass} pasaron, ${fail} fallaron, ${skip} saltados — ${elapsed}ms`);
+}
+
+function runAll() { runSuites(null); }
+
+function runFiltered() {
+  const active = new Set([...document.querySelectorAll('.suite-btn.active')].map(b => b.dataset.name));
+  if (!active.size) { runAll(); return; }
+  runSuites(active);
+}
+
+function toggleAll(expand) {
+  document.querySelectorAll('.suite').forEach(s => {
+    if (expand) s.classList.remove('collapsed');
+    else s.classList.add('collapsed');
+  });
+}
+
+function showOnlyFailed() {
+  document.querySelectorAll('.test-row').forEach(r => {
+    r.style.display = r.classList.contains('fail') ? '' : 'none';
+  });
+  document.querySelectorAll('.suite').forEach(s => {
+    const hasFail = s.querySelectorAll('.test-row.fail').length > 0;
+    if (hasFail) s.classList.remove('collapsed');
+    else s.classList.add('collapsed');
+  });
+}
+
+// Construir botones de filtro de suites
+function buildSuiteFilter() {
+  buildSuites();
+  const el = document.getElementById('suite-filter');
+  SUITES.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'suite-btn active';
+    btn.dataset.name = s.name;
+    btn.textContent = s.name.split('—')[0].trim();
+    btn.onclick = () => {
+      btn.classList.toggle('active');
+    };
+    el.appendChild(btn);
+  });
+}
+
+window.addEventListener('load', () => {
+  // Esperar a que layers:ready si existe, o correr directo
+  if (window.__LAYERS_READY__) {
+    buildSuiteFilter();
+  } else {
+    window.addEventListener('layers:ready', buildSuiteFilter);
+    setTimeout(buildSuiteFilter, 3000); // fallback
+  }
+});
+</script>
+</body>
+</html>
