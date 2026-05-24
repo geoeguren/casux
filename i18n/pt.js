@@ -320,6 +320,15 @@ window.I18N_PT = {
   rename_confirm:            'RENOMEAR',
   classify_done:             'Pronto, classifiquei a camada por {label}.',
   classify_which_field:      'Por qual campo você quer classificar?',
+  style_classified_warning:  'Esta camada tem uma classificação ativa. O que você quer fazer?',
+  style_keep_classification: 'Manter classificação',
+  style_keep_classification_sub: 'Mudar tamanho, espessura ou outros parâmetros',
+  style_replace_classification: 'Substituir por cor sólida',
+  style_replace_classification_sub: 'Isso removerá a classificação atual',
+  style_param_not_valid:     '{param} não está disponível para {geom}. Parâmetros disponíveis:',
+  geom_point:                'pontos',
+  geom_line:                 'linhas',
+  geom_polygon:              'polígonos',
   chat_renamed:              'Renomeei o mapa para "{nombre}".',
 
   // ── Mapas base ───────────────────────────────────────────────
