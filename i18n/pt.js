@@ -289,6 +289,7 @@ window.I18N_PT = {
   style_ask_weight:        'Para qual espessura você quer mudar?',
   style_ask_icon:          'Qual ícone você quer usar?',
   style_ask_geom:          'Qual forma você quer usar?',
+  style_ask_opacity:       'Para qual opacidade você quer mudar?',
   style_change_size:       'Mudar tamanho',
   style_change_color_point:'Mudar cor',
   style_change_icon:       'Mudar ícone',
