@@ -308,6 +308,23 @@ window.INTENT_RESOLVER = (() => {
     // ── Paso 5: resolver parámetros ───────────────────────────────
     const params = _resolverParams(accion, grupo, objeto, textoUsuario, historial);
 
+    // Para selector_capa: guardar el grupo verbal origen para que chat.js
+    // sepa qué acción ejecutar después de que el usuario elige la capa.
+    // Ej: CLASIFICAR + AMBIGUO → selector_capa con _accionOrigen = 'clasificar'
+    if (accion === 'selector_capa') {
+      const origenPorGrupo = {
+        'CLASIFICAR':   'clasificar',
+        'BORRAR':       'quitar',
+        'OCULTAR':      'toggle_vis_off',
+        'MOSTRAR_VIS':  'toggle_vis_on',
+        'ESTILO':       'estilo',
+        'LIMPIAR_PROP': 'limpiar_clasificacion',
+        'RENOMBRAR':    'renombrar',
+        'FILTRAR':      'filtrar',
+      };
+      params._accionOrigen = origenPorGrupo[grupo] || null;
+    }
+
     // ── Paso 6: validar ───────────────────────────────────────────
     const ctx = {
       activeLayers: window.MAP?.getActiveLayers?.() || {},
@@ -401,7 +418,7 @@ window.INTENT_RESOLVER = (() => {
       'export':                 { tipo: 'export' },
       'renombrar':              { tipo: 'renombrar' },
       'filtrar':                { tipo: 'filtrar' },
-      'selector_capa':          { tipo: 'selector_capa' },
+      'selector_capa':          { tipo: 'selector_capa' },  // accionOrigen se añade abajo
       '_validacion_error':      { tipo: '_validacion_error' },
     };
 
@@ -415,6 +432,12 @@ window.INTENT_RESOLVER = (() => {
     if (accion === 'renombrar') base.subtipo = params.subtipo;
     if (accion === 'estilo_vago') {
       params = { param: objeto.propEstilo, ...params };
+    }
+
+    // Para selector_capa: guardar la acción que lo originó para que
+    // chat.js sepa qué hacer después de que el usuario elige la capa.
+    if (accion === 'selector_capa') {
+      params = { ...params, accionOrigen: params._accionOrigen || null };
     }
 
     return { ...base, parametros: params };
