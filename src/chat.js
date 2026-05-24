@@ -608,15 +608,17 @@ window.CHAT = (() => {
           UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
           // Capturar el texto original para re-ejecutar el intent con la capa elegida
           const _textoOriginal = userText;
-          const _tipoOriginal  = intencion.tipo; // capturar antes del async
+          // accionOrigen viene del resolver: el grupo verbal que originó el selector_capa.
+          // Ej: CLASIFICAR+AMBIGUO → accionOrigen='clasificar'.
+          // Es más fiable que re-detectar el intent con el título de la capa.
+          const _accionOrigen = intencion.parametros?.accionOrigen || null;
           UI.showLayerSelectorForAction(msgEl, async (selectedMapKey) => {
             const activeLayers = window.MAP?.getActiveLayers?.() || {};
             const entry = activeLayers[selectedMapKey];
             if (!entry) return;
 
             // Para clasificar: ir directamente al selector de campo sin re-detectar.
-            // Re-detectar con el título de la capa puede fallar validaciones (ej: too_few_values).
-            if (_tipoOriginal === 'clasificar') {
+            if (_accionOrigen === 'clasificar') {
               const selectedLayerKey = entry.layerKey;
               const fieldMsgEl = UI.addMessage('assistant', t('classify_which_field'));
               UI.setMessageMeta(fieldMsgEl, { time: new Date(), model: 'pim' });
@@ -625,7 +627,7 @@ window.CHAT = (() => {
             }
 
             // Para limpiar_clasificacion: ejecutar directamente
-            if (_tipoOriginal === 'limpiar_clasificacion') {
+            if (_accionOrigen === 'limpiar_clasificacion') {
               window.MAP?.clearClassification?.(selectedMapKey);
               const tituloLC = entry.titulo || selectedMapKey;
               const msgLC = UI.addMessage('assistant', t('classification_cleared', { titulo: tituloLC }));
