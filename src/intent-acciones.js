@@ -625,10 +625,10 @@ window.INTENT_ACCIONES = (() => {
       const layerDef = window.LAYERS?.[entry.layerKey];
       if (!layerDef?.attributes?.length) continue;
 
-      // Atributos clasificables: los que tienen label no vacío o classifiable:true
-      const attrs = layerDef.attributes.filter(a =>
-        (a.label && a.label.trim()) || a.classifiable === true
-      );
+      // Atributos clasificables: visible:true (todos los que el usuario puede ver)
+      // No filtrar por classifiable:true ni label no vacío — el usuario puede
+      // querer clasificar por cualquier campo visible, no solo los predefinidos.
+      const attrs = layerDef.attributes.filter(a => a.visible === true);
 
       for (const attr of attrs) {
         const labelNorm = normalizar(attr.label || '');
