@@ -260,6 +260,10 @@ window.INTENT_RESOLVER = (() => {
     let scorerResult = null;
     if (['CARGAR', 'AGREGAR', 'MOSTRAR_VIS', 'FILTRAR'].includes(grupo)) {
       scorerResult = _tryScorer(textoUsuario, historial, grupo === 'AGREGAR');
+      // Marcar si es grupo aditivo para que detectarObjeto priorice NUEVA_CAPA
+      if (scorerResult && (grupo === 'AGREGAR' || grupo === 'CARGAR')) {
+        scorerResult._grupoAditivo = true;
+      }
     }
 
     // ── Paso 3: clasificar el objeto ──────────────────────────────
