@@ -124,14 +124,14 @@ window.INTENT_TABLA = (() => {
     // "clasificá por X" / "pinta por X"
     CLASIFICAR: {
       CAPA_ACTIVA:  'clasificar',
-      MAPA:         'selector_capa', // ¿qué capa?
-      NUEVA_CAPA:   'LLM',
-      CLASIFICACION:'LLM',           // "clasificá la clasificación" — sin sentido → LLM
-      ESTILO_PROP:  'clasificar',    // "clasificá por color" — válido
-      BASEMAP:      null,
-      NOMBRE:       null,
-      FILTRO:       null,
-      AMBIGUO:      'selector_capa',
+      MAPA:         'clasificar',    // temporalmente deshabilitado → chat.js avisa
+      NUEVA_CAPA:   'clasificar',
+      CLASIFICACION:'clasificar',
+      ESTILO_PROP:  'clasificar',
+      BASEMAP:      'clasificar',
+      NOMBRE:       'clasificar',
+      FILTRO:       'clasificar',
+      AMBIGUO:      'clasificar',    // antes selector_capa → ahora aviso directo
     },
 
     // ── LIMPIAR_PROP ──────────────────────────────────────────────
