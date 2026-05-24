@@ -222,6 +222,8 @@ window.INTENT_OBJETO = (() => {
     if (/\b(pdf|portable|documento|document)\b/i.test(norm))                          return 'pdf';
     if (/\b(geojson|geo\s*json|vectorial|vector|datos?|data|layer|vetorial|camada)\b/i.test(norm)) return 'geojson';
     if (/\b(html|embebido|embed|web|codigo|code|interativo|interactivo)\b/i.test(norm)) return 'html';
+    // Formatos NO soportados — devolver string para que el validador lo bloquee
+    if (/\b(shapefile|shp|csv|xlsx|xls|kml|kmz|gpx|dxf|dwg|wms|wfs)\b/i.test(norm)) return 'no_soportado';
     return 'vago';
   }
 
