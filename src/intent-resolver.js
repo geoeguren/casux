@@ -290,8 +290,15 @@ window.INTENT_RESOLVER = (() => {
     if (accion === 'capa') {
       return _intentarCapa(textoUsuario, historial);
     }
-    if (accion === 'agregar' && scorerResult) {
-      return { tipo: 'agregar', parametros: scorerResult.parametros };
+    if (accion === 'agregar') {
+      // scorerResult ya fue intentado en paso 2; si no hay resultado → LLM
+      if (scorerResult?.parametros) {
+        return { tipo: 'agregar', parametros: scorerResult.parametros };
+      }
+      // Reintento con texto completo por si el verbo de agregar confundió al scorer
+      const reintento = window.INTENT_CAPA?.detectarCapaDirecta?.(textoUsuario);
+      if (reintento?.parametros) return { tipo: 'agregar', parametros: reintento.parametros };
+      return null; // → LLM
     }
 
     // ── Paso 5: resolver parámetros ───────────────────────────────
@@ -353,16 +360,21 @@ window.INTENT_RESOLVER = (() => {
    * _tryScorer — intenta resolver una capa con el scorer
    */
   function _tryScorer(textoUsuario, historial, esAgregar) {
+    let resultado = null;
     if (esAgregar) {
       // Para agregar, quitar el verbo aditivo antes de scorear
       const norm = normalizarSimple(textoUsuario);
       const sinVerbo = norm.replace(window.INTENT_VERBOS.GRUPOS.AGREGAR, '').trim();
       if (!sinVerbo) return null;
-      const r1 = window.INTENT_CAPA?.detectarCapaDirecta?.(sinVerbo);
-      if (r1) return r1;
-      return window.INTENT_CAPA?.detectarCapaDirecta?.(textoUsuario);
+      resultado = window.INTENT_CAPA?.detectarCapaDirecta?.(sinVerbo);
+      if (!resultado) resultado = window.INTENT_CAPA?.detectarCapaDirecta?.(textoUsuario);
+    } else {
+      resultado = window.INTENT_CAPA?.detectarCapaDirecta?.(textoUsuario);
     }
-    return window.INTENT_CAPA?.detectarCapaDirecta?.(textoUsuario);
+    if (!resultado) return null;
+    // Exponer layerKey a nivel superior para que detectarObjeto lo use
+    const instruccion = resultado.parametros?.instruccion;
+    return instruccion ? { ...resultado, layerKey: instruccion.layerKey } : resultado;
   }
 
   /**
