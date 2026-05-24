@@ -2061,7 +2061,8 @@ window.UI = (() => {
     const params = validProps
       .filter(p => !(opts.excludeColor && p === 'color'))
       .filter(p => PROP_LABELS[p])
-      .map(p => ({ key: p, label: PROP_LABELS[p]() }));
+      .map(p => ({ key: p, label: PROP_LABELS[p]() }))
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
 
     const card = document.createElement('div');
     card.className = 'msg-export-choice';
@@ -2110,7 +2111,9 @@ window.UI = (() => {
   function _showLayerButtons(container, layers, param, chatTitulo, containerRef) {
     const card = document.createElement('div');
     card.className = 'msg-export-choice';
-    card.innerHTML = Object.entries(layers).map(([mapKey, layer]) => `
+    card.innerHTML = Object.entries(layers)
+      .sort(([, a], [, b]) => (a.titulo || a.layerKey).localeCompare(b.titulo || b.layerKey, undefined, { sensitivity: 'base' }))
+      .map(([mapKey, layer]) => `
       <button class="export-choice-btn" data-mapkey="${mapKey}">
         <span class="export-choice-label">${layer.titulo || layer.layerKey}</span>
         <span class="export-choice-sub">${layer.geomType || ''}</span>
@@ -2338,7 +2341,9 @@ window.UI = (() => {
     const card = document.createElement('div');
     card.className = 'msg-export-choice';
 
-    card.innerHTML = entries.map(([mapKey, layer]) => `
+    card.innerHTML = entries
+      .sort(([, a], [, b]) => (a.titulo || a.layerKey).localeCompare(b.titulo || b.layerKey, undefined, { sensitivity: 'base' }))
+      .map(([mapKey, layer]) => `
       <button class="export-choice-btn" data-mapkey="${mapKey}">
         <span class="export-choice-label">${layer.titulo || layer.layerKey}</span>
         <span class="export-choice-sub">${layer.geomType || ''}</span>
