@@ -1509,11 +1509,10 @@ window.UI = (() => {
       .map(i => {
         const titulo = _tituloInstruccion(i);
         if (!titulo) return null;
-        const capa   = window.LAYERS?.[i.layerKey];
-        const source = capa?.source ? window.SOURCES?.[capa.source] : null;
-        const fuente = source?.label || null;
-        return fuente
-          ? `${titulo}<span class="map-card-source">${fuente}</span>`
+        const capa  = window.LAYERS?.[i.layerKey];
+        const geom  = capa?.geomType || null;
+        return geom
+          ? `${titulo}<span class="map-card-source">${geom}</span>`
           : titulo;
       })
       .filter(Boolean)
