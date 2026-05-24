@@ -76,88 +76,6 @@ window.INTENT_VALIDAR = (() => {
 
   const VALIDACIONES = {
 
-    // ── clasificar ──────────────────────────────────────────────
-    clasificar: [
-      {
-        // mapKey=null con capas activas → chat.js muestra selector de capa. No bloquear.
-        bloquea: true,
-        error:   'validate_no_layer',
-        check:   (p, ctx) => {
-          const keys = Object.keys(ctx.activeLayers);
-          if (keys.length === 0) return false;
-          if (p.mapKey && !ctx.activeLayers[p.mapKey]) return false;
-          return true;
-        },
-      },
-      {
-        // field=null con mapKey conocido → chat.js muestra selector de campo. No bloquear.
-        // Solo bloquear si field está definido pero es inválido (vacío/whitespace).
-        bloquea: true,
-        error:   'validate_classify_no_field',
-        check:   (p) => {
-          if (!p.field) return true; // null/undefined → selector en chat, dejar pasar
-          return p.field.trim().length > 0;
-        },
-      },
-      {
-        bloquea: true,
-        error:   'validate_classify_geom_none',
-        check:   (p, ctx) => {
-          const geom = ctx.activeLayers[p.mapKey]?.geomType;
-          return geom !== 'none' && geom !== 'unknown';
-        },
-      },
-      {
-        bloquea: true,
-        error:   'validate_classify_too_many_cats',
-        errorParams: () => ({ max: MAX_CATS_CATEGORIZED }),
-        check:   (p, ctx) => {
-          if (p.type !== 'categorized') return true; // solo aplica a categorized
-          const entry = ctx.activeLayers[p.mapKey];
-          if (!entry?.geojson?.features) return true; // no se puede verificar aún
-          const valores = new Set(
-            entry.geojson.features
-              .map(f => f.properties?.[p.field])
-              .filter(v => v != null && v !== '')
-          );
-          return valores.size <= MAX_CATS_CATEGORIZED;
-        },
-      },
-      {
-        // Solo aplica a graduated: necesitás al menos 2 valores numéricos distintos
-        // para calcular breaks. Para categorized cualquier cantidad es válida.
-        bloquea: true,
-        error:   'validate_classify_too_few_values',
-        check:   (p, ctx) => {
-          if (p.type !== 'graduated') return true; // categorized: siempre válido
-          const entry = ctx.activeLayers[p.mapKey];
-          if (!entry?.geojson?.features) return true;
-          const valores = new Set(
-            entry.geojson.features
-              .map(f => f.properties?.[p.field])
-              .filter(v => v != null && v !== '')
-          );
-          return valores.size >= MIN_UNIQUE_VALUES;
-        },
-      },
-    ],
-
-    // ── limpiar_clasificacion ────────────────────────────────────
-    limpiar_clasificacion: [
-      {
-        // Solo bloquear si no hay ninguna capa activa o si mapKey es inválido.
-        // mapKey=null con capas activas → chat.js muestra selector de capa.
-        bloquea: true,
-        error:   'validate_no_classification',
-        check:   (p, ctx) => {
-          const keys = Object.keys(ctx.activeLayers);
-          if (keys.length === 0) return false;
-          if (!p.mapKey) return true;  // mapKey null → selector en chat, dejar pasar
-          return !!ctx.activeLayers[p.mapKey]?.classification;
-        },
-      },
-    ],
-
     // ── limpiar_estilo ───────────────────────────────────────────
     limpiar_estilo: [
       {
@@ -236,46 +154,6 @@ window.INTENT_VALIDAR = (() => {
           if (p.mapKey && !ctx.activeLayers[p.mapKey]) return false;
           return true;
         },
-      },
-    ],
-
-    // ── toggle_vis_off ───────────────────────────────────────────
-    toggle_vis_off: [
-      {
-        // mapKey=null con capas activas → chat.js muestra selector. No bloquear.
-        bloquea: true,
-        error:   'validate_layer_not_found',
-        check:   (p, ctx) => {
-          const keys = Object.keys(ctx.activeLayers);
-          if (keys.length === 0) return false;
-          if (p.mapKey && !ctx.activeLayers[p.mapKey]) return false;
-          return true;
-        },
-      },
-      {
-        bloquea: false,
-        error:   'validate_already_hidden',
-        check:   (p, ctx) => !p.mapKey || ctx.activeLayers[p.mapKey]?.visible !== false,
-      },
-    ],
-
-    // ── toggle_vis_on ────────────────────────────────────────────
-    toggle_vis_on: [
-      {
-        // mapKey=null con capas activas → chat.js muestra selector. No bloquear.
-        bloquea: true,
-        error:   'validate_layer_not_found',
-        check:   (p, ctx) => {
-          const keys = Object.keys(ctx.activeLayers);
-          if (keys.length === 0) return false;
-          if (p.mapKey && !ctx.activeLayers[p.mapKey]) return false;
-          return true;
-        },
-      },
-      {
-        bloquea: false,
-        error:   'validate_already_visible',
-        check:   (p, ctx) => !p.mapKey || ctx.activeLayers[p.mapKey]?.visible === false,
       },
     ],
 
