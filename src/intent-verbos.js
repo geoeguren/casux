@@ -63,25 +63,9 @@ window.INTENT_VERBOS = (() => {
     BORRAR: /\b(?:borr[ae](r|lo|la|los|las|me|le|nos|te|se)?|elimin[ae](r|lo|la|los|las|me|le|nos)?|quit[ae](r|lo|la|los|las|me|le|nos)?|sac[ae](r|lo|la|los|las|me|le|nos)?|limpi[ae](r|lo|la|los|las|me|le|nos|te)?|vaci[ae](r|lo|la|me|le)?|tir[ae](r|lo|la|los|las|me|le|nos)?|remov[ae](r|lo|la|los|las|me)?|reset[ae](r|lo|la|me)?|reinici[ae](r|lo|la|me)?|drop(?:\s+the)?|delete(?:\s+the)?|remove(?:\s+the)?|clear(?:\s+the)?|erase(?:\s+the)?|wipe(?:\s+the)?|clean(?:\s+the)?|clean\s+up|get\s+rid\s+of|take\s+off|remov[ae](r|me)?|delet[ae](r|me)?|apag[ae](r|lo|la|los|las|me|le)?|descart[ae](r|lo|la|me)?|reset\b|start\s+over\b)\b/i,
 
     // ─────────────────────────────────────────────────────────────
-    // OCULTAR — hacer invisible (reversible, no elimina)
-    // ─────────────────────────────────────────────────────────────
-    OCULTAR: /\b(?:ocult[ae](r|lo|la|los|las|me|le|nos)?|escond[ae](r|lo|la|los|las|me|le|nos)?|desactiv[ae](r|lo|la|me|le|nos)?|deshabilit[ae](r|lo|la|me|le)?|sac[ae](r|me)?\s+de\s+(?:la\s+)?vista|apag[ae](r|lo|la|me|le)?\s|hide(?:\s+the)?|turn\s+off(?:\s+the)?|disable(?:\s+the)?|ocult[ae](r|me)?|escond[ae](r|me)?|desativ[ae](r|me)?|desabilit[ae](r|me)?|tir[ae](r|me)?\s+do\s+mapa)\b/i,
-
-    // ─────────────────────────────────────────────────────────────
-    // MOSTRAR_VIS — hacer visible una capa ya cargada (toggle)
-    // Comparte verbos con CARGAR — el objeto desambigua
-    // ─────────────────────────────────────────────────────────────
-    MOSTRAR_VIS: /\b(?:mostr[ae](r|lo|la|los|las|me|le|nos)?|muestra(r|me|le)?\s|volver\s+a\s+(?:ver|mostrar)|volv[eé]\s+a\s+(?:ver|mostrar)|activ[ae](r|lo|la|me|le|nos)?|encend[ae](r|lo|la|me|le)?|habilit[ae](r|lo|la|me|le|nos)?|show(?:\s+again)?|turn\s+on(?:\s+the)?|enable(?:\s+the)?|display(?:\s+the)?|bring\s+back(?:\s+the)?|mostrar?\s+de\s+novo|voltar\s+a\s+mostrar|exib[ei](r|me)?|ativ[ae](r|me)?|habilit[ae](r|me)?)\b/i,
-
-    // ─────────────────────────────────────────────────────────────
     // ESTILO — cambiar apariencia visual de una capa
     // ─────────────────────────────────────────────────────────────
     ESTILO: /\b(?:estilo|cambi[ae](r|le)?\s+el\s+(?:estilo|color|tama[nñ]o|grosor|icono|simbolo|forma|opacidad)|pon[ae](r|me|le)?\s+(?:mas\s+)?(?:grande|chico|chica|grueso|fino|rojo|azul|verde|transparente)|hacelo\s+(?:mas|de\s+otro)|color(?:es)?|relleno|borde|grosor|tama[nñ]o|icono|ícono|simbolo|símbolo|apariencia|aspecto|radio|opacidad|transparencia|forma|geometria|geometría|círculo|circulo|cuadrado|style|fill|stroke|outline|thickness|weight|icon|symbol|appearance|shape|size|radius|opacity|cor(?:es)?|relleno|espessura|ícone|símbolo|aparência|opacidade|transparência|tamanho|forma|geometria|círculo|quadrado)\b/i,
-
-    // ─────────────────────────────────────────────────────────────
-    // CLASIFICAR — colorear por campo / categorizar
-    // ─────────────────────────────────────────────────────────────
-    CLASIFICAR: /\b(?:clasific[ae](r|la|lo|me)?|clasifique|clasificá|pinta(r)?\s+por|pinte\s+por|color(?:e[ae]|i[ae])(r)?\s+por|categori[zc][ae](r)?|categorice|categorizá|agrupa(r)?\s+por|agrupe\s+por|diferencia(r)?\s+por|diferencie\s+por|distingue(r)?\s+por|distinga\s+por|separa(r)?\s+por|separe\s+por|divide?\s+por|divida\s+por|clasif[iy](?:ing|ed|ied|y)\b|color\s+by|categorize|categorized\s+by|group\s+by|show\s+by|classify\s+by|distinguish\s+by|separate\s+by|break\s+down\s+by|split\s+by|classific[ae](r)?|classificar?\s+por|colorir?\s+por|agrupar?\s+por|diferenciar?\s+por|separar?\s+por|dividir?\s+por)\b/i,
 
     // ─────────────────────────────────────────────────────────────
     // LIMPIAR_PROP — resetear/quitar una PROPIEDAD (no una capa, no el mapa)
@@ -125,14 +109,11 @@ window.INTENT_VERBOS = (() => {
   const PRIORIDAD = [
     'LIMPIAR_PROP',   // "borrá la clasificación" → más específico que BORRAR
     'FILTRAR',        // "filtrá los" → más específico que CARGAR
-    'CLASIFICAR',     // "pinta por" → más específico que ESTILO
     'RENOMBRAR',      // específico
     'EXPORTAR',       // específico
     'ESTILO',         // antes de BASEMAP: cambiá+color→ESTILO, no BASEMAP
     'BASEMAP',        // específico
     'AGREGAR',        // específico (^ al inicio)
-    'OCULTAR',        // específico
-    'MOSTRAR_VIS',    // más específico que CARGAR en contexto de capas activas
     'CARGAR',         // general
     'BORRAR',         // general
   ];
