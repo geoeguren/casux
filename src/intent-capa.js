@@ -278,57 +278,94 @@ window.INTENT_CAPA = (() => {
       console.log(`[CAPA] filtro por tipo: esPedidoGenerico=${esPedidoGenerico}${instruccion.filtro ? ' → ' + instruccion.filtro : ' → sin filtro'}`);
     }
 
-    // ── B) Filtro por geoFields (ej: pvecino='Chile' en pasos) ─────────────
-    // Si la capa tiene geoFields.pais y el texto menciona un país vecino,
-    // generar un filtro de atributo sobre ese campo.
+    // ── B) Filtro por geoFields.pais ─────────────────────────────────────────
+    //
+    // Detecta el patrón "con/hacia/bordering X" donde X es un valor del campo
+    // geoFields.pais (ej: pvecino). Solo activa si:
+    //   - La capa tiene geoFields.pais declarado
+    //   - El texto contiene una preposición de destino/vecindad + un nombre
+    //   - Ese nombre NO está en GEO_MAPS (no es área administrativa conocida)
+    //   - Ese nombre tiene ≥4 chars y no es parte del vocabulario de la capa
+    //
+    // Preposiciones gatillo: "con", "hacia", "con frontera a", "bordering",
+    // "con límite", "neighboring", "com" (PT)
+
     if (!instruccion.filtro && capa.geoFields?.pais) {
-      const campoGeo = capa.geoFields.pais;
-      // Países a detectar: extraer del texto buscando gentilicios y nombres de países
-      const PAISES_VECINOS = {
-        'chile':    'Chile',    'chileno': 'Chile',   'chilena':  'Chile',
-        'bolivia':  'Bolivia',  'boliviano':'Bolivia','boliviana':'Bolivia',
-        'paraguay': 'Paraguay', 'paraguayo':'Paraguay','paraguaya':'Paraguay',
-        'brasil':   'Brasil',   'brazil':  'Brazil',  'brasileño':'Brasil',
-        'uruguay':  'Uruguay',  'uruguayo':'Uruguay', 'uruguaya': 'Uruguay',
-        'peru':     'Perú',     'peruano': 'Perú',    'peruana':  'Perú',
-      };
-      for (const [token, paisVal] of Object.entries(PAISES_VECINOS)) {
-        if (textoNorm.includes(token)) {
-          instruccion.filtro = _lowerFn(campoGeo, paisVal.toLowerCase());
-          console.log(`[CAPA] filtro por geoFields: ${campoGeo}='${paisVal}'`);
-          break;
+      const tipoAreaActual = typeof area === 'object' && area !== null ? (area.tipo || '') : '';
+
+      if (tipoAreaActual !== 'pais') {
+        const campoGeo = capa.geoFields.pais;
+
+        // Buscar patrón: preposición de vecindad + nombre
+        const PATRON_CON = /\b(?:con|hacia|que\s+limita\s+con|frontera\s+con|colindante\s+con|vecino\s+a|bordering|neighboring|with|com\s+fronteira|limitando\s+com)\s+([A-Za-záéíóúüñÁÉÍÓÚÜÑ]{4,}(?:\s+[A-Za-záéíóúüñÁÉÍÓÚÜÑ]{3,})*)/i;
+        const mCon = textoOriginal.match(PATRON_CON);
+
+        if (mCon) {
+          const nombreCandidato = mCon[1].trim();
+          const nombreCandNorm  = normalizar(nombreCandidato);
+
+          // Verificar que no sea un área administrativa conocida
+          const geoMapsKeys = window.GEO_MAPS
+            ? new Set(Object.values(window.GEO_MAPS).flatMap(m => Object.keys(m)))
+            : new Set();
+
+          // Verificar que no sea vocabulario de la capa
+          const vocabCapa = new Set([
+            ...tokenizar(normalizar(capa.tituloUI || '')),
+            ...tokenizar(normalizar(capa.titulo || '')),
+            ...(capa.keywords || []).flatMap(k => tokenizar(normalizar(k))),
+          ].filter(t => t.length >= 3));
+
+          const tokensCand = tokenizar(nombreCandNorm);
+          const esVocabCapa = tokensCand.every(t => vocabCapa.has(t));
+          const esAreaConocida = tokensCand.some(t => geoMapsKeys.has(t));
+
+          if (!esVocabCapa && !esAreaConocida) {
+            instruccion.filtro = _lowerFn(campoGeo, nombreCandidato.toLowerCase());
+            console.log(`[CAPA] filtro geoFields.pais: ${campoGeo}='${nombreCandidato}'`);
+          }
         }
       }
     }
 
-    // ── C) Filtro por nombre propio (labelField) ────────────────────────────
-    // Si el texto contiene un nombre propio que aparece como valor del labelField,
-    // intentar construir un filtro CQL de igualdad exacta.
-    // Solo aplica si no hay ya un filtro y el texto parece muy específico
-    // (tiene un término de ≥4 chars que no es parte del nombre de la capa).
+    // ── C) Filtro por nombre propio (labelField) ──────────────────────────
+    //
+    // Activa con señales explícitas de especificidad. Opera sobre textoNorm
+    // (sin tildes) para que "filtrá" matchee "filtra" en el patrón.
+    // Usa capa.titulo (singular) para no quitar palabras del nombre propio.
+
     if (!instruccion.filtro && capa.labelField) {
-      const nombreCapa2 = normalizar(capa.tituloUI || capa.titulo || '');
-      const areaVal2    = typeof area === 'object' && area !== null ? (area.valorNorm || '') : '';
-      let textoResiduall = textoNorm;
-      if (nombreCapa2) textoResiduall = textoResiduall.replace(nombreCapa2, '').trim();
-      if (areaVal2)    textoResiduall = textoResiduall.replace(areaVal2, '').trim();
+      // Señales en texto normalizado (sin tildes)
+      const textoNormC = textoNorm; // ya normalizado
+      const PATRON_ESP_C = /\b(filtra(r|lo|la)?|solo\s+(el|la|los|las)|llamad[oa]|que\s+se\s+llama|denominad[oa]|filter|only\s+the|named|called)\b/i;
 
-      // Quitar stopwords y palabras de pedido
-      const STOPWORDS_FILTRO = /\b(el|la|los|las|de|del|un|una|quiero|ver|mostrar|dame|muestra|filtra|solo|unico|especifico|the|show|filter|only)\b/gi;
-      const textoPropio = textoResiduall.replace(STOPWORDS_FILTRO, '').trim();
+      // También detectar "el/la + nombre propio" como señal débil:
+      // solo si hay un sustantivo específico claro (≥6 chars) después del artículo
+      const PATRON_EL_NOMBRE = /\bel\s+([a-z]{6,})|\bla\s+([a-z]{6,})/i;
 
-      // Si queda texto significativo (≥4 chars) → candidato a nombre propio
-      if (textoPropio.length >= 4) {
-        // Construir filtro LIKE (contiene) en lugar de igualdad exacta
-        // para ser más tolerante con nombres parciales
-        if (_isArcgis) {
-          instruccion.filtro = `UPPER(${capa.labelField}) LIKE UPPER('%${textoPropio}%')`;
-        } else {
-          instruccion.filtro = `strToLowerCase(${capa.labelField}) LIKE '%${textoPropio}%'`;
+      if (PATRON_ESP_C.test(textoNormC) || PATRON_EL_NOMBRE.test(textoNormC)) {
+        const tituloSingNorm = normalizar(capa.titulo || capa.tituloUI || '');
+        const areaValNorm3   = typeof area === 'object' && area !== null ? (area.valorNorm || '') : '';
+
+        const STOPS_C = /\b(filtra(r|lo|la)?|solo|unico|unica|llamado|llamada|que\s+se\s+llama|denominado|denominada|el|la|los|las|de|del|un|una|quiero|ver|mostrar|dame|muestra|filter|only|the|named|called|show|get)\b/gi;
+
+        let residuoC = textoNormC;
+        if (tituloSingNorm.length >= 3) {
+          const reEsc = tituloSingNorm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          residuoC = residuoC.replace(new RegExp('\\b' + reEsc + '\\b', 'gi'), '').trim();
         }
-        console.log(`[CAPA] filtro por nombre propio (labelField=${capa.labelField}): "${textoPropio}"`);
+        if (areaValNorm3) residuoC = residuoC.replace(areaValNorm3, '').trim();
+        residuoC = residuoC.replace(STOPS_C, '').replace(/\s+/g, ' ').trim();
+
+        if (residuoC.length >= 3) {
+          instruccion.filtro = _isArcgis
+            ? `UPPER(${capa.labelField}) LIKE UPPER('%${residuoC}%')`
+            : `strToLowerCase(${capa.labelField}) LIKE '%${residuoC}%'`;
+          console.log(`[CAPA] filtro nombre propio (${capa.labelField} LIKE '${residuoC}')`);
+        }
       }
     }
+
 
     if (!area) return instruccion;
 
