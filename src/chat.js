@@ -340,9 +340,16 @@ window.CHAT = (() => {
           };
 
           if (layerEntries.length > 1) {
-            const msgEl = UI.addMessage('assistant', t('style_which_layer'));
-            UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => _proceedStyleVago(selectedMapKey));
-            history.push({ role: 'assistant', content: t('style_which_layer'), time: new Date().toISOString() });
+            const _paramVago = intencion?.parametros?.param;
+            if (_paramVago) {
+              // Hay param conocido → showStyleFlow se encarga de filtrar por geometría
+              UI.showStyleFlow(intencion);
+              history.push({ role: 'assistant', content: t(_PARAM_KEY[_paramVago] || 'style_what_to_change'), time: new Date().toISOString() });
+            } else {
+              const msgEl = UI.addMessage('assistant', t('style_which_layer'));
+              UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => _proceedStyleVago(selectedMapKey));
+              history.push({ role: 'assistant', content: t('style_which_layer'), time: new Date().toISOString() });
+            }
           } else if (layerEntries.length === 1) {
             const [[singleMapKey, singleEntry]] = layerEntries;
             const _paramSingle = intencion?.parametros?.param;
