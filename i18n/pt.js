@@ -352,6 +352,9 @@ window.I18N_PT = {
   op_ask_dissolve_all: 'Você quer mesclar todos os objetos de {titulo} em um só, ou apenas os de uma área específica?',
   op_dissolve_all_yes: 'Mesclar todos',
   op_dissolve_all_no:  'Escolher uma área',
+  selector_capa_msg:      'Em qual camada você quer aplicar essa ação?',
+  selector_capa_selected: 'Pronto.',
+
   confirm_btn:         'CONFIRMAR',
 
 
