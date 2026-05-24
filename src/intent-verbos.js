@@ -98,12 +98,12 @@ window.INTENT_VERBOS = (() => {
     // BASEMAP — cambiar el mapa de fondo
     // Requiere objeto BASEMAP para activarse
     // ─────────────────────────────────────────────────────────────
-    BASEMAP: /\b(?:cambi[ae](r|lo|la|me)?|cambie|cambiá|pon[ae](r|lo|la|me)?|us[ae](r|lo|la|me)?|use|switch(?:\s+to)?|change(?:\s+the)?|set(?:\s+the)?|mud[ae](r|lo|la|me)?|mude|troca(r|me)?|activ[ae](r|lo|la|me)?|basemap\b|base\s+map\b|mapa\s+(?:base|de\s+fondo|fondo)\b|fondo\b|background(?:\s+map)?\b|dark\s+(?:matter|mode|theme|background)?\b|positron\b|voyager\b)\b/i,
+    BASEMAP: /\b(?:cambi[ae](r|lo|la|me)?|cambie|cambiá|pon[ae](r|lo|la|me)?|us[ae](r|lo|la|me)?|use|switch(?:\s+to)?|change(?:\s+the)?|set(?:\s+the)?|mud[ae](r|lo|la|me)?|mude|troca(r|me)?|basemap\b|base\s+map\b|mapa\s+(?:base|de\s+fondo|fondo)\b|fondo\b|background(?:\s+map)?\b|dark\s+(?:matter|mode|theme|background)?\b|positron\b|voyager\b)\b/i,
 
     // ─────────────────────────────────────────────────────────────
     // RENOMBRAR — cambiar el nombre del chat o mapa
     // ─────────────────────────────────────────────────────────────
-    RENOMBRAR: /\b(?:renombr[ae](r|lo|la|me|se)?|renombré|renombrá|llam[ae](r|lo|la|me|le)?\s+(?:al?\s+)?(?:mapa|chat|map)|cambi[ae](r)?\s+el\s+(?:nombre|t[ií]tulo)|nombr[ae]r?(?:lo|la)?\s|nombr[ae]\s+(?:el|al|lo|este|ese|un)\s+(?:mapa|chat)|titul[ae](r|lo|la|me)?|el\s+nombre\s+(?:es|era|ser[aá]|va\s+a\s+ser)|rename(?:\s+(?:the\s+)?(?:map|chat))?|call\s+it|call\s+the\s+map|name\s+it|name\s+the\s+map|title\s+it|the\s+name\s+(?:is|will\s+be)|renomear?|renomeie|cham[ae]r?\s+o\s+(?:mapa|chat)|nomear?|nomeie|o\s+nome\s+(?:é|e|era|ser[aá]|vai\s+ser))\b/i,
+    RENOMBRAR: /\b(?:renombr[ae](r|lo|la|me|se)?|renombré|renombrá|llam[ae](r|lo|la|me|le)?\s+(?:(?:a\s+)?(?:este|ese|el|al?|este|un)\s+)?(?:mapa|chat|map)|cambi[ae](r)?\s+el\s+(?:nombre|t[ií]tulo)|nombr[ae]r?(?:lo|la)?\s|nombr[ae]\s+(?:el|al|lo|este|ese|un)\s+(?:mapa|chat)|titul[ae](r|lo|la|me)?|el\s+nombre\s+(?:es|era|ser[aá]|va\s+a\s+ser)|rename(?:\s+(?:the\s+)?(?:map|chat))?|call\s+it|call\s+the\s+map|name\s+it|name\s+the\s+map|title\s+it|the\s+name\s+(?:is|will\s+be)|renomear?|renomeie|cham[ae]r?\s+o\s+(?:mapa|chat)|nomear?|nomeie|o\s+nome\s+(?:é|e|era|ser[aá]|vai\s+ser))\b/i,
 
     // ─────────────────────────────────────────────────────────────
     // FILTRAR — filtrar objetos dentro de una capa ya cargada
