@@ -307,7 +307,7 @@ window.I18N_PT = {
   basemap_changed:         'Pronto, mudei o mapa de fundo.',
   error_retry:             'TENTAR NOVAMENTE',
   error_layer_retry:       'Tente carregar {titulo} novamente',
-  error_no_response:       'A camada não respondeu.',
+  error_no_response:       '{titulo} não respondeu.',
   map_drawing:             'Traçando…',
   map_already_empty:       'O mapa já estava vazio.',
   map_cleared:             'Pronto, limpei o mapa.',
