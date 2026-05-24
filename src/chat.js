@@ -1506,7 +1506,16 @@ window.UI = (() => {
 
   function showMapReady(plan) {
     const capas = (plan.instrucciones || [])
-      .map(i => _tituloInstruccion(i))
+      .map(i => {
+        const titulo = _tituloInstruccion(i);
+        if (!titulo) return null;
+        const capa   = window.LAYERS?.[i.layerKey];
+        const source = capa?.source ? window.SOURCES?.[capa.source] : null;
+        const fuente = source?.label || null;
+        return fuente
+          ? `${titulo}<span class="map-card-source">${fuente}</span>`
+          : titulo;
+      })
       .filter(Boolean)
       .join('\n');
 
