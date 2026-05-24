@@ -75,7 +75,7 @@ window.INTENT_TABLA = (() => {
       BASEMAP:      null,             // no se puede "borrar" el basemap
       NOMBRE:       null,
       FILTRO:       'limpiar_filtro',
-      AMBIGUO:      'limpiar',        // sin objeto específico → limpiar el mapa
+      AMBIGUO:      'selector_capa',  // sin objeto específico → preguntar cuál capa (no limpiar todo)
     },
 
     // ── OCULTAR ───────────────────────────────────────────────────
