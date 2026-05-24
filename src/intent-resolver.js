@@ -134,57 +134,6 @@ window.INTENT_RESOLVER = (() => {
       case 'quitar':
         return { mapKey: objeto.ref };
 
-      case 'toggle_vis_off':
-        return { mapKey: objeto.ref, visible: false };
-
-      case 'toggle_vis_on':
-        return { mapKey: objeto.ref, visible: true };
-
-      case 'clasificar': {
-        const mapKey   = objeto.ref;
-        const entry    = activeLayers[mapKey];
-        const layerDef = window.LAYERS?.[entry?.layerKey];
-
-        // Intentar identificar el campo mencionado en el texto
-        const textoSinVerbo = textoUsuario.replace(window.INTENT_VERBOS.GRUPOS.CLASIFICAR, '').trim();
-        const normSinVerbo  = normalizar(textoSinVerbo);
-        let field = null, label = null, type = null;
-
-        if (layerDef?.attributes?.length && normSinVerbo) {
-          const attrs = layerDef.attributes.filter(a => a.visible === true);
-          let mejorScore = 0;
-          for (const attr of attrs) {
-            const labelNorm = normalizar(attr.label || '');
-            const campoNorm = normalizar(attr.campo || '');
-            const matchL = labelNorm.length > 0 && normSinVerbo.includes(labelNorm);
-            const matchC = campoNorm.length > 0 && normSinVerbo.includes(campoNorm);
-            const score  = (matchL ? 4 : 0) + (matchC ? 2 : 0) + (attr.classifiable ? 1 : 0);
-            if (score > mejorScore) {
-              mejorScore = score;
-              field = attr.campo;
-              const _lang  = window.I18N?.getLang?.() || 'es';
-              const lblI18n = _lang === 'en' ? (attr.labelEn || attr.label) : (attr.label || attr.labelEn);
-              label = (lblI18n && lblI18n.trim()) ? lblI18n : attr.campo;
-              type  = /num|area|longitud|pobla|cant|total|valor|porc|dens|super/i.test(attr.campo)
-                ? 'graduated' : 'categorized';
-            }
-          }
-        }
-
-        const palette = (type === 'graduated') ? 'seq_blues' : 'qualitative';
-        return {
-          mapKey,
-          layerKey: entry?.layerKey,
-          field,        // null → chat.js mostrará selector de campo
-          label,
-          type,
-          palette,
-        };
-      }
-
-      case 'limpiar_clasificacion':
-        return { mapKey: objeto.ref };
-
       case 'limpiar_estilo':
         return { mapKey: objeto.ref };
 
@@ -261,10 +210,10 @@ window.INTENT_RESOLVER = (() => {
     }
 
     // ── Paso 2: intentar resolver la capa si el grupo lo necesita ─
-    // Para CARGAR, AGREGAR, MOSTRAR_VIS puede que el objeto sea una nueva capa.
+    // Para CARGAR y AGREGAR el objeto puede ser una nueva capa.
     // Ejecutamos el scorer solo si el grupo puede necesitarlo.
     let scorerResult = null;
-    if (['CARGAR', 'AGREGAR', 'MOSTRAR_VIS', 'FILTRAR'].includes(grupo)) {
+    if (['CARGAR', 'AGREGAR', 'FILTRAR'].includes(grupo)) {
       scorerResult = _tryScorer(textoUsuario, historial, grupo === 'AGREGAR');
       // Marcar si es grupo aditivo para que detectarObjeto priorice NUEVA_CAPA
       if (scorerResult && (grupo === 'AGREGAR' || grupo === 'CARGAR')) {
@@ -316,15 +265,11 @@ window.INTENT_RESOLVER = (() => {
 
     // Para selector_capa: guardar el grupo verbal origen para que chat.js
     // sepa qué acción ejecutar después de que el usuario elige la capa.
-    // Ej: CLASIFICAR + AMBIGUO → selector_capa con _accionOrigen = 'clasificar'
     if (accion === 'selector_capa') {
       const origenPorGrupo = {
-        'CLASIFICAR':   'clasificar',
         'BORRAR':       'quitar',
-        'OCULTAR':      'toggle_vis_off',
-        'MOSTRAR_VIS':  'toggle_vis_on',
         'ESTILO':       'estilo',
-        'LIMPIAR_PROP': 'limpiar_clasificacion',
+        'LIMPIAR_PROP': 'limpiar_estilo',
         'RENOMBRAR':    'renombrar',
         'FILTRAR':      'filtrar',
       };
@@ -412,10 +357,6 @@ window.INTENT_RESOLVER = (() => {
     const mapping = {
       'limpiar':                { tipo: 'limpiar' },
       'quitar':                 { tipo: 'quitar' },
-      'toggle_vis_off':         { tipo: 'toggle_visibilidad' },
-      'toggle_vis_on':          { tipo: 'toggle_visibilidad' },
-      'clasificar':             { tipo: 'clasificar' },
-      'limpiar_clasificacion':  { tipo: 'limpiar_clasificacion' },
       'limpiar_estilo':         { tipo: 'limpiar_estilo' },
       'limpiar_filtro':         { tipo: 'limpiar_filtro' },
       'estilo_vago':            { tipo: 'estilo', subtipo: 'vago' },
@@ -424,15 +365,13 @@ window.INTENT_RESOLVER = (() => {
       'export':                 { tipo: 'export' },
       'renombrar':              { tipo: 'renombrar' },
       'filtrar':                { tipo: 'filtrar' },
-      'selector_capa':          { tipo: 'selector_capa' },  // accionOrigen se añade abajo
+      'selector_capa':          { tipo: 'selector_capa' },
       '_validacion_error':      { tipo: '_validacion_error' },
     };
 
     const base = mapping[accion] || { tipo: accion };
 
     // Parámetros especiales por acción
-    if (accion === 'toggle_vis_off') params = { ...params, visible: false };
-    if (accion === 'toggle_vis_on')  params = { ...params, visible: true };
     if (accion === 'basemap' && params.subtipo) base.subtipo = params.subtipo;
     if (accion === 'export'  && params.subtipo) base.subtipo = params.subtipo;
     if (accion === 'renombrar') base.subtipo = params.subtipo;
