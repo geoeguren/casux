@@ -343,6 +343,17 @@ window.I18N_EN = {
   validate_no_active_layers_to_add:   'No layers loaded on the map to add to.',
   validate_layer_already_on_map:      'That layer is already on the map.',
   validate_filter_no_filterable_fields: 'This layer has no filterable fields defined.',
+  validate_op_adjacent_not_polygon:   'The "bordering" operation only applies to polygon layers.',
+  op_ask_distance:     'How far (in km) do you want to search for {titulo}?',
+  op_distance_placeholder: 'E.g. 100',
+  op_ask_n:            'How many nearest results of {titulo} do you want?',
+  op_n_placeholder:    'E.g. 5',
+  op_ask_area:         'Relative to which area or place do you want to apply the operation on {titulo}?',
+  op_ask_dissolve_all: 'Do you want to merge all features of {titulo} into one, or only those in a specific area?',
+  op_dissolve_all_yes: 'Merge all',
+  op_dissolve_all_no:  'Choose an area',
+  confirm_btn:         'CONFIRM',
+
 
   classify_which_field:      'Which field do you want to classify by?',
   style_classified_warning:  'This layer has an active classification. What do you want to do?',
