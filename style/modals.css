@@ -418,16 +418,17 @@ body.day, html.day .adv-ramp-option:hover { background: rgba(0,0,0,0.05); }
 body.day, html.day .adv-ramp-option.selected { background: rgba(var(--accent-rgb), 0.12); }
 
 .adv-ramp-option-ramp {
-  flex: 0 0 90px; width: 90px;
+  flex: 1; min-width: 0;
+}
+.adv-ramp-palette-label {
+  flex: 0 0 72px; width: 72px;
+  font-size: 11px; color: var(--cream2); font-family: var(--font-mono);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .adv-ramp-option-label {
   font-size: 12px; color: var(--cream2); font-family: var(--font-sans);
 }
 body.day, html.day .adv-ramp-option-label { color: #6a6560; }
-/* Nombre de paleta de color — tipografía técnica */
-.adv-ramp-palette-label {
-  font-size: 11px; color: var(--cream2); font-family: var(--font-mono);
-}
 body.day, html.day .adv-ramp-palette-label { color: #6a6560; }
 
 /* Campo/opción csel — mismas dimensiones que ramp, opciones de texto */
