@@ -39,7 +39,7 @@ window.INTENT_OBJETO = (() => {
 
     CLASIFICACION: /\b(?:clasificaci[oó]n|clasificaciones|categorias?|categorizaci[oó]n|colores?\s+(?:de\s+la\s+capa|del\s+mapa|por\s+campo)|gradiente|paleta|simbologia|simbología|classification|categorization|color\s+scheme|symbology|classificac[aã]o|categorias?|esquema\s+de\s+cores?)\b/i,
 
-    ESTILO_PROP: /\b(?:estilo|color(?:es)?|relleno|borde|grosor|tama[nñ]o|icono|ícono|simbolo|símbolo|apariencia|aspecto|radio|opacidad|transparencia|forma|geometria|geometría|círculo|circulo|cuadrado|tamano|style|fill|stroke|outline|thickness|weight|icon|symbol|appearance|shape|size|radius|opacity|cor(?:es)?|espessura|ícone|símbolo|aparência|tamanho|opacidade|transparência|forma|geometria|quadrado)\b/i,
+    ESTILO_PROP: /\b(?:estilo|color(?:es)?|relleno|borde|grosor|tama[nñ]o|icono|ícono|simbolo|símbolo|apariencia|aspecto|radio|opacidad|transparencia|forma|geometria|geometría|círculo|circulo|cuadrado|tamano|style|fill|stroke|outline|thickness|weight|icon|symbol|appearance|shape|size|radius|opacity|cor(?:es)?|espessura|ícone|símbolo|aparência|tamanho|opacidade|transparência|forma|geometria|quadrado|grande|chico|chica|grueso|fino|gordo|delgado|bigger|smaller|larger|thicker|thinner|maior|menor|grosso|fino)\b/i,
 
     BASEMAP: /\b(?:mapa\s+(?:base|de\s+fondo|fondo)|fondo|basemap|base\s+map|mapa\s+de\s+fundo|fundo|background(?:\s+map)?|carto|positron|voyager|dark\s+matter|fondo\s+(?:oscuro|claro|con\s+colores)|mapa\s+base\s+(?:oscuro|claro|con\s+colores))\b/i,
 
