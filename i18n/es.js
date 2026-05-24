@@ -325,6 +325,8 @@ window.I18N_ES = {
   classify_not_classified:    'Esta capa no tiene ninguna clasificación activa que quitar.',
   classify_which_layer_clear: '¿De qué capa querés quitar la clasificación?',
   style_reset_done:           'Listo, restauré el estilo original.',
+  style_already_max:          'Ya está en el tamaño máximo.',
+  style_already_min:          'Ya está en el tamaño mínimo.',
   error_generic:              'No pude ejecutar esa acción.',
   validate_no_layer:                  'No hay capas en el mapa. Cargá una capa primero.',
   validate_classify_no_field:         'Tenés que especificar por qué campo clasificar.',
