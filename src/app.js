@@ -205,6 +205,41 @@ window.APP = (() => {
     goToWork(txt);
   }
 
+  // ── Persistencia de plan ──────────────────────────────────────
+  // Definida en el scope del módulo (no dentro de wireWorkEvents)
+  // para que renderMap, applyStylePlan y applyClassifyPlan puedan usarla.
+
+  let _persistTimer = null;
+  function _persistPlan(toastMsg) {
+    const user   = window.AUTH?.currentUser();
+    const chatId = window.CHAT?.getChatId?.();
+    if (!user || !chatId || !currentPlan) return;
+
+    // Actualizar caché local inmediatamente (sin esperar al debounce)
+    window.SIDEBAR.updateCachedChat(chatId, { lastMap: currentPlan });
+
+    if (toastMsg) {
+      // Acción explícita — persistir de inmediato y mostrar confirmación
+      clearTimeout(_persistTimer);
+      _persistTimer = null;
+      window.FB.updateChat(user.uid, chatId, { lastMap: currentPlan })
+        .then(() => window.TOAST.success(toastMsg))
+        .catch(e => {
+          console.warn('[APP] Error al persistir:', e);
+          window.TOAST.warning(t('toast_save_error'));
+        });
+      return;
+    }
+
+    // Cambio automático — debounce 1.5s
+    clearTimeout(_persistTimer);
+    _persistTimer = setTimeout(() => {
+      _persistTimer = null;
+      window.FB.updateChat(user.uid, chatId, { lastMap: currentPlan })
+        .catch(e => console.warn('[APP] Error al persistir:', e));
+    }, 1500);
+  }
+
   // ── Work screen ───────────────────────────────────────────────
 
   function goToWork(initialPrompt) {
@@ -311,41 +346,7 @@ window.APP = (() => {
       }
     });
 
-    // Función interna para persistir currentPlan en Turso.
-    // Usa debounce de 1.5s para colapsar ráfagas de cambios rápidos
-    // (drag de capas, sliders de estilo) en una sola escritura.
-    // Llamadas con toastMsg siempre se ejecutan inmediatamente — son
-    // acciones explícitas del usuario que deben confirmar con feedback.
-    let _persistTimer = null;
-    function _persistPlan(toastMsg) {
-      const user   = window.AUTH?.currentUser();
-      const chatId = window.CHAT?.getChatId?.();
-      if (!user || !chatId || !currentPlan) return;
-
-      // Actualizar caché local inmediatamente (sin esperar al debounce)
-      window.SIDEBAR.updateCachedChat(chatId, { lastMap: currentPlan });
-
-      if (toastMsg) {
-        // Acción explícita — persistir de inmediato y mostrar confirmación
-        clearTimeout(_persistTimer);
-        _persistTimer = null;
-        window.FB.updateChat(user.uid, chatId, { lastMap: currentPlan })
-          .then(() => window.TOAST.success(toastMsg))
-          .catch(e => {
-            console.warn('[APP] Error al persistir:', e);
-            window.TOAST.warning(t('toast_save_error'));
-          });
-        return;
-      }
-
-      // Cambio automático — debounce 1.5s
-      clearTimeout(_persistTimer);
-      _persistTimer = setTimeout(() => {
-        _persistTimer = null;
-        window.FB.updateChat(user.uid, chatId, { lastMap: currentPlan })
-          .catch(e => console.warn('[APP] Error al persistir:', e));
-      }, 1500);
-    }
+    // _persistPlan está definida en el scope del módulo (ver arriba de wireWorkEvents)
 
     // Persistir preferencias del popup en Turso
     window.MAP.onPopupPrefsSave((prefs) => {
@@ -896,7 +897,7 @@ window.APP = (() => {
     }
     if (!changed) return;
 
-    // Persistir directamente — _persistPlan no está en scope aquí
+    // Persistir directamente con _persistPlan (ahora en scope del módulo)
     const _user   = window.AUTH?.currentUser?.();
     const _chatId = window.CHAT?.getChatId?.();
     if (_user && _chatId && currentPlan) {
