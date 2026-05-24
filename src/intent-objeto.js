@@ -37,8 +37,6 @@ window.INTENT_OBJETO = (() => {
 
   const VOCAB = {
 
-    CLASIFICACION: /\b(?:clasificaci[oó]n|clasificaciones|clases?|grupos?\s+de\s+(?:color|colores)|colores?\s+de\s+(?:clasificaci[oó]n|la\s+capa|del\s+mapa|por\s+campo|clases?)|categorias?|categorizaci[oó]n|colores?\s+(?:de\s+la\s+capa|del\s+mapa|por\s+campo)|gradiente|paleta|simbologia|simbología|classification|categorization|color\s+scheme|symbology|classificac[aã]o|categorias?|esquema\s+de\s+cores?)\b/i,
-
     ESTILO_PROP: /\b(?:estilo|color(?:es)?|relleno|borde|grosor|tama[nñ]o|icono|ícono|simbolo|símbolo|apariencia|aspecto|radio|opacidad|transparencia|forma|geometria|geometría|círculo|circulo|cuadrado|tamano|style|fill|stroke|outline|thickness|weight|icon|symbol|appearance|shape|size|radius|opacity|cor(?:es)?|espessura|ícone|símbolo|aparência|tamanho|opacidade|transparência|forma|geometria|quadrado|grande|chico|chica|grueso|fino|gordo|delgado|bigger|smaller|larger|thicker|thinner|maior|menor|grosso|fino)\b/i,
 
     BASEMAP: /\b(?:mapa\s+(?:base|de\s+fondo|fondo)|fondo|basemap|base\s+map|mapa\s+de\s+fundo|fundo|background(?:\s+map)?|carto|positron|voyager|dark\s+matter|fondo\s+(?:oscuro|claro|con\s+colores)|mapa\s+base\s+(?:oscuro|claro|con\s+colores))\b/i,
@@ -63,7 +61,7 @@ window.INTENT_OBJETO = (() => {
    * @param opcionesScorer {object} Resultado del scorer si ya se ejecutó
    *
    * @returns {
-   *   tipo: 'CLASIFICACION' | 'ESTILO_PROP' | 'BASEMAP' | 'NOMBRE' |
+   *   tipo: 'ESTILO_PROP' | 'BASEMAP' | 'NOMBRE' |
    *          'FILTRO' | 'MAPA' | 'CAPA_ACTIVA' | 'NUEVA_CAPA' | 'AMBIGUO',
    *   ref: string | null,   // mapKey si CAPA_ACTIVA, layerKey si NUEVA_CAPA
    *   propEstilo: string | null,  // 'color'|'radius'|'weight'|'icon'|'geom'|'opacity' si ESTILO_PROP
@@ -74,7 +72,6 @@ window.INTENT_OBJETO = (() => {
     const activeLayers = window.MAP?.getActiveLayers?.() || {};
 
     // Evaluamos de más específico a más general para evitar falsos positivos.
-    // Ej: "la clasificación" debe dar CLASIFICACION, no CAPA_ACTIVA.
 
     // ── 0. NUEVA_CAPA prioritaria para grupos aditivos (AGREGAR/CARGAR) ──────
     // Si el scorer identificó una capa del catálogo para un grupo aditivo,
@@ -89,12 +86,7 @@ window.INTENT_OBJETO = (() => {
       }
     }
 
-    // ── 1. CLASIFICACION ─────────────────────────────────────────
-    if (VOCAB.CLASIFICACION.test(norm)) {
-      return { tipo: 'CLASIFICACION', ref: _resolverCapaActiva(norm, activeLayers), propEstilo: null };
-    }
-
-    // ── 2. ESTILO_PROP ───────────────────────────────────────────
+    // ── 1. ESTILO_PROP ───────────────────────────────────────────
     if (VOCAB.ESTILO_PROP.test(norm)) {
       const prop = _resolverPropEstilo(norm);
       let ref  = _resolverCapaActiva(norm, activeLayers);
