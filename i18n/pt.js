@@ -343,6 +343,17 @@ window.I18N_PT = {
   validate_no_active_layers_to_add:   'Nenhuma camada carregada no mapa para adicionar.',
   validate_layer_already_on_map:      'Essa camada já está no mapa.',
   validate_filter_no_filterable_fields: 'Esta camada não tem campos filtráveis definidos.',
+  validate_op_adjacent_not_polygon:   'A operação "limítrofe com" só se aplica a camadas de polígonos.',
+  op_ask_distance:     'A que distância (em km) você quer buscar {titulo}?',
+  op_distance_placeholder: 'Ex: 100',
+  op_ask_n:            'Quantos resultados mais próximos de {titulo} você quer?',
+  op_n_placeholder:    'Ex: 5',
+  op_ask_area:         'Em relação a qual área ou lugar você quer aplicar a operação sobre {titulo}?',
+  op_ask_dissolve_all: 'Você quer mesclar todos os objetos de {titulo} em um só, ou apenas os de uma área específica?',
+  op_dissolve_all_yes: 'Mesclar todos',
+  op_dissolve_all_no:  'Escolher uma área',
+  confirm_btn:         'CONFIRMAR',
+
 
   classify_which_field:      'Por qual campo você quer classificar?',
   style_classified_warning:  'Esta camada tem uma classificação ativa. O que você quer fazer?',
