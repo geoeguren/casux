@@ -325,6 +325,8 @@ window.I18N_PT = {
   classify_not_classified:    'Esta camada não tem classificação ativa para remover.',
   classify_which_layer_clear: 'De qual camada você quer remover a classificação?',
   style_reset_done:           'Pronto, restaurei o estilo original.',
+  style_already_max:          'Já está no tamanho máximo.',
+  style_already_min:          'Já está no tamanho mínimo.',
   error_generic:              'Não foi possível executar essa ação.',
   validate_no_layer:                  'Não há camadas no mapa. Carregue uma camada primeiro.',
   validate_classify_no_field:         'Você precisa especificar por qual campo classificar.',
