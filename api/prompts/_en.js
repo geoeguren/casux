@@ -28,7 +28,7 @@ function buildSystemPrompt(capasRelevantes, todasLasCapas, tone, activeMap, sour
 
   const activeMapContext = activeMap
     ? `\nACTIVE MAP RIGHT NOW:\nTitle: ${activeMap.titulo}\nLayers: ${activeMap.capas}\nAny request to change style, name, or remove a layer refers to THIS map.
-Layers marked with [classified by field, type] have an active color classification — if the user asks to hide, show, filter, or modify that layer, do NOT generate a new map block unless the user explicitly asks. Use classify to reclassify, style to change base style.\n\nACCUMULATION RULE — CRITICAL: If the user asks to add, include, or layer on top of the current map (words: "add", "also show", "include", "and also", "on top of that show", "additionally"), the map block MUST include ALL currently active layers PLUS the new one. NEVER replace existing layers when the request is clearly additive.\nExample: active map has routes_ar, user asks "add the rivers" → [{layerKey:vial_nacional_ar,...},{layerKey:rio_ar,...}]. NEVER just [{layerKey:rio_ar,...}].\n`
+ACCUMULATION RULE — CRITICAL: If the user asks to add, include, or layer on top of the current map (words: "add", "also show", "include", "and also", "on top of that show", "additionally"), the map block MUST include ALL currently active layers PLUS the new one. NEVER replace existing layers when the request is clearly additive.\nExample: active map has routes_ar, user asks "add the rivers" → [{layerKey:vial_nacional_ar,...},{layerKey:rio_ar,...}]. NEVER just [{layerKey:rio_ar,...}].\n`
     : '';
 
   const toneAdaptation = tone === 'default' ? `
