@@ -145,20 +145,28 @@ window.LP_MODAL = (() => {
       const wrap = document.createElement('div');
       wrap.className = 'adv-ramp-csel';
 
-      const makeDots = (pk) => (window.PALETTES[pk] || []).slice(0, 8).map(c =>
-        `<span class="adv-ramp-dot" style="background:${c}"></span>`
-      ).join('');
+      const makeRamp = (pk) => {
+        const colors = window.PALETTES[pk] || [];
+        if (!colors.length) return '';
+        if (pk.startsWith('seq_') || pk === 'blues' || pk === 'greens' || pk === 'oranges' || pk === 'purples' || pk === 'redblue' || pk === 'browngreen') {
+          const stops = colors.join(', ');
+          return `<span class="adv-ramp-bar" style="background:linear-gradient(to right,${stops})"></span>`;
+        }
+        const w = (100 / colors.length).toFixed(3);
+        const segs = colors.map(c => `<span class="adv-ramp-seg" style="background:${c};width:${w}%"></span>`).join('');
+        return `<span class="adv-ramp-bar adv-ramp-bar--cat">${segs}</span>`;
+      };
 
       const cur = currentPalette || palKeys[0];
       wrap.innerHTML = `
         <div class="adv-ramp-trigger" id="adv-ramp-trigger-${k}">
-          <div class="adv-ramp-preview">${makeDots(cur)}</div>
+          <div class="adv-ramp-preview">${makeRamp(cur)}</div>
           <span class="adv-ramp-arrow">▾</span>
         </div>
         <div class="adv-ramp-dropdown hidden" id="adv-ramp-dd-${k}">
           ${palKeys.map(pk => `
             <div class="adv-ramp-option ${pk === cur ? 'selected' : ''}" data-pal="${pk}">
-              <div class="adv-ramp-option-dots">${makeDots(pk)}</div>
+              <div class="adv-ramp-option-ramp">${makeRamp(pk)}</div>
               <span class="adv-ramp-option-label adv-ramp-palette-label">${window.PALETTE_LABELS[pk] || pk}</span>
             </div>`).join('')}
         </div>`;
@@ -183,7 +191,7 @@ window.LP_MODAL = (() => {
           opt.classList.add('selected');
           dropdown.classList.add('hidden');
           arrow.classList.remove('open');
-          preview.innerHTML = makeDots(pk);
+          preview.innerHTML = makeRamp(pk);
           selPalette = pk;
           onChange(pk);
         });
