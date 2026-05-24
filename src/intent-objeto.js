@@ -76,6 +76,19 @@ window.INTENT_OBJETO = (() => {
     // Evaluamos de más específico a más general para evitar falsos positivos.
     // Ej: "la clasificación" debe dar CLASIFICACION, no CAPA_ACTIVA.
 
+    // ── 0. NUEVA_CAPA prioritaria para grupos aditivos (AGREGAR/CARGAR) ──────
+    // Si el scorer identificó una capa del catálogo para un grupo aditivo,
+    // devolver NUEVA_CAPA ANTES de evaluar CAPA_ACTIVA.
+    // Evita que tokens genéricos como "argentina" en el título de una capa activa
+    // anulen la capa nueva: "agregá puertos de Argentina" con "Red vial nacional de
+    // Argentina" cargada debe cargar Puertos, no hacer toggle sobre Red vial.
+    if (opcionesScorer?._grupoAditivo && opcionesScorer?.layerKey) {
+      const yaActiva = Object.values(activeLayers).some(e => e.layerKey === opcionesScorer.layerKey);
+      if (!yaActiva) {
+        return { tipo: 'NUEVA_CAPA', ref: opcionesScorer.layerKey, propEstilo: null };
+      }
+    }
+
     // ── 1. CLASIFICACION ─────────────────────────────────────────
     if (VOCAB.CLASIFICACION.test(norm)) {
       return { tipo: 'CLASIFICACION', ref: _resolverCapaActiva(norm, activeLayers), propEstilo: null };
