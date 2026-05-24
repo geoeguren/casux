@@ -1921,6 +1921,47 @@ window.UI = (() => {
     scrollBottom();
   }
 
+  function _showOpacitySlider(container, mapKey, layer, containerRef) {
+    const geom = layer.geomType || 'polygon';
+    // Para líneas, la opacidad relevante es 'opacity'; para polígonos y puntos, 'fillOpacity'
+    const isLine = geom === 'line';
+    const cur = isLine
+      ? (layer.style?.opacity ?? 1)
+      : (layer.style?.fillOpacity ?? 0.8);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'style-slider-wrap';
+    wrap.innerHTML = `
+      <div class="style-slider-row">
+        <input class="lea-range-input" type="range"
+          min="0" max="1" step="0.05" value="${cur}" />
+        <span class="style-slider-val">${Math.round(cur * 100)}%</span>
+      </div>`;
+
+    const inp = wrap.querySelector('input');
+    const val = wrap.querySelector('.style-slider-val');
+
+    inp.addEventListener('input', () => {
+      const v = parseFloat(inp.value);
+      val.textContent = Math.round(v * 100) + '%';
+      const preview = isLine ? { opacity: v } : { fillOpacity: v, opacity: v };
+      window.MAP?.updateLayerStyle?.(mapKey, preview);
+    });
+
+    inp.addEventListener('change', () => {
+      const v = parseFloat(inp.value);
+      const changes = isLine ? { opacity: v } : { fillOpacity: v, opacity: v };
+      _applyStyle(mapKey, changes);
+      addMessage('assistant', t('style_applied'));
+      containerRef?.remove();
+      scrollBottom();
+    });
+
+    window.LP_UTILS?.wireSliderTouch?.(inp);
+    container.appendChild(wrap);
+    scrollBottom();
+  }
+
   function _showIconPicker(container, mapKey, layer, chatTitulo, containerRef) {
     const isMobile = window.MAP_CONTROLS?.isMobile?.();
     const icons = _suggestIcons(chatTitulo);
@@ -2005,14 +2046,22 @@ window.UI = (() => {
 
   function _showParamButtons(container, mapKey, layer, chatTitulo, containerRef, opts = {}) {
     const geom = layer.geomType || 'polygon';
-    const params = [];
-    if (geom === 'point' && !opts.excludeColor) params.push({ key: 'color',  label: t('style_color')    });
-    if (geom === 'point')   params.push({ key: 'radius', label: t('style_size')     });
-    if (geom === 'point')   params.push({ key: 'icon',   label: t('adv_svg_title')  });
-    if (geom === 'point')   params.push({ key: 'geom',   label: t('style_geometry') });
-    if (geom === 'line' && !opts.excludeColor) params.push({ key: 'color',  label: t('style_color')   });
-    if (geom === 'line')    params.push({ key: 'weight', label: t('style_weight')  });
-    if (geom === 'polygon' && !opts.excludeColor) params.push({ key: 'color',  label: t('style_color')   });
+    const validProps = window.INTENT_VALIDAR?.getPropsValidasParaGeom?.(geom) || ['color', 'opacity'];
+
+    // Mapa prop → etiqueta i18n. El orden aquí define el orden visual de los botones.
+    const PROP_LABELS = {
+      color:   () => t('style_color'),
+      radius:  () => t('style_size'),
+      weight:  () => t('style_weight'),
+      icon:    () => t('adv_svg_title'),
+      geom:    () => t('style_geometry'),
+      opacity: () => t('style_opacity'),
+    };
+
+    const params = validProps
+      .filter(p => !(opts.excludeColor && p === 'color'))
+      .filter(p => PROP_LABELS[p])
+      .map(p => ({ key: p, label: PROP_LABELS[p]() }));
 
     const card = document.createElement('div');
     card.className = 'msg-export-choice';
@@ -2035,20 +2084,25 @@ window.UI = (() => {
 
   function _showParamControl(container, mapKey, layer, param, chatTitulo, containerRef) {
     const geom = layer.geomType || 'polygon';
-    const validParams = { point: ['color','radius','icon','geom'], line: ['color','weight'], polygon: ['color'] };
-    const allowed = validParams[geom] || validParams.polygon;
+    const allowed = window.INTENT_VALIDAR?.getPropsValidasParaGeom?.(geom) || ['color', 'opacity'];
     if (!allowed.includes(param)) {
-      const geomKey = geom === 'point' ? 'geom_point' : geom === 'line' ? 'geom_line' : 'geom_polygon';
+      const geomKey  = geom === 'point' ? 'geom_point' : geom === 'line' ? 'geom_line' : 'geom_polygon';
       const paramKey = param === 'radius' ? 'style_size' : param === 'weight' ? 'style_weight' : 'style_' + param;
-      addMessage('assistant', t('style_param_not_valid', { param: t(paramKey), geom: t(geomKey) }));
+      // Mostrar el texto explicativo DENTRO del container (antes de los botones)
+      // para que el orden visual sea: texto → botones.
+      const msgEl = document.createElement('div');
+      msgEl.className = 'msg-export-confirm';
+      msgEl.textContent = t('style_param_not_valid', { param: t(paramKey), geom: t(geomKey) });
+      container.appendChild(msgEl);
       _showParamButtons(container, mapKey, layer, chatTitulo, containerRef);
       return;
     }
-    if (param === 'color')  _showColorPicker(container, mapKey, layer, containerRef);
-    if (param === 'radius') _showSlider(container, mapKey, layer, 'radius', containerRef);
-    if (param === 'weight') _showSlider(container, mapKey, layer, 'weight', containerRef);
-    if (param === 'icon')   _showIconPicker(container, mapKey, layer, chatTitulo, containerRef);
-    if (param === 'geom')   _showGeomPicker(container, mapKey, layer, containerRef);
+    if (param === 'color')   _showColorPicker(container, mapKey, layer, containerRef);
+    if (param === 'radius')  _showSlider(container, mapKey, layer, 'radius', containerRef);
+    if (param === 'weight')  _showSlider(container, mapKey, layer, 'weight', containerRef);
+    if (param === 'opacity') _showOpacitySlider(container, mapKey, layer, containerRef);
+    if (param === 'icon')    _showIconPicker(container, mapKey, layer, chatTitulo, containerRef);
+    if (param === 'geom')    _showGeomPicker(container, mapKey, layer, containerRef);
   }
 
   // ── Paso A: elegir capa ───────────────────────────────────────
