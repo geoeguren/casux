@@ -27,7 +27,8 @@ function buildSystemPrompt(capasRelevantes, todasLasCapas, tone, activeMap, sour
   const mascaras = buildMascarasDisponibles(todasLasCapas);
 
   const activeMapContext = activeMap
-    ? `\nMAPA ATIVO AGORA:\nTítulo: ${activeMap.titulo}\nCamadas: ${activeMap.capas}\nQualquer pedido de mudança de estilo, nome ou remoção de camada refere-se a ESTE mapa.\n\nREGRA DE ACUMULAÇÃO — CRÍTICA: Se o usuário pedir para adicionar, incluir ou somar uma nova camada ao mapa atual (verbos: "adiciona", "inclui", "também quero ver", "além disso", "também", "add", "also show"), o bloco map DEVE incluir TODAS as camadas ativas mais a nova. NUNCA substitua as camadas existentes quando o pedido for aditivo.\nExemplo: mapa ativo tem rutas_ar, usuário pede "adiciona os rios" → [{layerKey:vial_nacional_ar,...},{layerKey:rio_ar,...}]. NUNCA apenas [{layerKey:rio_ar,...}].\n`
+    ? `\nMAPA ATIVO AGORA:\nTítulo: ${activeMap.titulo}\nCamadas: ${activeMap.capas}\nQualquer pedido de mudança de estilo, nome ou remoção de camada refere-se a ESTE mapa
+Camadas marcadas com [classified by campo, tipo] têm uma classificação cromática ativa — se o usuário pedir ocultar, mostrar, filtrar ou modificar essa camada, NÃO gere um novo bloco map a menos que o usuário solicite explicitamente. Use classify para reclassificar, style para mudar o estilo base..\n\nREGRA DE ACUMULAÇÃO — CRÍTICA: Se o usuário pedir para adicionar, incluir ou somar uma nova camada ao mapa atual (verbos: "adiciona", "inclui", "também quero ver", "além disso", "também", "add", "also show"), o bloco map DEVE incluir TODAS as camadas ativas mais a nova. NUNCA substitua as camadas existentes quando o pedido for aditivo.\nExemplo: mapa ativo tem rutas_ar, usuário pede "adiciona os rios" → [{layerKey:vial_nacional_ar,...},{layerKey:rio_ar,...}]. NUNCA apenas [{layerKey:rio_ar,...}].\n`
     : '';
 
   const toneAdaptation = tone === 'default' ? `
