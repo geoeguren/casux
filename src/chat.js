@@ -291,7 +291,8 @@ window.CHAT = (() => {
             // Una sola capa activa → aplicar directo
             _applyStyleProp(mapKey, prop, value);
             const msgEl = UI.addMessage('assistant', t('style_applied'));
-            history.push({ role: 'assistant', content: t('style_applied'), time: new Date().toISOString() });
+            UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
+            history.push({ role: 'assistant', content: t('style_applied'), time: new Date().toISOString(), model: 'pim' });
           } else {
             // Varias capas → selector de capa, luego aplicar
             const msgEl = UI.addMessage('assistant', t('style_which_layer'));
@@ -581,7 +582,31 @@ window.CHAT = (() => {
         else if (intencion.tipo === 'filtrar') {
           // Delegar al LLM — el filtrado desde intent ya está en construirInstruccion
           // cuando la capa se carga. Para capas ya cargadas → LLM.
-          // (futuro: re-cargar la capa con el filtro detectado)
+          // IMPORTANTE: mostrar Trazando de nuevo antes de ir al LLM,
+          // porque hideThinking() fue llamado al entrar al bloque if(intencion).
+          UI.showThinking();
+          // cae al LLM path intencionalmente — sin return
+        }
+
+        // SELECTOR CAPA → mostrar lista de capas activas para que el usuario elija
+        else if (intencion.tipo === 'selector_capa') {
+          isStreaming = false;
+          UI.setSendEnabled(true);
+          const msgEl = UI.addMessage('assistant', t('selector_capa_msg'));
+          UI.setMessageMeta(msgEl, { time: new Date(), model: 'pim' });
+          UI.showLayerSelectorForAction(msgEl, (selectedMapKey) => {
+            // Una vez elegida la capa, reenviar la intención original con la capa resuelta
+            // Por ahora, mostrar un mensaje de confirmación
+            UI.addMessage('assistant', t('selector_capa_selected'));
+          });
+          history.push({ role: 'assistant', content: t('selector_capa_msg'), time: new Date().toISOString() });
+          return;
+        }
+
+        // LIMPIAR FILTRO → no tiene implementación propia todavía, ir al LLM
+        else if (intencion.tipo === 'limpiar_filtro') {
+          UI.showThinking();
+          // cae al LLM path intencionalmente — sin return
         }
 
         // CAPA → resolver sin LLM
