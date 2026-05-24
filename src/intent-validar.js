@@ -129,7 +129,13 @@ window.INTENT_VALIDAR = (() => {
           if (!p.propEstilo) return true; // sin prop específica → selector de prop
           const geom = ctx.activeLayers[p.mapKey]?.geomType || 'polygon';
           const validas = GEOM_PROPS_VALIDAS[geom] || GEOM_PROPS_VALIDAS.polygon;
-          return validas.has(p.propEstilo);
+          if (validas.has(p.propEstilo)) return true;
+          // La prop no aplica para la capa resuelta, pero puede haber otra capa activa
+          // que sí la soporte (ej: radius pedido con polígono+punto activos).
+          // En ese caso no bloquear — showStyleFlow mostrará el selector de capa.
+          return Object.entries(ctx.activeLayers)
+            .filter(([k]) => k !== p.mapKey)
+            .some(([, l]) => (GEOM_PROPS_VALIDAS[l.geomType] || GEOM_PROPS_VALIDAS.polygon).has(p.propEstilo));
         },
       },
       {
