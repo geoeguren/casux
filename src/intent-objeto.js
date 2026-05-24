@@ -84,7 +84,12 @@ window.INTENT_OBJETO = (() => {
     // ── 2. ESTILO_PROP ───────────────────────────────────────────
     if (VOCAB.ESTILO_PROP.test(norm)) {
       const prop = _resolverPropEstilo(norm);
-      const ref  = _resolverCapaActiva(norm, activeLayers);
+      let ref  = _resolverCapaActiva(norm, activeLayers);
+      // Si no se identificó capa por nombre, usar la única capa activa (si hay una sola)
+      if (!ref) {
+        const keys = Object.keys(activeLayers);
+        if (keys.length === 1) ref = keys[0];
+      }
       return { tipo: 'ESTILO_PROP', ref, propEstilo: prop };
     }
 
