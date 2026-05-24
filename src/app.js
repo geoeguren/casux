@@ -740,12 +740,9 @@ window.APP = (() => {
           // Solo recalcular si no hay paletteColors (clasificación restaurada de BD sin colores).
           let paletteColors = clSource.paletteColors;
           if (!paletteColors?.length) {
-            if (clSource.type === 'graduated') {
-              paletteColors = window.PALETTES[clSource.palette] || window.PALETTES.seq_blues;
-            } else {
-              const picked = _pickClassifyPalette(clSource);
-              paletteColors = picked.colors;
-            }
+            // Restaurar sin paletteColors guardados: usar la misma lógica de rotación
+            const picked = _pickClassifyPalette(clSource);
+            paletteColors = picked.colors;
           }
           // Bug D fix: applyClassification es async — awaitar para que la leyenda
           // se actualice DESPUÉS de que el colorMap/breaks estén listos.
@@ -888,22 +885,29 @@ window.APP = (() => {
 
   // ── Aplicar clasificación desde chat ─────────────────────────
 
-  // Paletas cualitativas en rotación — una por capa clasificada para evitar
-  // que dos capas muestren los mismos colores en la leyenda.
-  const _CAT_PALETTE_ROTATION = ['cat_tableau', 'cat_bold', 'cat_earth', 'cat_vivid', 'cat_dark', 'cat_pastel'];
+  // Rotación de paletas por tipo — cada capa clasificada recibe una paleta distinta.
+  // Mismo comportamiento para categorized y graduated.
+  const _PALETTE_ROTATION = {
+    categorized: ['cat_tableau', 'cat_bold', 'cat_earth', 'cat_vivid', 'cat_dark', 'cat_pastel'],
+    graduated:   ['seq_blues', 'seq_oranges', 'seq_greens', 'seq_purples', 'seq_teal', 'seq_redyellow'],
+  };
 
   function _pickClassifyPalette(cEntry) {
+    const type = cEntry.type || 'categorized';
+    const rotation = _PALETTE_ROTATION[type] || _PALETTE_ROTATION.categorized;
+    const defaultPalette = type === 'graduated' ? 'seq_blues' : 'qualitative';
+
     // Si el LLM o el usuario pidieron una paleta específica (distinta a la default), respetarla.
-    if (cEntry.palette && cEntry.palette !== 'qualitative' && window.PALETTES[cEntry.palette]) {
+    if (cEntry.palette && cEntry.palette !== defaultPalette && window.PALETTES[cEntry.palette]) {
       return { key: cEntry.palette, colors: window.PALETTES[cEntry.palette] };
     }
-    // Contar cuántas capas activas ya tienen clasificación categorized → rotar paleta
+    // Contar cuántas capas activas ya tienen clasificación del mismo tipo → rotar paleta
     const layers = window.MAP.getActiveLayers();
     const classifiedCount = Object.values(layers)
-      .filter(e => e.classification?.type === 'categorized')
+      .filter(e => e.classification?.type === type)
       .length;
-    const paletteKey = _CAT_PALETTE_ROTATION[classifiedCount % _CAT_PALETTE_ROTATION.length];
-    return { key: paletteKey, colors: window.PALETTES[paletteKey] || window.PALETTES.qualitative };
+    const paletteKey = rotation[classifiedCount % rotation.length];
+    return { key: paletteKey, colors: window.PALETTES[paletteKey] || window.PALETTES[defaultPalette] };
   }
 
   async function applyClassifyPlan(classifyPlan) {
@@ -913,16 +917,10 @@ window.APP = (() => {
       const entry = Object.entries(activeLayers).find(([, v]) => v.layerKey === c.layerKey);
       if (!entry) continue;
       const [mapKey] = entry;
-      let colors;
-      if (c.type === 'graduated') {
-        // Graduated: usar la paleta secuencial pedida
-        colors = window.PALETTES[c.palette] || window.PALETTES.seq_blues;
-      } else {
-        // Categorized: rotar paletas para que cada capa use una distinta
-        const picked = _pickClassifyPalette(c);
-        c = { ...c, palette: picked.key };
-        colors = picked.colors;
-      }
+      // Rotar paleta según el tipo (mismo comportamiento para categorized y graduated)
+      const picked = _pickClassifyPalette(c);
+      c = { ...c, palette: picked.key };
+      const colors = picked.colors;
       // Bug B fix: applyClassification es async (usa worker), hay que awaitarla
       // para que la leyenda se actualice DESPUÉS de que el colorMap esté listo.
       await window.MAP.applyClassification(mapKey, { ...c, paletteColors: colors });
