@@ -889,6 +889,7 @@ window.MAP = (() => {
     }
     newLayer.addTo(leafletMap);
     entry.leafletLayer = newLayer;
+    _reorderLayers();
   }
 
   async function applyClassification(mapKey, opts) {
