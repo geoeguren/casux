@@ -325,6 +325,8 @@ window.I18N_EN = {
   classify_not_classified:    'This layer has no active classification to remove.',
   classify_which_layer_clear: 'Which layer do you want to clear the classification from?',
   style_reset_done:           'Done, restored the original style.',
+  style_already_max:          'Already at maximum size.',
+  style_already_min:          'Already at minimum size.',
   error_generic:              'Could not execute that action.',
   validate_no_layer:                  'There are no layers on the map. Load a layer first.',
   validate_classify_no_field:         'You need to specify which field to classify by.',
