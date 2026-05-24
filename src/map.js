@@ -897,7 +897,7 @@ window.MAP = (() => {
 
     const { type, field, palette, paletteColors, method, classes } = opts;
     const colors  = paletteColors || [];
-    const MAX_CATS = 8;
+    const MAX_CATS = 12;
 
     if (type === 'categorized') {
       const rawValues = entry.geojson.features
