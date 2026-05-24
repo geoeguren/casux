@@ -392,6 +392,9 @@ body.day, html.day .adv-ramp-trigger { background: rgba(0,0,0,0.04); }
 .adv-ramp-seg {
   display: block; height: 100%; flex-shrink: 0;
 }
+.adv-ramp-trigger-spacer {
+  flex: 0 0 72px;
+}
 .adv-ramp-arrow { font-size: 10px; color: var(--cream2); flex-shrink: 0; transition: transform .15s; }
 .adv-ramp-arrow.open { transform: rotate(180deg); }
 
