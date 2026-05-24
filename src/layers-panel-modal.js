@@ -316,6 +316,8 @@ window.LP_MODAL = (() => {
         });
       }
       window.MAP.applyClassificationFromData(k, nl.classification);
+      window.LP_PANEL.persistStyle(k, nl.style);
+      window.LP_PANEL.persistClassification(k, nl.classification);
     }
 
     function buildGlobalControls(container, geom) {
@@ -487,6 +489,7 @@ window.LP_MODAL = (() => {
           delete nl2.classification.colorMap[val];
           if (nl2.classification.styleMap) delete nl2.classification.styleMap[val];
           window.MAP.applyClassificationFromData(k, nl2.classification);
+          window.LP_PANEL.persistClassification(k, nl2.classification);
           buildCatItemsAdv();
         });
 
@@ -648,6 +651,7 @@ window.LP_MODAL = (() => {
       if (!nl.classification.styleMap) nl.classification.styleMap = {};
       nl.classification.styleMap[val] = { ...(nl.classification.styleMap[val] || nl.style || {}), fillColor: color, color };
       window.MAP.applyClassificationFromData(k, nl.classification);
+      window.LP_PANEL.persistClassification(k, nl.classification);
     }
 
     function updateCatValStyle(val, changes) {
@@ -658,6 +662,7 @@ window.LP_MODAL = (() => {
       if (changes.fillColor) nl.classification.colorMap[val] = changes.fillColor;
       if (changes.color && !changes.fillColor) nl.classification.colorMap[val] = changes.color;
       window.MAP.applyClassificationFromData(k, nl.classification);
+      window.LP_PANEL.persistClassification(k, nl.classification);
     }
 
     // ── Render de modos ───────────────────────────────────────────
