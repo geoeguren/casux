@@ -134,10 +134,10 @@ window.INTENT_ACCIONES = (() => {
   //   'vago'       → quiere cambiar algo visual pero no especificó qué.
   //                  Se abre el selector de propiedades.
 
-  const PATRON_ESTILO = /\b(estilo|color(es)?|relleno|borde|grosor|tamano|icono|simbolo|apariencia|aspecto|hacelo\s+mas|ponelo|ponerlo|forma|geometria|style|fill|stroke|outline|thickness|weight|icon|symbol|appearance|make\s+it|shape|circle|square|size|radius|radio|cor|cores|preenchimento|borda|espessura|ícone|símbolo|aparência|forma|geometria|circulo|quadrado|tamanho)\b/i;
+  const PATRON_ESTILO = /\b(estilo|color(es)?|relleno|borde|grosor|tamano|icono|simbolo|apariencia|aspecto|hacelos?\s+mas|hacelas?\s+mas|ponelo|ponerlo|forma|geometria|style|fill|stroke|outline|thickness|weight|icon|symbol|appearance|make\s+(it|them)|shape|circle|square|size|radius|radio|cor|cores|preenchimento|borda|espessura|ícone|símbolo|aparência|forma|geometria|circulo|quadrado|tamanho|grande|chico|chica|grueso|fino|bigger|smaller|larger|thicker|thinner|maior|menor)\b/i;
 
   // Valores concretos que confirman que el usuario ya sabe qué quiere cambiar
-  const PATRON_ESTILO_ESPECIFICO = /\b(rojo|azul|verde|amarillo|naranja|violeta|rosa|negro|blanco|gris|celeste|marron|mas\s+(grandes?|chicos?|gruesos?|finos?|oscuro|claro|transparente)|tambien|lo\s+mismo|idem|opacidad|transparencia|red|blue|green|yellow|orange|purple|pink|black|white|gray|grey|cyan|brown|bigger|smaller|larger|thicker|thinner|darker|lighter|transparent|opacity|same|vermelho|azul|verde|amarelo|laranja|violeta|rosa|preto|branco|cinza|ciano|marrom|maior|menor|mais\s+(grosso|fino|escuro|claro|transparente)|transparencia|opacidade|#[0-9a-fA-F]{3,6}|\d+(\.\d+)?\s*(px|pt|puntos?))\b/i;
+  const PATRON_ESTILO_ESPECIFICO = /\b(rojo|azul|verde|amarillo|naranja|violeta|rosa|negro|blanco|gris|celeste|marron|mas\s+(grandes?|chicos?|chicas?|gruesas?|gruesos?|finas?|finos?|pequen[ao]s?|oscuro|claro|transparente)|tambien|lo\s+mismo|idem|opacidad|transparencia|red|blue|green|yellow|orange|purple|pink|black|white|gray|grey|cyan|brown|bigger|smaller|larger|thicker|thinner|darker|lighter|transparent|opacity|same|vermelho|azul|verde|amarelo|laranja|violeta|rosa|preto|branco|cinza|ciano|marrom|maior|menor|mais\s+(grosso|fino|escuro|claro|transparente)|transparencia|opacidade|#[0-9a-fA-F]{3,6}|\d+(\.\d+)?\s*(px|pt|puntos?))\b/i;
 
   // Función auxiliar: obtiene los textos de los botones rápidos de estilo
   // para detectar clicks directos en ellos (llegan como texto exacto al chat)
@@ -458,8 +458,8 @@ window.INTENT_ACCIONES = (() => {
   function _resolverProp(norm) {
     // Determinar qué propiedad se quiere cambiar (ES / EN / PT)
     if (/\b(opacidad|transparencia|opaco|transparente|opacity|transparent|opaque|opacidade|transparencia|opaco)\b/.test(norm)) return 'opacity';
-    if (/\b(tamano|radio|grande|chico|chica|size|radius|bigger|larger|smaller|tamanho|raio|grande|pequeno|pequena|maior|menor)\b/.test(norm)) return 'radius';
-    if (/\b(grosor|grueso|fino|gordo|delgado|weight|thick|thin|thicker|thinner|espessura|grosso|fino|grossura)\b/.test(norm)) return 'weight';
+    if (/\b(tamano|radio|grandes?|chicos?|chicas?|size|radius|bigger|larger|smaller|tamanho|raio|peque[nñ][ao]s?|maior|menor)\b/.test(norm)) return 'radius';
+    if (/\b(grosor|gruesas?|gruesos?|finas?|finos?|gordos?|gordas?|delgados?|delgadas?|weight|thick|thin|thicker|thinner|espessura|grossos?|grossas?|grossura)\b/.test(norm)) return 'weight';
     if (/\b(color|relleno|fill|tono|tinte|cor|cores|preenchimento|coloracao|coloração)\b/.test(norm)) return 'color';
     // Último recurso: si menciona un color o hex, es color
     if (PATRON_HEX.test(norm)) return 'color';
@@ -519,13 +519,13 @@ window.INTENT_ACCIONES = (() => {
       if (/\b(mas\s+grandes?|aumenta[r]?|sube[r]?|subir|bigger|larger|increase|more\s+big|maior|aumentar?|mais\s+grande)\b/.test(norm)) {
         return Math.min(prop === 'radius' ? 25 : 10, +(cur + 2).toFixed(1));
       }
-      if (/\b(mas\s+chicos?|mas\s+pequ|achica[r]?|reduce[r]?|reducir|baja[r]?|smaller|decrease|menor|reduzir?|mais\s+pequen)\b/.test(norm)) {
+      if (/\b(mas\s+chicos?|mas\s+chicas?|mas\s+peque[nñ][ao]s?|achica[r]?|reduce[r]?|reducir|baja[r]?|smaller|decrease|menor|reduzir?|mais\s+pequ)\b/.test(norm)) {
         return Math.max(0.5, +(cur - 2).toFixed(1));
       }
-      if (/\b(mas\s+gruesos?|mas\s+gordos?|thicker|mais\s+gross|mais\s+espess|mas\s+espeso)\b/.test(norm)) {
+      if (/\b(mas\s+gruesas?|mas\s+gruesos?|mas\s+gordos?|mas\s+gordas?|thicker|mais\s+gross|mais\s+espess|mas\s+espeso)\b/.test(norm)) {
         return Math.min(10, +(cur + 1.5).toFixed(1));
       }
-      if (/\b(mas\s+finos?|mas\s+delgados?|thinner|mais\s+fin|mais\s+delgad|mais\s+fino)\b/.test(norm)) {
+      if (/\b(mas\s+finas?|mas\s+finos?|mas\s+delgados?|mas\s+delgadas?|thinner|mais\s+fin|mais\s+delgad|mais\s+fino)\b/.test(norm)) {
         return Math.max(0.5, +(cur - 1.5).toFixed(1));
       }
       return null;
