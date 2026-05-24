@@ -411,8 +411,187 @@ window.INTENT_VALIDAR = (() => {
     return [...(GEOM_PROPS_VALIDAS[geomType] || GEOM_PROPS_VALIDAS.polygon)];
   }
 
+
+  // ══════════════════════════════════════════════════════════════
+  // VALIDACIONES DE OPERACIONES ESPACIALES
+  // ══════════════════════════════════════════════════════════════
+  //
+  // validarOpEspacial(op, instruccion, layerDef) →
+  //   { valida: true }
+  // | { valida: false, bloquea: true,  error: 'i18n_key', errorParams }
+  // | { valida: false, bloquea: false, preguntar: 'distancia'|'area'|'n'|'confirmar' }
+  //
+  // 'preguntar' indica que chat.js debe pedir al usuario el dato faltante
+  // antes de ejecutar la operación.
+
+  // Geometrías sobre las que ADJACENT tiene sentido
+  const GEOMS_ADJACENT_VALIDAS = new Set(['polygon']);
+
+  // Geometrías sobre las que INTERSECT tiene sentido
+  const GEOMS_INTERSECT_VALIDAS = new Set(['line', 'polygon']);
+
+  // Geometrías sobre las que DISSOLVE tiene sentido
+  const GEOMS_DISSOLVE_VALIDAS = new Set(['polygon', 'line', 'point']);
+
+  const VALIDACIONES_OP = {
+
+    within_layer: [
+      {
+        // Sin área de referencia → preguntar
+        bloquea: false, preguntar: 'area',
+        check: (inst) => !!(inst.withinArea?.value || inst.refLayerKey),
+      },
+      {
+        // Sin distancia → preguntar (eliminado el default de 50km)
+        bloquea: false, preguntar: 'distancia',
+        check: (inst) => inst.withinDistance != null,
+      },
+    ],
+
+    within_layer_exclude: [
+      {
+        bloquea: false, preguntar: 'area',
+        check: (inst) => !!(inst.withinArea?.value || inst.refLayerKey),
+      },
+      {
+        bloquea: false, preguntar: 'distancia',
+        check: (inst) => inst.withinDistance != null,
+      },
+    ],
+
+    nearest: [
+      {
+        // Sin área de referencia → preguntar
+        bloquea: false, preguntar: 'area',
+        check: (inst) => !!(inst.nearestArea?.value || inst.refLayerKey),
+      },
+      {
+        // Sin N → preguntar
+        bloquea: false, preguntar: 'n',
+        check: (inst) => inst.nearestCount != null,
+      },
+    ],
+
+    nearest_exclude: [
+      {
+        bloquea: false, preguntar: 'area',
+        check: (inst) => !!(inst.nearestArea?.value || inst.refLayerKey),
+      },
+      {
+        bloquea: false, preguntar: 'n',
+        check: (inst) => inst.nearestCount != null,
+      },
+    ],
+
+    adjacent: [
+      {
+        // Sin área de referencia → preguntar
+        bloquea: false, preguntar: 'area',
+        check: (inst) => !!(inst.adjacentArea?.value),
+      },
+      {
+        // Geomería de puntos → no tiene sentido
+        bloquea: true, error: 'validate_op_adjacent_not_polygon',
+        check: (inst, layerDef) => GEOMS_ADJACENT_VALIDAS.has(layerDef?.geomType),
+      },
+    ],
+
+    adjacent_exclude: [
+      {
+        bloquea: false, preguntar: 'area',
+        check: (inst) => !!(inst.adjacentArea?.value),
+      },
+      {
+        bloquea: true, error: 'validate_op_adjacent_not_polygon',
+        check: (inst, layerDef) => GEOMS_ADJACENT_VALIDAS.has(layerDef?.geomType),
+      },
+    ],
+
+    intersect: [
+      {
+        bloquea: false, preguntar: 'area',
+        check: (inst) => !!(inst.intersectArea?.value),
+      },
+    ],
+
+    intersect_exclude: [
+      {
+        bloquea: false, preguntar: 'area',
+        check: (inst) => !!(inst.intersectArea?.value),
+      },
+    ],
+
+    dissolve: [
+      {
+        // Sin área → confirmar si quieren unir TODOS los features
+        bloquea: false, preguntar: 'confirmar_dissolve_all',
+        check: (inst) => !!(inst.dissolveArea?.value || inst.clipArea?.value || inst.filtro),
+      },
+    ],
+
+    dissolve_exclude: [
+      {
+        bloquea: false, preguntar: 'area',
+        check: (inst) => !!(inst.dissolveArea?.value),
+      },
+    ],
+
+    clip: [
+      // clip sin área es la capa completa — siempre válido
+    ],
+
+    clip_exclude: [
+      {
+        bloquea: false, preguntar: 'area',
+        check: (inst) => !!(inst.clipArea?.value),
+      },
+    ],
+  };
+
+  /**
+   * validarOpEspacial(op, instruccion, layerDef)
+   *
+   * @param op         string     Operación detectada ('within_layer', 'nearest', etc.)
+   * @param instruccion object    Instrucción construida por construirInstruccion()
+   * @param layerDef   object    Definición de la capa del catálogo
+   *
+   * @returns { valida: true }
+   *        | { valida: false, bloquea: true, error, errorParams }
+   *        | { valida: false, bloquea: false, preguntar }
+   */
+  function validarOpEspacial(op, instruccion, layerDef) {
+    const validaciones = VALIDACIONES_OP[op];
+    if (!validaciones || !validaciones.length) return { valida: true };
+
+    for (const v of validaciones) {
+      let ok;
+      try { ok = v.check(instruccion, layerDef); }
+      catch (e) { ok = true; }
+
+      if (!ok) {
+        if (v.bloquea) {
+          return {
+            valida:      false,
+            bloquea:     true,
+            error:       v.error,
+            errorParams: v.errorParams || {},
+          };
+        } else {
+          return {
+            valida:    false,
+            bloquea:   false,
+            preguntar: v.preguntar,
+          };
+        }
+      }
+    }
+
+    return { valida: true };
+  }
+
   return {
     validar,
+    validarOpEspacial,
     esFormatoSoportado,
     esFormatoNoSoportado,
     getPropsValidasParaGeom,
