@@ -53,7 +53,7 @@ window.EXPORT_GRAPHIC = (() => {
     const curBase = window.MAP.getCurrentBase?.() || 'gray';
 
     let _selectedBase = curBase;
-    let _grilla       = true;
+    let _leyenda      = true;
     let _leyendaPos   = 'auto';
     let _formato      = (formatoInicial === 'pdf') ? 'pdf' : 'jpeg';
 
@@ -128,32 +128,29 @@ window.EXPORT_GRAPHIC = (() => {
           ${_dropdownHTML('graphic-basemap', basemapDefs, curBase)}
         </div>
 
-        <!-- Interfaz -->
-        <div class="adv-body-row" style="gap:8px">
-          <span class="adv-body-label">${_t('graphic_interface', 'Interfaz')}</span>
-
+        <!-- Leyenda -->
+        <div class="adv-body-row" style="flex-direction:column;align-items:flex-start;gap:4px">
           <label class="pfc-row" style="padding:5px 0;cursor:pointer">
-            <input type="checkbox" id="graphic-grilla" checked />
+            <input type="checkbox" id="graphic-leyenda" checked />
             <span class="pfc-label" style="font-family:var(--font-sans);font-size:13px;color:var(--cream)">
-              ${_t('graphic_grilla', 'Cuadrícula')}
+              ${_t('graphic_leyenda', 'Leyenda')}
             </span>
           </label>
-        </div>
-
-        <!-- Posición de la leyenda -->
-        <div class="adv-body-row">
-          <span class="adv-body-label">${_t('graphic_legend_pos', 'Posición de la leyenda')}</span>
-          <div class="graphic-preview-wrap">
-            <canvas id="graphic-preview-canvas"
-                    width="${PREVIEW_W}"
-                    height="${PREVIEW_H}">
-            </canvas>
-            ${posSquaresHTML}
+          <!-- Posición de la leyenda — se deshabilita si el checkbox está desactivado -->
+          <div class="adv-body-row" id="graphic-legend-pos-row" style="padding:0;margin-top:2px">
+            <span class="adv-body-label">${_t('graphic_legend_pos', 'Posición')}</span>
+            <div class="graphic-preview-wrap">
+              <canvas id="graphic-preview-canvas"
+                      width="${PREVIEW_W}"
+                      height="${PREVIEW_H}">
+              </canvas>
+              ${posSquaresHTML}
+            </div>
           </div>
         </div>
 
       </div>
-      <div class="adv-modal-footer" style="flex-direction:column;align-items:stretch;gap:6px">
+      <div class="adv-modal-footer" style="flex-direction:column;align-items:stretch;gap:6px;border-top:0.5px solid var(--border)">
         <span class="graphic-export-warn hidden" id="graphic-export-warn">
           <span class="material-icons" style="font-size:13px;vertical-align:-2px;margin-right:4px">block</span>
           <span id="graphic-export-warn-text"></span>
@@ -232,8 +229,24 @@ window.EXPORT_GRAPHIC = (() => {
       _redrawPreview();
     });
 
-    modal.querySelector('#graphic-grilla')?.addEventListener('change', e => {
-      _grilla = e.target.checked;
+    modal.querySelector('#graphic-leyenda')?.addEventListener('change', e => {
+      _leyenda = e.target.checked;
+      const posRow = modal.querySelector('#graphic-legend-pos-row');
+      const wrap   = modal.querySelector('.graphic-preview-wrap');
+      if (!_leyenda) {
+        // Desactivar: vaciar posición elegida, desmarcar botón, deshabilitar preview
+        _leyendaPos = 'auto';
+        modal.querySelectorAll('.graphic-pos-btn').forEach(b => b.classList.remove('selected'));
+        if (posRow) posRow.style.opacity = '0.38';
+        if (posRow) posRow.style.pointerEvents = 'none';
+        if (wrap)   wrap.style.filter = 'grayscale(1)';
+      } else {
+        // Reactivar: habilitar preview y redibujar
+        if (posRow) posRow.style.opacity = '';
+        if (posRow) posRow.style.pointerEvents = '';
+        if (wrap)   wrap.style.filter = '';
+        _redrawPreview();
+      }
     });
 
 
@@ -248,7 +261,7 @@ window.EXPORT_GRAPHIC = (() => {
 
     modal.querySelector('#graphic-download-btn')?.addEventListener('click', () => {
       const opciones = {
-        grilla:     _grilla,
+        leyenda:    _leyenda,
         leyendaPos: _leyendaPos,
         basemap:    _selectedBase,
       };
