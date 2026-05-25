@@ -332,7 +332,9 @@ window.MAP = (() => {
     //   - Si solo cambia un valor visual (color, radio, opacidad…) → actualizar solo el HTML
     //     del divIcon en cada marker. Evita el rebuildLayer que antes se disparaba en CADA
     //     cambio de estilo, lo cual destruía y recreaba toda la capa innecesariamente.
-    const usesDivIcon = entry.style.icon || (entry.style.shape && entry.style.shape !== 'circle');
+    // usesDivIcon solo aplica a íconos Maki — los cuadrados ya son SVG (SquareMarker),
+    // no divIcon, así que se actualizan con setStyle igual que los circleMarkers.
+    const usesDivIcon = !!entry.style.icon;
     if (geomType === 'point' && (
       newStyle.icon  !== prevStyle.icon  ||
       newStyle.shape !== prevStyle.shape
@@ -1598,40 +1600,55 @@ window.MAP = (() => {
     return _fetchMakiSvg(iconKey);
   }
 
-  function _shapeIcon(style) {
-    const size        = (style.radius ?? 8) * 2;
-    const fillColor   = style.fillColor || '#3d52a0';
-    const borderColor = style.color     || '#2d3d7a';
-    const borderWidth = style.weight    ?? 1.5;
-    const fillOpacity = style.fillOpacity ?? 0.85;
-    const shape       = style.shape || 'circle';
+  // _shapeIcon ya no genera divIcon para cuadrados — los cuadrados son SVG path
+  // via _squareMarker, que vive en el mismo SVG renderer que los circleMarkers.
+  // Mantenemos la función como stub para no romper la ruta de actualización en
+  // updateLayerStyle (usesDivIcon check) — devuelve null → nunca se usa.
+  function _shapeIcon(_style) {
+    return null;
+  }
 
-    let inner;
-    if (shape === 'square') {
-      // Convertir el color hex + opacidad a rgba para no afectar el borde
-      const r = parseInt(fillColor.slice(1,3), 16);
-      const g = parseInt(fillColor.slice(3,5), 16);
-      const b = parseInt(fillColor.slice(5,7), 16);
-      const bg = `rgba(${r},${g},${b},${fillOpacity})`;
-      inner = `<div style="
-        width:${size}px;height:${size}px;
-        background:${bg};
-        border:${borderWidth}px solid ${borderColor};
-        border-radius:2px;
-        box-sizing:border-box;
-      "></div>`;
-    } else {
-      // circle (default)
-      return null; // usa circleMarker normal
+  // SquareMarker: extiende L.CircleMarker para dibujar un cuadrado SVG en vez
+  // de un círculo. Al vivir en el mismo SVG renderer, el z-order entre cuadrados
+  // y círculos respeta el orden de inserción del GeoJSON (controlado por el sort
+  // de _sortFeaturesByClassOrder). Soluciona el bug donde los divIcon de los
+  // cuadrados siempre aparecían encima de los circleMarkers por estar en un
+  // stacking context CSS posterior al SVG.
+  const SquareMarker = L.CircleMarker.extend({
+    // Sobreescribir solo el método que dibuja el path SVG.
+    // L.CircleMarker._updatePath dibuja un arco; nosotros dibujamos un rect.
+    _updatePath: function () {
+      const r = this._radius;
+      const p = this._point;
+      if (!p) return;
+      // Path SVG de un cuadrado centrado en p con lado 2r, esquinas levemente redondeadas
+      const rx = 2; // border-radius en px — equivale al border-radius:2px del divIcon anterior
+      this._path.setAttribute('d',
+        `M${p.x - r + rx},${p.y - r}` +
+        `h${(r - rx) * 2}` +
+        `a${rx},${rx} 0 0 1 ${rx},${rx}` +
+        `v${(r - rx) * 2}` +
+        `a${rx},${rx} 0 0 1 ${-rx},${rx}` +
+        `h${-(r - rx) * 2}` +
+        `a${rx},${rx} 0 0 1 ${-rx},${-rx}` +
+        `v${-(r - rx) * 2}` +
+        `a${rx},${rx} 0 0 1 ${rx},${-rx}` +
+        `Z`
+      );
     }
+  });
 
-    return L.divIcon({
-      html:        inner,
-      className:   '',
-      iconSize:    [size, size],
-      iconAnchor:  [size / 2, size / 2],
-      popupAnchor: [0, -size / 2]
-    });
+  function _squareMarker(latlng, style) {
+    const r       = style.radius      ?? 8;
+    const options = {
+      radius:      r,
+      fillColor:   style.fillColor   || '#3d52a0',
+      fillOpacity: style.fillOpacity ?? 0.85,
+      color:       style.color       || '#2d3d7a',
+      weight:      style.weight      ?? 1.5,
+      opacity:     style.opacity     ?? 1,
+    };
+    return new SquareMarker(latlng, options);
   }
 
   function _pointToLayer(feat, latlng, style, paneData) {
@@ -1640,16 +1657,19 @@ window.MAP = (() => {
       if (paneData) opts.pane = paneData.paneName;
       return L.marker(latlng, opts);
     }
-    const shapeIcon = _shapeIcon(style);
-    if (shapeIcon) {
-      const opts = { icon: shapeIcon };
-      if (paneData) opts.pane = paneData.paneName;
-      return L.marker(latlng, opts);
+    // Cuadrado: SVG path via SquareMarker — mismo renderer que circleMarker,
+    // z-order controlado por orden de inserción (respeta el sort de clasificación).
+    if (style.shape === 'square') {
+      const sq = _squareMarker(latlng, style);
+      if (paneData) {
+        sq.options.pane     = paneData.paneName;
+        sq.options.renderer = paneData.renderer;
+      }
+      return sq;
     }
+    // Círculo (default)
     const ps = pointStyle(style);
     if (paneData) {
-      // Ligar el circleMarker al SVG renderer del pane custom para que quede
-      // en el mismo contexto DOM que los markers divIcon de la misma capa.
       ps.pane     = paneData.paneName;
       ps.renderer = paneData.renderer;
     }
