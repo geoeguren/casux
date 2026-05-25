@@ -926,10 +926,13 @@ window.EXPORT_CANVAS = (() => {
     const legendItems = buildLegendItems(activeLayers);
 
     // Leyenda en la mejor posición disponible.
+    // Se omite si opciones.leyenda === false (usuario desactivó la leyenda).
     // Se pasa 'c' (canvas A4 compuesto) en lugar de 'mapCanvas':
     // el sampleo de posición lee desde (mx,my,mw,mh) del A4 — coordenadas exactas
     // sin conversiones de escala. mapCanvas tiene dims distintas a mw×mh.
-    const legendPos = await _drawLegendOnMap(ctx, c, legendItems, mx, my, mw, mh, scale_m, MONO_FONT, _meta, opciones);
+    if (opciones.leyenda !== false) {
+      await _drawLegendOnMap(ctx, c, legendItems, mx, my, mw, mh, scale_m, MONO_FONT, _meta, opciones);
+    }
 
     // Footer eliminado — la info está en el recuadro de referencias
 
