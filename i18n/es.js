@@ -134,7 +134,7 @@ window.I18N_ES = {
   toast_layer_truncated:    '{titulo} es demasiado grande para cargar sin filtro. Pedí un departamento o región específica.',
 
   // ── Toasts de clip ──────────────────────────────────────────
-  toast_display_limit:     '{titulo} tiene {n} elementos — demasiados para mostrar.',
+  toast_display_limit:     '{titulo} pesa {n} — demasiado para mostrar. Pedí una región específica.',
   toast_spatial_none:      '{titulo} no se puede recortar. Se muestra completa.',
   toast_spatial_limit:     '{titulo} tiene {n} elementos — se muestra completa sin recorte.',
   toast_spatial_fallback:  'El servidor tardó demasiado. Procesando en el dispositivo…',
@@ -346,7 +346,7 @@ window.I18N_ES = {
   validate_export_format_not_supported: 'El formato {formato} no está soportado. Podés exportar en: JPEG, PDF, GeoJSON o HTML.',
   validate_export_no_layers:            'No hay capas cargadas para exportar.',
   validate_basemap_invalid:             'Mapa de fondo no reconocido.',
-  validate_layer_too_many_features:     '{titulo} tiene demasiados objetos ({n}) para mostrar sin recorte.',
+  validate_layer_too_many_features:     '{titulo} es demasiado pesada ({n}) para mostrarse completa. Pedí una región o provincia específica.',
   validate_no_active_layers_to_add:     'No hay capas cargadas en el mapa para agregar.',
   validate_layer_already_on_map:        'Esa capa ya está en el mapa.',
   validate_filter_no_filterable_fields: 'Esta capa no tiene campos filtrables definidos.',
