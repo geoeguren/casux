@@ -89,7 +89,7 @@ window.LP_STYLE = (() => {
     });
   }
 
-  function styleControlsHTML(geom, s, mapKey, prefix = '') {
+  function styleControlsHTML(geom, s, mapKey, prefix = '', noColors = false) {
     let rows = '';
     const p = prefix ? `data-prefix="${prefix}"` : '';
     if (geom === 'point') {
@@ -102,7 +102,7 @@ window.LP_STYLE = (() => {
       const w    = s.weight ?? 2;
       const dash = s.dashArray || 'none';
       rows += leaRow(t('style_weight'), `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="weight" ${p} type="range" min="0" max="10" step="0.5" value="${w}" /><span class="lea-val">${w}</span></div>`);
-      rows += leaRow(t('style_color'), colorPickerHTML('color', toHex(s.color), p));
+      if (!noColors) rows += leaRow(t('style_color'), colorPickerHTML('color', toHex(s.color), p));
       rows += leaRow(t('style_opacity'), `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="opacity" ${p} type="range" min="0" max="1" step="0.05" value="${s.opacity ?? 1}" /><span class="lea-val">${Math.round((s.opacity ?? 1) * 100)}%</span></div>`);
       if (mapKey) rows += leaRow(t('style_dash'), buildDashSelect(dash, `lea-dash-${mapKey}`));
     }
@@ -110,8 +110,8 @@ window.LP_STYLE = (() => {
       const w  = s.weight ?? 1.5;
       const fo = s.fillOpacity ?? 0.5;
       rows += leaRow(t('style_border_weight'), `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="weight" ${p} type="range" min="0" max="10" step="0.5" value="${w}" /><span class="lea-val">${w}</span></div>`);
-      rows += leaRow(t('style_border_color'),   colorPickerHTML('color',     toHex(s.color), p));
-      rows += leaRow(t('style_fill_color'), colorPickerHTML('fillColor', toHex(s.fillColor || s.color), p));
+      if (!noColors) rows += leaRow(t('style_border_color'), colorPickerHTML('color',     toHex(s.color), p));
+      if (!noColors) rows += leaRow(t('style_fill_color'),   colorPickerHTML('fillColor', toHex(s.fillColor || s.color), p));
       const foVal = Math.round(fo * 100);
       rows += leaRow(t('style_opacity'), `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="fillOpacity" ${p} type="range" min="0" max="1" step="0.05" value="${fo}" /><span class="lea-val">${foVal}%</span></div>`);
     }
@@ -145,21 +145,29 @@ window.LP_STYLE = (() => {
 
     const contentEl = acc.querySelector(`#lea-content-${k}`);
 
-    // Si la capa está clasificada, bloquear edición simple con un aviso
     if (l.classification?.field) {
-      contentEl.innerHTML = `<div class="lea-classified-notice">
-        <span>${t('simple_blocked_classified')}</span>
-        <button class="adv-footer-btn adv-clear" data-key="${k}">
-          ${t('simple_clear_classification')}
-        </button>
-      </div>`;
-      contentEl.querySelector('.adv-footer-btn')?.addEventListener('click', () => {
-        window.MAP.clearClassification(k);
-        window.LP_PANEL.persistClassification(k, null);
-        // Reconstruir el acordeón sin clasificación
-        closeEditAccordion(sec);
-        toggleEditAccordion(k, sec.querySelector(`.layer-edit-btn[data-key="${k}"]`), sec);
+      // Capa clasificada: mostrar controles simples SIN colores + banner informativo.
+      // Los colores se editan clase por clase en el modal avanzado.
+      // Los parámetros no-color (tamaño, grosor, opacidad, geometría, etc.) se
+      // pueden cambiar globalmente y se propagan a las clases que no los tengan
+      // personalizados en su styleMap.
+      const banner = document.createElement('div');
+      banner.className = 'lea-classified-banner';
+      banner.innerHTML = `
+        <span class="material-icons" style="font-size:14px;flex-shrink:0;opacity:0.6">palette</span>
+        <span>${t('simple_classified_color_hint')}</span>
+        <button class="lea-classified-adv-btn" data-key="${k}">${t('layers_advanced')}</button>`;
+      contentEl.appendChild(banner);
+      banner.querySelector('.lea-classified-adv-btn')?.addEventListener('click', () => {
+        window.LP_MODAL.openAdvancedModal(k, sec);
       });
+
+      // Controles sin colores
+      const controls = document.createElement('div');
+      controls.innerHTML = styleControlsHTML(geom, s, k, '', true);
+      contentEl.appendChild(controls);
+      _wireStyleControls(controls, k, geom, sec);
+      if (geom === 'line') wireCsel(controls, `lea-dash-${k}`, () => _applySimpleStyle(k, controls, sec));
     } else {
       // Render modo simple directamente
       contentEl.innerHTML = styleControlsHTML(geom, s, k);
@@ -283,11 +291,6 @@ window.LP_STYLE = (() => {
     const activeShapeOpt = container.querySelector('.lea-shape-opt.selected');
     if (activeShapeOpt) ns.shape = activeShapeOpt.dataset.shape;
 
-    // Si hay ícono, disparar el precacheo en paralelo (no bloqueante).
-    // Con el proxy /api/maki el await anterior congelaba la UI esperando
-    // la respuesta del servidor antes de cada actualización de estilo.
-    // _makiIcon() ya maneja el caso de caché vacío mostrando un placeholder
-    // y actualizando los markers cuando el SVG llega.
     if (ns.icon) window.MAP.precacheMakiIcon?.(ns.icon);
 
     window.MAP.updateLayerStyle(mapKey, ns);
@@ -297,6 +300,36 @@ window.LP_STYLE = (() => {
     if (nl.classification?.field) {
       window.MAP.applyClassificationFromData(mapKey, nl.classification);
       window.LP_PANEL.persistClassification(mapKey, nl.classification);
+
+      // Detectar si alguna clase tiene overrides del parámetro que se acaba de
+      // cambiar en su styleMap. Si los hay, mostrar un hint sutil para que el
+      // usuario entienda por qué esas clases no reflejan el cambio global.
+      const changedProps = container.querySelectorAll('.lea-range-input[data-prop]');
+      const styleMap = nl.classification.styleMap || {};
+      const overriddenProps = new Set();
+      changedProps.forEach(inp => {
+        const prop = inp.dataset.prop;
+        if (!prop) return;
+        Object.values(styleMap).forEach(vs => {
+          if (vs[prop] !== undefined) overriddenProps.add(prop);
+        });
+      });
+      if (activeShapeOpt) {
+        Object.values(styleMap).forEach(vs => { if (vs.shape !== undefined) overriddenProps.add('shape'); });
+      }
+
+      if (overriddenProps.size > 0) {
+        // Mostrar hint inline solo si no hay uno ya visible
+        let hint = container.querySelector('.lea-override-hint');
+        if (!hint) {
+          hint = document.createElement('p');
+          hint.className = 'lea-override-hint';
+          container.appendChild(hint);
+        }
+        hint.textContent = t('simple_classified_override_hint');
+      } else {
+        container.querySelector('.lea-override-hint')?.remove();
+      }
     }
     window.LP_PANEL.persistStyle(mapKey, ns);
 
