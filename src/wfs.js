@@ -359,8 +359,43 @@ window.WFS = (() => {
 
   // ── API pública ───────────────────────────────────────────────
 
+  // fetchCount — consulta cuántos features tiene una capa SIN descargar los datos.
+  // Usa resultType=hits (estándar WFS 1.1.0+). Timeout agresivo (5s) — si el servidor
+  // no responde a tiempo se considera que no soporta hits y devuelve null.
+  // El caller usa null como señal de fallback al comportamiento anterior.
+  async function fetchCount(typename, options = {}) {
+    const { wfsBase, wfsVersion = '1.1.0', cqlFilter } = options;
+    if (!wfsBase) return null;
+    const params = new URLSearchParams({
+      service:     'WFS',
+      version:     wfsVersion,
+      request:     'GetFeature',
+      typename,
+      resultType:  'hits',
+    });
+    if (cqlFilter) params.set('CQL_FILTER', cqlFilter);
+    const url = `${wfsBase}?${params.toString()}`;
+    try {
+      const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (!resp.ok) return null;
+      const text = await resp.text();
+      // GeoServer devuelve XML: <wfs:FeatureCollection numberOfFeatures="N" .../>
+      const m = text.match(/numberOfFeatures\s*=\s*["'](\d+)["']/i)
+             || text.match(/numberMatched\s*=\s*["'](\d+)["']/i);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        console.log(`[WFS] hits: ${typename}${cqlFilter ? ' | ' + cqlFilter : ''} → ${n} features`);
+        return n;
+      }
+      return null;
+    } catch {
+      return null; // timeout o error — el caller usa el fallback
+    }
+  }
+
   return {
-    fetch: fetchLayer,
+    fetch:      fetchLayer,
+    fetchCount,
     filterEqual: (campo, valor) => `${campo}='${valor.replace(/'/g, "''")}'`,
     clearCache: async () => {
       await clearAllCache();
