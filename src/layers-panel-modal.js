@@ -507,34 +507,39 @@ window.LP_MODAL = (() => {
     function buildDetailHTML(geom, s, val) {
       let rows = '';
       if (geom === 'point') {
+        // Orden igual que edición simple: geometría, tamaño, grosor borde, color borde, color relleno, opacidad
         const r  = s.radius ?? 5;
         const w  = s.weight ?? 1.5;
         const fo = s.fillOpacity ?? 0.85;
-        rows += leaRow(t('adv_fill_color'),    colorPickerHTML('fillColor', toHex(s.fillColor || s.color)));
-        rows += leaRow(t('adv_border_color'),  colorPickerHTML('color',     toHex(s.color)));
+        const shape = s.shape || 'circle';
+        const shapeLabel = shape === 'square' ? t('shape_square') : t('shape_circle');
+        rows += leaRow(t('style_geometry'), `<span style="font-size:13px;color:var(--cream2);font-family:var(--font-sans)">${shapeLabel}</span>`);
         rows += leaRow(t('style_size'),
           `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="radius" type="range" min="1" max="25" step="0.5" value="${r}" /><span class="lea-val">${r}</span></div>`);
         rows += leaRow(t('style_border_weight'),
           `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="weight" type="range" min="0" max="10" step="0.5" value="${w}" /><span class="lea-val">${w}</span></div>`);
+        rows += leaRow(t('adv_border_color'),  colorPickerHTML('color',     toHex(s.color)));
+        rows += leaRow(t('adv_fill_color'),    colorPickerHTML('fillColor', toHex(s.fillColor || s.color)));
         rows += leaRow(t('adv_opacity'),
           `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="fillOpacity" type="range" min="0" max="1" step="0.05" value="${fo}" /><span class="lea-val">${Math.round(fo * 100)}%</span></div>`);
       } else if (geom === 'polygon') {
+        // Orden igual que edición simple: grosor borde, color borde, color relleno, opacidad
         const w  = s.weight ?? 1.5;
         const fo = s.fillOpacity ?? 0.5;
-        rows += leaRow(t('adv_fill_color'),   colorPickerHTML('fillColor', toHex(s.fillColor || s.color)));
-        rows += leaRow(t('adv_border_color'), colorPickerHTML('color',     toHex(s.color)));
         rows += leaRow(t('style_border_weight'),
           `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="weight" type="range" min="0" max="10" step="0.5" value="${w}" /><span class="lea-val">${w}</span></div>`);
+        rows += leaRow(t('adv_border_color'), colorPickerHTML('color',     toHex(s.color)));
+        rows += leaRow(t('adv_fill_color'),   colorPickerHTML('fillColor', toHex(s.fillColor || s.color)));
         rows += leaRow(t('adv_opacity'),
           `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="fillOpacity" type="range" min="0" max="1" step="0.05" value="${fo}" /><span class="lea-val">${Math.round(fo * 100)}%</span></div>`);
       } else {
-        // line
+        // line — orden igual que edición simple: grosor, color, opacidad, estilo de línea
         const w    = s.weight ?? 2;
         const op   = s.opacity ?? 1;
         const dashId = `adv-detail-dash-${val}`.replace(/[^a-zA-Z0-9_-]/g, '_');
-        rows += leaRow(t('adv_color'), colorPickerHTML('color', toHex(s.color)));
         rows += leaRow(t('adv_weight'),
           `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="weight" type="range" min="0" max="10" step="0.5" value="${w}" /><span class="lea-val">${w}</span></div>`);
+        rows += leaRow(t('adv_color'), colorPickerHTML('color', toHex(s.color)));
         rows += leaRow(t('adv_opacity'),
           `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="opacity" type="range" min="0" max="1" step="0.05" value="${op}" /><span class="lea-val">${Math.round(op * 100)}%</span></div>`);
         rows += leaRow(t('adv_line_pattern'), buildDashSelect(s.dashArray || 'none', dashId));
@@ -997,12 +1002,6 @@ window.LP_MODAL = (() => {
         <button id="adv-maki-clear" style="background:none;border:0.5px solid var(--border-md);cursor:pointer;color:var(--cream2);font-size:11px;padding:2px 8px;border-radius:3px;font-family:var(--font-sans)">${t('adv_svg_remove')}</button>
       </div>`;
     wrap.appendChild(previewRow);
-
-    // ── Separador — igual que entre Campo y parámetros en Categorizado ──
-    const sep = document.createElement('div');
-    sep.className = 'adv-global-wrap';
-    sep.style.cssText = 'padding:0;margin:0';
-    wrap.appendChild(sep);
 
     // ── Solo color del ícono ──────────────────────────────────────
     const ctrlRows = document.createElement('div');
