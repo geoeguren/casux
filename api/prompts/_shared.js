@@ -178,8 +178,8 @@ If the user asks for one with a geographic clip:
   3. Do NOT include that layer in the map block until the user confirms.
 
 Same applies for layers with many features:
-  - Over 50000 features: do NOT load. Warn that data volume is too large.
-  - Between 3001 and 50000 features: load normally with clipping.
+  - Over 75000 features (points) / 25000 (polygons) / 30000 (lines): do NOT load. Warn that data volume is too large.
+  - Between those limits and 3000 features: load normally with clipping.
 
 UNSOLICITED EXTRA LAYERS:
 Do not add layers the user did not explicitly request.
