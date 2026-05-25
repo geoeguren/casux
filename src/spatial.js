@@ -299,61 +299,30 @@ window.SPATIAL = (() => {
 
   // ── Verificaciones de umbral ──────────────────────────────────
   //
-  // verificarUmbralDisplay — consulta el count real al servidor ANTES de pedir
-  // los datos. Reemplaza la dependencia en fileSizeKb/featureCount del catálogo,
-  // que pueden estar desactualizados o ser incorrectos para el servidor actual.
+  // verificarUmbralDisplay — decide si una capa puede mostrarse basándose
+  // en los campos del catálogo (fileSizeKb y featureCount).
   //
-  // Estrategia:
-  //   1. Pedir count al servidor (resultType=hits / returnCountOnly=true).
-  //      Timeout 5s — si no responde, ir al paso 2.
-  //   2. Fallback: usar featureCount/fileSizeKb del catálogo.
-  //   3. Si count > umbral → bloquear y avisar al usuario.
-  //   4. Si count ≤ umbral → permitir el fetch.
+  // Estrategia actual (solo catálogo):
+  //   1. Usar fileSizeKb como señal primaria.
+  //   2. Si no hay fileSizeKb, usar featureCount como fallback.
+  //   3. Si supera el umbral → bloquear y avisar al usuario.
   //
-  // El CQL/where se pasa para que el count refleje el subconjunto real
-  // (ej: "caminería del departamento Montevideo" → count solo de Montevideo).
+  // FUTURO: si el servidor lo permite con latencia aceptable, reimplementar
+  // una consulta en tiempo real para obtener el count real del subconjunto
+  // filtrado (no la capa completa) antes del fetch. Sería especialmente útil
+  // para CQL filters que reducen drásticamente el resultado:
+  //   - WFS: añadir resultType=hits a la request de WFS.
+  //   - ArcGIS REST: añadir returnCountOnly=true a la query.
+  // Timeout recomendado: 5s con fallback al catálogo si no responde.
+  // La implementación anterior de esta función hacía exactamente eso;
+  // ver git history para referencia de código.
 
-  const _DISPLAY_FC_HARD    = 55_000;
-  const _DISPLAY_FS_DEFAULT = 80_000;
-  const _DISPLAY_FC_DEFAULT = 100_000;
-
-  async function verificarUmbralDisplay(layerDef, wfsOpts, cql) {
-    const ct     = window.CLIP_THRESHOLDS || {};
-    const fcHard = ct.displayFcHard ?? _DISPLAY_FC_HARD;
-    const source = window.SOURCES?.[layerDef?.source];
+  async function verificarUmbralDisplay(layerDef, _wfsOpts, _cql) {
+    const ct = window.CLIP_THRESHOLDS;
+    const fsLimit    = ct.display;
+    const fcFallback = ct.displayFcFallback;
+    const fcHard     = ct.displayFcHard;
     const titulo = layerDef?.titulo || '';
-
-    // ── 1. Count real del servidor ────────────────────────────
-    let count = null;
-    try {
-      if (source?.tipo === 'arcgis') {
-        count = await window.REST?.fetchCount?.(layerDef.typename, {
-          restBase:    wfsOpts?.restBase,
-          whereClause: cql || '1=1',
-        });
-      } else {
-        count = await window.WFS?.fetchCount?.(layerDef.typename, {
-          wfsBase:    wfsOpts?.wfsBase,
-          wfsVersion: wfsOpts?.wfsVersion,
-          cqlFilter:  cql || undefined,
-        });
-      }
-    } catch { count = null; }
-
-    if (count !== null) {
-      if (count > fcHard) {
-        console.warn(`[SPATIAL] Bloqueado por count real: ${layerDef.typename} → ${count} features (límite: ${fcHard})`);
-        window.TOAST?.warning(t('toast_display_limit', { titulo, n: count.toLocaleString() }));
-        return false;
-      }
-      console.log(`[SPATIAL] Count OK: ${layerDef.typename} → ${count} features`);
-      return true;
-    }
-
-    // ── 2. Fallback: campos del catálogo ──────────────────────
-    console.warn(`[SPATIAL] hits no disponible para ${layerDef.typename} — usando fallback del catálogo`);
-    const fsLimit    = ct.display           ?? _DISPLAY_FS_DEFAULT;
-    const fcFallback = ct.displayFcFallback ?? _DISPLAY_FC_DEFAULT;
     const fs = layerDef?.fileSizeKb;
     const fc = layerDef?.featureCount;
 
