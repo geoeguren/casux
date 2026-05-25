@@ -303,6 +303,7 @@ window.I18N_ES = {
   style_applied:           'Listo, aplicado.',
   style_applied_layer:     'Listo, apliqué el cambio en {titulo}.',
   style_auto_layer:        'Ese parámetro solo aplica a capas de {geom}, así que lo cambio en {titulo}.',
+  style_auto_layer_only:   'Lo aplico en {titulo}.',
   style_reset_done_layer:  'Listo, restauré el estilo original de {titulo}.',
   style_confirm:           'Confirmar',
   style_opening_editor:    'Abrí el editor de capas.',
