@@ -747,6 +747,34 @@ window.APP = (() => {
           // Bug D fix: applyClassification es async — awaitar para que la leyenda
           // se actualice DESPUÉS de que el colorMap/breaks estén listos.
           await window.MAP.applyClassification(mapKey, { ...clSource, paletteColors });
+
+          // Restaurar orden de clases y overrides de styleMap.
+          // applyClassification recalcula colorMap desde el GeoJSON (orden de aparición
+          // en los features), ignorando el orden personalizado que el usuario definió
+          // arrastrando clases en el modal avanzado. Si clSource tiene un colorMap
+          // con todas las claves, reordenamos el colorMap activo para que coincida.
+          if (clSource.colorMap && Object.keys(clSource.colorMap).length > 0) {
+            const entry = window.MAP.getActiveLayers()[mapKey];
+            if (entry?.classification) {
+              const savedKeys   = Object.keys(clSource.colorMap);
+              const currentMap  = entry.classification.colorMap || {};
+              const orderedMap  = {};
+              // Primero las claves del orden guardado
+              savedKeys.forEach(k => {
+                if (currentMap.hasOwnProperty(k)) orderedMap[k] = clSource.colorMap[k];
+              });
+              // Luego cualquier clave nueva que haya calculado applyClassification
+              Object.keys(currentMap).forEach(k => {
+                if (!orderedMap.hasOwnProperty(k)) orderedMap[k] = currentMap[k];
+              });
+              entry.classification.colorMap = orderedMap;
+              // Restaurar styleMap con los overrides por clase (tamaño, grosor, etc.)
+              if (clSource.styleMap && Object.keys(clSource.styleMap).length > 0) {
+                entry.classification.styleMap = { ...clSource.styleMap };
+              }
+              window.MAP.applyClassificationFromData(mapKey, entry.classification);
+            }
+          }
         }
         _stepProgress();
       } catch (err) {
