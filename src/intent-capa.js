@@ -556,14 +556,18 @@ window.INTENT_CAPA = (() => {
     if (!tieneArea && layerDef) {
       const ct = window.CLIP_THRESHOLDS || {};
       const fsLimit    = ct.display           ?? 80_000;
-      const fcFallback = ct.displayFcFallback ?? 100_000;
-      const fcHard     = ct.displayFcHard     ?? 55_000;
+      const fcFallback = ct.displayFcFallback ?? 50_000;
       const fs = layerDef.fileSizeKb;
       const fc = layerDef.featureCount;
-      const restringida =
+      // clipStrategy='attribute': el servidor filtra → nunca llega completa.
+      const esAttribute = layerDef.clipStrategy === 'attribute';
+      const geomType = layerDef.geomType || 'unknown';
+      const fcHard   = ct.displayFcHard?.[geomType] ?? ct.displayFcHard?.unknown ?? 25_000;
+      const restringida = !esAttribute && (
         (fs !== undefined && fs > fsLimit) ||
         (fc !== undefined && fc > fcHard)  ||
-        (fs === undefined && fc !== undefined && fc > fcFallback);
+        (fs === undefined && fc !== undefined && fc > fcFallback)
+      );
       if (restringida) {
         const titulo = layerDef.titulo || instruccion.layerKey;
         const n = fs !== undefined ? `${(fs / 1024).toFixed(0)} mb` : (fc?.toLocaleString() ?? '?');
