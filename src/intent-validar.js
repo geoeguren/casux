@@ -65,10 +65,39 @@ window.INTENT_VALIDAR = (() => {
   // La verificación definitiva ocurre en spatial.js justo antes del fetch.
   // CLIP_THRESHOLDS siempre está disponible (carga sincrónica en layers/index.js).
   //
-  // displayFcHard es un objeto {polygon, line, point, unknown} — el límite varía
-  // según geomType porque el costo de renderizado en Leaflet no es igual para todos.
-  // Capas con clipStrategy='attribute': el servidor filtra antes de enviar → sin límite duro fc.
-  // Ver documentación completa en layers/index.js.
+  // Retorna uno de tres valores:
+  //   false               → la capa puede cargarse sin restricciones
+  //   'advertencia'       → zona intermedia: aviso no bloqueante al usuario
+  //   true                → bloqueada (no cargar)
+  //
+  // Reglas por clipStrategy:
+  //
+  //   'attribute': el servidor filtra ANTES de enviar → la capa completa nunca
+  //     llega al cliente. Por eso se exime TANTO del límite fileSizeKb COMO
+  //     del límite featureCount. El fileSizeKb refleja el tamaño de la capa
+  //     entera, que es irrelevante cuando el servidor va a devolver solo 3-20
+  //     features del filtro.
+  //     Ejemplo: area_montana_ar tiene 60 MB y 72 features. Con clipStrategy
+  //     'attribute', "área de montaña de Mendoza" → servidor devuelve ~4
+  //     features, ~100 KB. Bloquear por 60 MB es incorrecto.
+  //
+  //   'spatial' / 'none' / null: el cliente descarga features del servidor,
+  //     por lo que aplican los umbrales normales de fileSizeKb y featureCount.
+  //     Para 'spatial', el LLM puede pasar un CQL/clipArea que reduzca el
+  //     subconjunto — la consulta en tiempo real (sección 9.1) resolverá esto
+  //     correctamente cuando se reimplemente. Por ahora, los umbrales se
+  //     aplican sobre los valores del catálogo (capa completa).
+  //
+  // Zona de advertencia (displayFcWarn):
+  //   Si fc está entre displayFcWarn[geomType] y displayFcHard[geomType],
+  //   retorna 'advertencia' en lugar de true (bloqueo duro). El llamador
+  //   muestra un aviso no bloqueante: "Esta capa puede tardar. ¿Continuar?"
+  //
+  // FUTURO — consulta en tiempo real (sección 9.1):
+  //   Antes del fetch, consultar el count real del subconjunto filtrado al
+  //   servidor (WFS: resultType=hits | ArcGIS: returnCountOnly=true).
+  //   Si count real < umbral → permitir aunque la capa completa esté bloqueada.
+  //   Ver src/spatial.js → verificarUmbralDisplay() para reimplementar.
   function _estaRestringida(layerDef) {
     const ct         = window.CLIP_THRESHOLDS;
     const fsLimit    = ct.display;
@@ -76,17 +105,26 @@ window.INTENT_VALIDAR = (() => {
     const fs = layerDef?.fileSizeKb;
     const fc = layerDef?.featureCount;
 
-    if (fs !== undefined && fs > fsLimit) return true;
-
     // clipStrategy='attribute': el servidor filtra → nunca llega la capa completa.
-    // No aplicar límite duro por featureCount.
+    // Se exime TANTO del límite fileSizeKb como del featureCount.
     if (layerDef?.clipStrategy === 'attribute') return false;
 
-    const geomType = layerDef?.geomType || 'unknown';
-    const fcHard   = ct.displayFcHard?.[geomType] ?? ct.displayFcHard?.unknown;
+    // Límite por peso (señal primaria). Solo aplica para capas no-attribute.
+    if (fs !== undefined && fs > fsLimit) return true;
 
+    const geomType = layerDef?.geomType || 'unknown';
+    const fcHard   = ct.displayFcHard?.[geomType]   ?? ct.displayFcHard?.unknown;
+    const fcWarn   = ct.displayFcWarn?.[geomType]   ?? ct.displayFcWarn?.unknown;
+
+    // Bloqueo duro por featureCount
     if (fc !== undefined && fcHard !== undefined && fc > fcHard) return true;
-    if (fs === undefined && fc !== undefined && fc > fcFallback)  return true;
+
+    // Fallback sin fileSizeKb (principalmente capas ArcGIS de Chile sin fileSizeKb)
+    if (fs === undefined && fc !== undefined && fc > fcFallback) return true;
+
+    // Zona de advertencia no bloqueante
+    if (fc !== undefined && fcWarn !== undefined && fc > fcWarn) return 'advertencia';
+
     return false;
   }
 
@@ -244,6 +282,7 @@ window.INTENT_VALIDAR = (() => {
     // ── capa ─────────────────────────────────────────────────────
     capa: [
       {
+        // Bloqueo duro: capa completamente restringida
         bloquea: true,
         error:   'validate_layer_too_many_features',
         errorParams: (p) => {
@@ -252,7 +291,20 @@ window.INTENT_VALIDAR = (() => {
         },
         check:   (p) => {
           const layerDef = window.LAYERS?.[p.layerKey];
-          return !_estaRestringida(layerDef);
+          return _estaRestringida(layerDef) !== true;
+        },
+      },
+      {
+        // Advertencia no bloqueante: la capa puede tardar en cargar
+        bloquea: false,
+        error:   'validate_layer_may_be_slow',
+        errorParams: (p) => {
+          const layerDef = window.LAYERS?.[p.layerKey];
+          return _restrictedParams(layerDef, p.layerKey);
+        },
+        check:   (p) => {
+          const layerDef = window.LAYERS?.[p.layerKey];
+          return _estaRestringida(layerDef) !== 'advertencia';
         },
       },
     ],
@@ -269,6 +321,7 @@ window.INTENT_VALIDAR = (() => {
       },
       // Hereda la validación de display de 'capa' (peso / featureCount)
       {
+        // Bloqueo duro
         bloquea: true,
         error:   'validate_layer_too_many_features',
         errorParams: (p) => {
@@ -277,7 +330,20 @@ window.INTENT_VALIDAR = (() => {
         },
         check:   (p) => {
           const layerDef = window.LAYERS?.[p.layerKey];
-          return !_estaRestringida(layerDef);
+          return _estaRestringida(layerDef) !== true;
+        },
+      },
+      {
+        // Advertencia no bloqueante
+        bloquea: false,
+        error:   'validate_layer_may_be_slow',
+        errorParams: (p) => {
+          const layerDef = window.LAYERS?.[p.layerKey];
+          return _restrictedParams(layerDef, p.layerKey);
+        },
+        check:   (p) => {
+          const layerDef = window.LAYERS?.[p.layerKey];
+          return _estaRestringida(layerDef) !== 'advertencia';
         },
       },
     ],
