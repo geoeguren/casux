@@ -318,22 +318,31 @@ window.SPATIAL = (() => {
   // ver git history para referencia de código.
 
   async function verificarUmbralDisplay(layerDef, _wfsOpts, _cql) {
-    const ct = window.CLIP_THRESHOLDS;
+    const ct         = window.CLIP_THRESHOLDS;
     const fsLimit    = ct.display;
     const fcFallback = ct.displayFcFallback;
-    const fcHard     = ct.displayFcHard;
-    const titulo = layerDef?.titulo || '';
-    const fs = layerDef?.fileSizeKb;
-    const fc = layerDef?.featureCount;
+    const titulo     = layerDef?.titulo || '';
+    const fs         = layerDef?.fileSizeKb;
+    const fc         = layerDef?.featureCount;
 
-    let restringida = false;
-    if (fs !== undefined && fs > fsLimit)  restringida = true;
-    if (fc !== undefined && fc > fcHard)   restringida = true;
-    if (fs === undefined && fc !== undefined && fc > fcFallback) restringida = true;
-
-    if (restringida) {
-      const n = fs !== undefined ? `${(fs / 1024).toFixed(0)} mb` : (fc?.toLocaleString() ?? '?');
+    if (fs !== undefined && fs > fsLimit) {
+      const n = `${(fs / 1024).toFixed(0)} mb`;
       window.TOAST?.warning(t('toast_display_limit', { titulo, n }));
+      return false;
+    }
+
+    // clipStrategy='attribute': el servidor filtra antes de enviar → sin límite duro fc.
+    if (layerDef?.clipStrategy === 'attribute') return true;
+
+    const geomType = layerDef?.geomType || 'unknown';
+    const fcHard   = ct.displayFcHard?.[geomType] ?? ct.displayFcHard?.unknown;
+
+    if (fc !== undefined && fcHard !== undefined && fc > fcHard) {
+      window.TOAST?.warning(t('toast_display_limit', { titulo, n: fc.toLocaleString() }));
+      return false;
+    }
+    if (fs === undefined && fc !== undefined && fc > fcFallback) {
+      window.TOAST?.warning(t('toast_display_limit', { titulo, n: fc.toLocaleString() }));
       return false;
     }
     return true;
