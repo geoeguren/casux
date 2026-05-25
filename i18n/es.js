@@ -131,7 +131,8 @@ window.I18N_ES = {
   toast_snapshot_unfiltered: 'Sin conexión al servidor. Mostrando la capa completa sin filtros aplicados.',
   toast_server_unavailable: 'El servidor de {org} no está disponible. Intentá de nuevo en unos minutos.',
   toast_layer_fetch_error:  'No se pudo obtener "{typename}": {msg}.',
-  toast_layer_truncated:    '{titulo} es demasiado grande para cargar sin filtro. Pedí un departamento o región específica.',
+  toast_layer_truncated:          '{titulo} es demasiado grande para cargar sin filtro. Pedí un departamento o región específica.',
+  toast_layer_truncated_attribute: 'El servidor cortó la respuesta de {titulo}. Pedí un departamento o región específica para filtrar.',
 
   // ── Toasts de clip ──────────────────────────────────────────
   toast_display_limit:     '{titulo} pesa {n} — demasiado para mostrar. Pedí una región específica.',
