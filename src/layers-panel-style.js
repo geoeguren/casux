@@ -146,22 +146,35 @@ window.LP_STYLE = (() => {
     const contentEl = acc.querySelector(`#lea-content-${k}`);
 
     if (l.classification?.field) {
-      // Capa clasificada: mostrar controles simples SIN colores.
-      // Los colores se editan clase por clase en el modal avanzado.
+      // Capa clasificada: mostrar controles completos pero con colores deshabilitados.
       // Los parámetros no-color (tamaño, grosor, opacidad, geometría, etc.) se
       // pueden cambiar globalmente y se propagan a las clases que no los tengan
       // personalizados en su styleMap.
       const controls = document.createElement('div');
-      controls.innerHTML = styleControlsHTML(geom, s, k, '', true);
+      controls.innerHTML = styleControlsHTML(geom, s, k, '', false);
       contentEl.appendChild(controls);
+
+      // Deshabilitar los controles de color (pickers y hex inputs)
+      controls.querySelectorAll('.lea-color-pick, .lea-hex-input').forEach(el => {
+        el.disabled = true;
+        el.style.opacity = '0.4';
+        el.style.pointerEvents = 'none';
+        el.style.cursor = 'not-allowed';
+      });
+      controls.querySelectorAll('.lea-color-swatch').forEach(el => {
+        el.style.opacity = '0.4';
+        el.style.cursor = 'not-allowed';
+        el.style.pointerEvents = 'none';
+      });
+
       _wireStyleControls(controls, k, geom, sec);
       if (geom === 'line') wireCsel(controls, `lea-dash-${k}`, () => _applySimpleStyle(k, controls, sec));
 
-      // Banner informativo: justo arriba del botón de edición avanzada, sin botón propio
+      // Banner informativo debajo de los colores (antes del botón de edición avanzada)
       const banner = document.createElement('div');
       banner.className = 'lea-classified-banner';
       banner.innerHTML = `
-        <span class="material-icons" style="font-size:14px;flex-shrink:0;opacity:0.6">palette</span>
+        <span class="material-icons" style="font-size:13px;flex-shrink:0">block</span>
         <span>${t('simple_classified_color_hint')}</span>`;
       acc.querySelector('.lea-advanced-btn').insertAdjacentElement('beforebegin', banner);
     } else {
@@ -277,7 +290,7 @@ window.LP_STYLE = (() => {
     container.querySelectorAll('.lea-range-input').forEach(inp => {
       if (inp.dataset.prop) ns[inp.dataset.prop] = parseFloat(inp.value);
     });
-    container.querySelectorAll('.lea-hex-input').forEach(inp => {
+    container.querySelectorAll('.lea-hex-input:not([disabled])').forEach(inp => {
       const val = inp.value.trim();
       if (inp.dataset.prop && /^#[0-9a-fA-F]{6}$/.test(val)) ns[inp.dataset.prop] = val;
     });
@@ -322,7 +335,7 @@ window.LP_STYLE = (() => {
           hint.className = 'lea-override-hint';
           container.appendChild(hint);
         }
-        hint.textContent = t('simple_classified_override_hint');
+        hint.innerHTML = `<span class="material-icons" style="font-size:13px;flex-shrink:0">block</span><span>${t('simple_classified_override_hint')}</span>`;
       } else {
         container.querySelector('.lea-override-hint')?.remove();
       }
@@ -491,7 +504,10 @@ window.LP_STYLE = (() => {
   function _updateValStyle(nl, mapKey, v, changes) {
     if (!nl.classification) return;
     if (!nl.classification.styleMap) nl.classification.styleMap = {};
-    nl.classification.styleMap[v] = { ...(nl.classification.styleMap[v] || nl.style || {}), ...changes };
+    // IMPORTANTE: no inicializar con nl.style — eso copiaría los colores base de
+    // la capa (pre-clasificación) al styleMap, pisando los colores de la rampa.
+    // Solo extender los overrides ya existentes para esta clase.
+    nl.classification.styleMap[v] = { ...(nl.classification.styleMap[v] || {}), ...changes };
     if (changes.fillColor) nl.classification.colorMap[v] = changes.fillColor;
     window.MAP.applyClassificationFromData(mapKey, nl.classification);
     window.LP_PANEL.persistClassification(mapKey, nl.classification);
