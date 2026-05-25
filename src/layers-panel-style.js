@@ -381,7 +381,12 @@ window.LP_STYLE = (() => {
     if (!itemsEl) return;
     itemsEl.innerHTML = '';
 
-    Object.entries(classification.colorMap).forEach(([val, color]) => {
+    // Usar order explícito si existe para respetar el orden manual del usuario
+    const _catOrder = (classification.order && classification.order.length)
+      ? classification.order.filter(k => classification.colorMap.hasOwnProperty(k))
+      : Object.keys(classification.colorMap);
+    _catOrder.forEach(val => {
+      const color = classification.colorMap[val];
       const baseStyle = nl.style || {};
       const valStyle  = classification.styleMap?.[val] || {};
       const s         = { ...baseStyle, ...valStyle, color, fillColor: color };
@@ -459,6 +464,7 @@ window.LP_STYLE = (() => {
         if (nl.classification?.colorMap) {
           delete nl.classification.colorMap[val];
           if (nl.classification.styleMap) delete nl.classification.styleMap[val];
+          if (nl.classification.order) nl.classification.order = nl.classification.order.filter(v => v !== val);
           window.MAP.applyClassificationFromData(mapKey, nl.classification);
           window.LP_PANEL.persistClassification(mapKey, nl.classification);
           buildCatItems(container, mapKey, geom, mode);
