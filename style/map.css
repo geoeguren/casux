@@ -449,6 +449,26 @@ body.day .legend-count { color: #9a9590; }
 body.day, html.day .lea-advanced-btn { color: #6a6560; }
 body.day, html.day .lea-advanced-btn:hover { background: rgba(0,0,0,0.05); color: #1a1814; }
 
+/* Aviso de bloqueo: capa clasificada, edición simple inhabilitada */
+.lea-classified-notice {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px; padding: 20px 16px; text-align: center;
+  font-size: 12px; color: var(--cream2); font-family: var(--font-sans); line-height: 1.5;
+}
+body.day, html.day .lea-classified-notice { color: #6a6560; }
+
+.lea-clear-classification-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 14px; border-radius: var(--radius-sm);
+  background: transparent; border: 0.5px solid rgba(200,80,80,0.35);
+  color: #e06060; font-size: 12px; font-family: var(--font-sans);
+  cursor: pointer; transition: background var(--transition), border-color var(--transition);
+  margin-top: 4px;
+}
+.lea-clear-classification-btn:hover { background: rgba(200,80,80,0.10); border-color: rgba(200,80,80,0.6); }
+body.day, html.day .lea-clear-classification-btn { color: #c0392b; border-color: rgba(192,57,43,0.3); }
+body.day, html.day .lea-clear-classification-btn:hover { background: rgba(192,57,43,0.07); }
+
 .lea-sep { height: 0.5px; background: var(--border-md); margin: 0; }
 .lea-sep--top { margin-top: 4px; }
 
