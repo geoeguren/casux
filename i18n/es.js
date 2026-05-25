@@ -280,8 +280,8 @@ window.I18N_ES = {
   adv_modal_title:         'Edición avanzada',
   adv_no_fields:           'Esta capa no tiene campos clasificables.',
   adv_simple_note:         'El estilo simple se edita directamente en el panel de capas.',
-  simple_blocked_classified: 'Esta capa tiene una clasificación activa. Si querés editar el estilo de todos los elementos primero tenés que borrar la clasificación.',
-  simple_clear_classification: 'Borrar clasificación',
+  simple_classified_color_hint:    'Los colores se editan por clase en edición avanzada.',
+  simple_classified_override_hint: 'Algunas clases tienen este parámetro personalizado — el cambio global no las afecta.',
   adv_no_numeric_fields:   'Esta capa no tiene campos numéricos.',
 
   // ── Botones de estilo ─────────────────────────────────────────
