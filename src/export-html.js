@@ -52,9 +52,6 @@ window.EXPORT_HTML = (() => {
       { key: 'voyager', label: t('basemap_voyager'), hint: t('basemap_hint_voyager') },
     ];
 
-    // Campos excluidos del popup (técnicos / sin valor para el usuario)
-    const EXCL_FIELDS = new Set(['gid','fdc','sag','entidad','objeto','gna']);
-
     // ── Límite de complejidad geométrica ──────────────────────
     // Las capas que superan este umbral se deshabilitan en la exportación HTML
     // porque incluir su GeoJSON inline hace el archivo demasiado pesado para el browser.
@@ -91,20 +88,51 @@ window.EXPORT_HTML = (() => {
 
     // Construir HTML de los selectores de campos por capa
     const identifySelectorsHTML = layerEntries.map(([key, l]) => {
-      // Leer siempre del geojson: es la fuente de verdad de los campos reales cargados.
-      // El catálogo (layerDef.attributes) tiene solo un subconjunto curado — no usarlo
-      // para esta lista porque el geojson puede tener más campos que el catálogo define.
-      const geojsonFields = [...new Set(
-        (l.geojson?.features || []).flatMap(f =>
-          Object.keys(f.properties || {}).filter(k => !EXCL_FIELDS.has(k) && !k.endsWith('Type'))
-        )
-      )];
-
-      // Construir mapa campo→label desde el catálogo para esta capa
+      // Construir mapa campo→label y conjunto de campos visibles desde el catálogo.
       // l.layerKey es la clave real en LAYERS (ej: vial_nacional_ar)
       // key es el mapKey con sufijo (ej: vial_nacional_ar_0) — no usar directamente
       const _catalogKey = l.layerKey || key.replace(/_\d+$/, '');
       const _layerAttrs = (window.LAYERS?.[_catalogKey]?.attributes || []);
+
+      // Conjunto de campos explícitamente marcados visible:false en el catálogo.
+      // Solo se ocultan los que el catálogo declara false — el resto se muestra.
+      // Esto corrige el bug anterior donde EXCL_FIELDS hardcodeado excluía campos
+      // como 'gna' y 'objeto' que tienen visible:true en el catálogo.
+      const _catalogHiddenFields = new Set(
+        _layerAttrs.filter(a => a.visible === false).map(a => a.campo)
+      );
+
+      // Si el catálogo define atributos, usar sus campos visible:true como fuente
+      // canónica y preservar su orden. Si no hay catálogo, caer al geojson filtrando
+      // solo campos claramente técnicos (sin label ni visible declarado).
+      let geojsonFields;
+      if (_layerAttrs.length > 0) {
+        // Usar el catálogo como fuente de orden y visibilidad.
+        // Incluir además campos del GeoJSON que no estén en el catálogo ni ocultos.
+        const catalogVisible = _layerAttrs
+          .filter(a => a.visible !== false)
+          .map(a => a.campo);
+        const catalogSet = new Set(_layerAttrs.map(a => a.campo));
+        const geojsonExtra = [...new Set(
+          (l.geojson?.features || []).flatMap(f =>
+            Object.keys(f.properties || {}).filter(k =>
+              !catalogSet.has(k) && !_catalogHiddenFields.has(k) && !k.endsWith('Type')
+            )
+          )
+        )];
+        geojsonFields = [...catalogVisible, ...geojsonExtra];
+      } else {
+        // Sin catálogo: mostrar todos los campos del GeoJSON salvo los que el
+        // catálogo marca explícitamente como ocultos o terminan en 'Type' (técnico).
+        geojsonFields = [...new Set(
+          (l.geojson?.features || []).flatMap(f =>
+            Object.keys(f.properties || {}).filter(k =>
+              !_catalogHiddenFields.has(k) && !k.endsWith('Type')
+            )
+          )
+        )];
+      }
+
       // label presente → traducción real (sans), label ausente → técnico (mono)
       const _fieldLabelMap = Object.fromEntries(
         _layerAttrs.map(a => [a.campo, a.label || null])
@@ -565,19 +593,22 @@ window.EXPORT_HTML = (() => {
     #btn-identify.active{background:#444;color:#e2ddd4;border-color:#555}
     #btn-identify .material-icons{font-size:18px}`
       : '';
+    // Colores del popup según el basemap seleccionado — mismo criterio que la leyenda.
+    // dark → fondo oscuro con texto claro; gray/voyager → fondo blanco con texto oscuro.
+    const _popupDark = baseKey === 'dark';
     const identifyPopupCSS = allowIdentify ? `
-    .sm-popup .leaflet-popup-content-wrapper{background:#2a2a2a;border:0.5px solid rgba(226,221,212,0.18);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.4);padding:0}
+    .sm-popup .leaflet-popup-content-wrapper{background:${_popupDark ? 'rgba(42,40,38,0.97)' : 'rgba(255,255,255,0.97)'};border:0.5px solid ${_popupDark ? 'rgba(226,221,212,0.18)' : 'rgba(0,0,0,0.12)'};border-radius:6px;box-shadow:0 4px 16px ${_popupDark ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.15)'};padding:0}
     .sm-popup .leaflet-popup-tip-container{display:none}
     .sm-popup .leaflet-popup-content{margin:0}
     .map-popup{width:224px}
-    .popup-header{display:flex;align-items:center;justify-content:space-between;padding:0 8px 0 16px;border-bottom:0.5px solid rgba(226,221,212,0.1);min-height:40px}
-    .popup-name{font-size:13px;font-weight:600;color:#e2ddd4;padding:10px 0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .popup-close-btn{width:26px;height:26px;flex-shrink:0;background:transparent;border:none;cursor:pointer;color:rgba(226,221,212,0.55);border-radius:4px;display:flex;align-items:center;justify-content:center}
-    .popup-close-btn:hover{background:rgba(226,221,212,0.08);color:#e2ddd4}
+    .popup-header{display:flex;align-items:center;justify-content:space-between;padding:0 8px 0 16px;border-bottom:0.5px solid ${_popupDark ? 'rgba(226,221,212,0.1)' : 'rgba(0,0,0,0.08)'};min-height:40px}
+    .popup-name{font-size:13px;font-weight:600;color:${_popupDark ? '#e2ddd4' : '#1a1814'};padding:10px 0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .popup-close-btn{width:26px;height:26px;flex-shrink:0;background:transparent;border:none;cursor:pointer;color:${_popupDark ? 'rgba(226,221,212,0.55)' : 'rgba(0,0,0,0.4)'};border-radius:4px;display:flex;align-items:center;justify-content:center}
+    .popup-close-btn:hover{background:${_popupDark ? 'rgba(226,221,212,0.08)' : 'rgba(0,0,0,0.06)'};color:${_popupDark ? '#e2ddd4' : '#1a1814'}}
     .popup-close-btn .material-icons{font-size:16px;pointer-events:none}
     .popup-table{width:100%;border-collapse:collapse}
-    .popup-key{font-family:monospace;font-size:11px;color:rgba(226,221,212,0.55);padding:5px 8px 5px 16px;white-space:nowrap;vertical-align:top;width:40%}
-    .popup-val{font-size:13px;color:#e2ddd4;padding:5px 16px 5px 0;word-break:break-word}` : '';
+    .popup-key{font-family:monospace;font-size:11px;color:${_popupDark ? 'rgba(226,221,212,0.55)' : 'rgba(0,0,0,0.45)'};padding:5px 8px 5px 16px;white-space:nowrap;vertical-align:top;width:40%}
+    .popup-val{font-size:13px;color:${_popupDark ? '#e2ddd4' : '#1a1814'};padding:5px 16px 5px 0;word-break:break-word}` : '';
     const identifyJS = allowIdentify ? `
     const IDENTIFY_FIELDS_MAP=${identifyFieldsJSON};
     let identifyMode=false,hlLayer=null,currentPopup=null;
