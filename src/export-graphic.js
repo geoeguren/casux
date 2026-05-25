@@ -138,7 +138,7 @@ window.EXPORT_GRAPHIC = (() => {
           </label>
           <!-- Posición de la leyenda — se deshabilita si el checkbox está desactivado -->
           <div class="adv-body-row" id="graphic-legend-pos-row" style="padding:0;margin-top:2px">
-            <span class="adv-body-label">${_t('graphic_legend_pos', 'Posición')}</span>
+            <span class="adv-body-label">${_t('graphic_legend_pos', 'Posición de la leyenda')}</span>
             <div class="graphic-preview-wrap">
               <canvas id="graphic-preview-canvas"
                       width="${PREVIEW_W}"
