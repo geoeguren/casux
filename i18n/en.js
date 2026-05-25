@@ -250,6 +250,7 @@ window.I18N_EN = {
   graphic_interface:       'Interface',
   graphic_loc_map:         'Location map',
   graphic_grilla:          'Coordinate grid',
+  graphic_leyenda:         'Legend',
   graphic_north:           'North arrow',
   graphic_legend_pos:      'Legend position',
   graphic_pos_auto:        'Automatic',
