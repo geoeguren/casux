@@ -131,7 +131,8 @@ window.I18N_EN = {
   toast_snapshot_unfiltered: 'No server connection. Showing the full layer without active filters.',
   toast_server_unavailable: '{org} server is unavailable. Please try again in a few minutes.',
   toast_layer_fetch_error:  'Could not fetch "{typename}": {msg}.',
-  toast_layer_truncated:    '{titulo} is too large to load without a filter. Try specifying a department or region.',
+  toast_layer_truncated:          '{titulo} is too large to load without a filter. Try specifying a department or region.',
+  toast_layer_truncated_attribute: 'The WFS server cut off the response for {titulo}. Try specifying a department or region to filter.',
 
   // ── Clip toasts ──────────────────────────────────────────────
   toast_display_limit:     '{titulo} is too large ({n}) to display. Try requesting a specific region.',
