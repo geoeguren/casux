@@ -320,99 +320,11 @@ window.LP_MODAL = (() => {
       window.LP_PANEL.persistClassification(k, nl.classification);
     }
 
+    // ── Controles globales — eliminados: tamaño, grosor, opacidad
+    // ahora se editan por clase individual en el detalle de cada categoría/intervalo.
+    // Esta función queda como stub para no romper las llamadas existentes.
     function buildGlobalControls(container, geom) {
-      const nl  = window.MAP.getActiveLayers()[k];
-      const s   = nl?.style || {};
-      const wrap = document.createElement('div');
-      wrap.className = 'adv-global-wrap';
-
-      function addRow(label, controlHTML, prop, isPercent) {
-        const row = document.createElement('div');
-        row.className = 'adv-body-row';
-        row.innerHTML = `<span class="adv-body-label">${label}</span>${controlHTML}`;
-        wrap.appendChild(row);
-
-        row.querySelectorAll('.lea-range-input').forEach(inp => {
-          wireSliderTouch(inp);
-          inp.addEventListener('input', e => {
-            const v     = parseFloat(e.target.value);
-            const valEl = e.target.closest('.lea-slider-wrap')?.querySelector('.lea-val');
-            if (valEl) valEl.textContent = isPercent ? Math.round(v * 100) + '%' : v;
-            updateGlobalStyle({ [prop]: v });
-          });
-        });
-        row.querySelectorAll('.lea-color-pick').forEach(pick => {
-          pick.addEventListener('input', e => {
-            const p2 = e.target.dataset.prop;
-            e.target.closest('label').style.background = e.target.value;
-            const hex = row.querySelector(`.lea-hex-input[data-prop="${p2}"]`);
-            if (hex) hex.value = e.target.value.toUpperCase();
-            updateGlobalStyle({ [p2]: e.target.value });
-          });
-        });
-        row.querySelectorAll('.lea-hex-input').forEach(inp => {
-          inp.addEventListener('change', e => {
-            let v = e.target.value.trim();
-            if (!v.startsWith('#')) v = '#' + v;
-            v = v.slice(0, 7).toUpperCase();
-            if (/^#[0-9a-fA-F]{6}$/.test(v)) {
-              e.target.value = v;
-              const p2   = e.target.dataset.prop;
-              const pick = row.querySelector(`.lea-color-pick[data-prop="${p2}"]`);
-              if (pick) { pick.value = v; pick.closest('label').style.background = v; }
-              updateGlobalStyle({ [p2]: v });
-            }
-          });
-        });
-      }
-
-      if (geom === 'point') {
-        const r  = s.radius ?? 5;
-        const w  = s.weight ?? 1.5;
-        const fo = s.fillOpacity ?? 0.85;
-        addRow(t('adv_size'),
-          `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="radius" type="range" min="1" max="25" step="0.5" value="${r}" /><span class="lea-val">${r}</span></div>`,
-          'radius', false);
-        addRow(t('style_border_weight'),
-          `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="weight" type="range" min="0" max="10" step="0.5" value="${w}" /><span class="lea-val">${w}</span></div>`,
-          'weight', false);
-        addRow(t('adv_opacity'),
-          `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="fillOpacity" type="range" min="0" max="1" step="0.05" value="${fo}" /><span class="lea-val">${Math.round(fo * 100)}%</span></div>`,
-          'fillOpacity', true);
-
-      } else if (geom === 'line') {
-        const w    = s.weight ?? 2;
-        const op   = s.opacity ?? 1;
-        const dash = nl?.style?.dashArray || 'none';
-        const dashId = `adv-global-dash-${k}`.replace(/[^a-zA-Z0-9_-]/g, '_');
-        addRow(t('adv_weight'),
-          `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="weight" type="range" min="0" max="10" step="0.5" value="${w}" /><span class="lea-val">${w}</span></div>`,
-          'weight', false);
-        addRow(t('adv_opacity'),
-          `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="opacity" type="range" min="0" max="1" step="0.05" value="${op}" /><span class="lea-val">${Math.round(op * 100)}%</span></div>`,
-          'opacity', true);
-        const dashRow = document.createElement('div');
-        dashRow.className = 'adv-body-row';
-        dashRow.innerHTML = `<span class="adv-body-label">Patrón de línea</span>${buildDashSelect(dash, dashId)}`;
-        wrap.appendChild(dashRow);
-        container.appendChild(wrap);
-        wireCsel(wrap, dashId, dashVal => {
-          updateGlobalStyle({ dashArray: dashVal === 'none' ? null : dashVal });
-        });
-        return;
-
-      } else if (geom === 'polygon') {
-        const w  = s.weight ?? 1.5;
-        const fo = s.fillOpacity ?? 0.5;
-        addRow(t('style_border_weight'),
-          `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="weight" type="range" min="0" max="10" step="0.5" value="${w}" /><span class="lea-val">${w}</span></div>`,
-          'weight', false);
-        addRow(t('adv_opacity'),
-          `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="fillOpacity" type="range" min="0" max="1" step="0.05" value="${fo}" /><span class="lea-val">${Math.round(fo * 100)}%</span></div>`,
-          'fillOpacity', true);
-      }
-
-      container.appendChild(wrap);
+      // Sin controles globales de estilo — ver detalle de cada clase.
     }
 
     // ── Items editables del modal ─────────────────────────────────
@@ -595,14 +507,36 @@ window.LP_MODAL = (() => {
     function buildDetailHTML(geom, s, val) {
       let rows = '';
       if (geom === 'point') {
-        rows += leaRow(t('adv_border_color'),   colorPickerHTML('color',     toHex(s.color)));
-        rows += leaRow(t('adv_fill_color'), colorPickerHTML('fillColor', toHex(s.fillColor || s.color)));
+        const r  = s.radius ?? 5;
+        const w  = s.weight ?? 1.5;
+        const fo = s.fillOpacity ?? 0.85;
+        rows += leaRow(t('adv_fill_color'),    colorPickerHTML('fillColor', toHex(s.fillColor || s.color)));
+        rows += leaRow(t('adv_border_color'),  colorPickerHTML('color',     toHex(s.color)));
+        rows += leaRow(t('style_size'),
+          `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="radius" type="range" min="1" max="25" step="0.5" value="${r}" /><span class="lea-val">${r}</span></div>`);
+        rows += leaRow(t('style_border_weight'),
+          `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="weight" type="range" min="0" max="10" step="0.5" value="${w}" /><span class="lea-val">${w}</span></div>`);
+        rows += leaRow(t('adv_opacity'),
+          `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="fillOpacity" type="range" min="0" max="1" step="0.05" value="${fo}" /><span class="lea-val">${Math.round(fo * 100)}%</span></div>`);
       } else if (geom === 'polygon') {
-        rows += leaRow(t('adv_border_color'),   colorPickerHTML('color',     toHex(s.color)));
-        rows += leaRow(t('adv_fill_color'), colorPickerHTML('fillColor', toHex(s.fillColor || s.color)));
+        const w  = s.weight ?? 1.5;
+        const fo = s.fillOpacity ?? 0.5;
+        rows += leaRow(t('adv_fill_color'),   colorPickerHTML('fillColor', toHex(s.fillColor || s.color)));
+        rows += leaRow(t('adv_border_color'), colorPickerHTML('color',     toHex(s.color)));
+        rows += leaRow(t('style_border_weight'),
+          `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="weight" type="range" min="0" max="10" step="0.5" value="${w}" /><span class="lea-val">${w}</span></div>`);
+        rows += leaRow(t('adv_opacity'),
+          `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="fillOpacity" type="range" min="0" max="1" step="0.05" value="${fo}" /><span class="lea-val">${Math.round(fo * 100)}%</span></div>`);
       } else {
-        rows += leaRow(t('adv_color'), colorPickerHTML('color', toHex(s.color)));
+        // line
+        const w    = s.weight ?? 2;
+        const op   = s.opacity ?? 1;
         const dashId = `adv-detail-dash-${val}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+        rows += leaRow(t('adv_color'), colorPickerHTML('color', toHex(s.color)));
+        rows += leaRow(t('adv_weight'),
+          `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="weight" type="range" min="0" max="10" step="0.5" value="${w}" /><span class="lea-val">${w}</span></div>`);
+        rows += leaRow(t('adv_opacity'),
+          `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="opacity" type="range" min="0" max="1" step="0.05" value="${op}" /><span class="lea-val">${Math.round(op * 100)}%</span></div>`);
         rows += leaRow(t('adv_line_pattern'), buildDashSelect(s.dashArray || 'none', dashId));
       }
       return rows;
@@ -635,6 +569,17 @@ window.LP_MODAL = (() => {
             deselectRamp();
             updateCatValStyle(val, { [prop]: v });
           }
+        });
+      });
+
+      detail.querySelectorAll('.lea-range-input').forEach(inp => {
+        wireSliderTouch(inp);
+        inp.addEventListener('input', e => {
+          const prop  = e.target.dataset.prop;
+          const v     = parseFloat(e.target.value);
+          const valEl = e.target.closest('.lea-slider-wrap')?.querySelector('.lea-val');
+          if (valEl) valEl.textContent = (prop === 'fillOpacity' || prop === 'opacity') ? Math.round(v * 100) + '%' : v;
+          updateCatValStyle(val, { [prop]: v });
         });
       });
 
