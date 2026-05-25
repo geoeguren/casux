@@ -291,32 +291,21 @@ function geomIconHTML(type) {
 }
 
 function renderLayerRow(l) {
-  // Construir etiqueta de tamaño: fileSizeKb en MB si está disponible, si no featureCount
-  let sizeLabel = '';
-  let sizeTitle = '';
-  if (l.fileSizeKb != null) {
-    const mb = (l.fileSizeKb / 1024).toFixed(1);
-    sizeLabel = `${mb} mb`;
-    sizeTitle = `${mb} mb`;
-  } else if (l.featureCount != null) {
-    sizeLabel = l.featureCount.toLocaleString();
-    sizeTitle = `${l.featureCount.toLocaleString()} elementos`;
-  }
-
-  const count = sizeLabel
-    ? `<span class="layer-count${l.restricted ? ' layer-count-restricted' : ''}" title="${sizeTitle}">${sizeLabel}</span>`
+  // Mostrar siempre featureCount (como antes). fileSizeKb va solo en el tooltip de restricción.
+  const count = l.featureCount != null
+    ? `<span class="layer-count${l.restricted ? ' layer-count-restricted' : ''}">${l.featureCount.toLocaleString()}</span>`
     : '';
 
   if (l.restricted) {
-    // Texto del tooltip: qué valor superó qué límite
+    // Tooltip: razón de la restricción (peso o cantidad de features)
     const ct = window.CLIP_THRESHOLDS || {};
     let restrictedReason = '';
-    if (l.fileSizeKb != null) {
-      const limit = (( ct.display ?? 80_000 ) / 1024).toFixed(0);
+    if (l.fileSizeKb != null && l.fileSizeKb > (ct.display ?? 80_000)) {
+      const limit = ((ct.display ?? 80_000) / 1024).toFixed(0);
       const mb    = (l.fileSizeKb / 1024).toFixed(0);
-      restrictedReason = `${mb} mb — límite: ${limit} mb`;
+      restrictedReason = `${l.featureCount?.toLocaleString() ?? ''} elementos — ${mb} mb (límite: ${limit} mb)`;
     } else if (l.featureCount != null) {
-      const limit = ( ct.displayFcFallback ?? 100_000 ).toLocaleString();
+      const limit = (ct.displayFcHard ?? 55_000).toLocaleString();
       restrictedReason = `${l.featureCount.toLocaleString()} elementos — límite: ${limit}`;
     }
     return `
