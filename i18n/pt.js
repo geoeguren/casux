@@ -250,6 +250,7 @@ window.I18N_PT = {
   graphic_interface:       'Interface',
   graphic_loc_map:         'Mapa de localização',
   graphic_grilla:          'Grade de coordenadas',
+  graphic_leyenda:         'Legenda',
   graphic_north:           'Seta norte',
   graphic_legend_pos:      'Posição da legenda',
   graphic_pos_auto:        'Automática',
