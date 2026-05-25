@@ -799,29 +799,32 @@ window.EXPORT_PDF = (() => {
       const legendItems  = buildLegendItems(activeLayers);
       const _meta        = _getMapMeta(activeLayers);
 
-      // Para elegir la posición de la leyenda necesitamos un canvas del área del
-      // mapa (solo mw_px × mh_px) con basemap + vectores. El mapCanvas es el A4
-      // completo; recortamos solo la región del mapa y dibujamos los vectores
-      // proyectados a ese mismo espacio. Así el sampleo y las candidatas usan
-      // el mismo sistema de coordenadas sin conversiones intermedias.
-      let sampleCanvas = null;
-      try {
-        const proj = _makeProjection(bounds, mw_px, mh_px);
-        if (proj) {
-          const composite = document.createElement('canvas');
-          composite.width  = mw_px;
-          composite.height = mh_px;
-          const cCtx = composite.getContext('2d');
-          // Recortar la región del mapa desde el A4 completo
-          cCtx.drawImage(mapCanvas, mx_px, my_px, mw_px, mh_px, 0, 0, mw_px, mh_px);
-          await _drawVectorLayersFromBounds(cCtx, activeLayers, proj, mw_px, mh_px);
-          sampleCanvas = composite;
+      // Se omite si opciones.leyenda === false (usuario desactivó la leyenda).
+      if (opciones.leyenda !== false) {
+        // Para elegir la posición de la leyenda necesitamos un canvas del área del
+        // mapa (solo mw_px × mh_px) con basemap + vectores. El mapCanvas es el A4
+        // completo; recortamos solo la región del mapa y dibujamos los vectores
+        // proyectados a ese mismo espacio. Así el sampleo y las candidatas usan
+        // el mismo sistema de coordenadas sin conversiones intermedias.
+        let sampleCanvas = null;
+        try {
+          const proj = _makeProjection(bounds, mw_px, mh_px);
+          if (proj) {
+            const composite = document.createElement('canvas');
+            composite.width  = mw_px;
+            composite.height = mh_px;
+            const cCtx = composite.getContext('2d');
+            // Recortar la región del mapa desde el A4 completo
+            cCtx.drawImage(mapCanvas, mx_px, my_px, mw_px, mh_px, 0, 0, mw_px, mh_px);
+            await _drawVectorLayersFromBounds(cCtx, activeLayers, proj, mw_px, mh_px);
+            sampleCanvas = composite;
+          }
+        } catch (e) {
+          console.warn('[PDF] No se pudo crear canvas compuesto para sampleo de leyenda:', e.message);
         }
-      } catch (e) {
-        console.warn('[PDF] No se pudo crear canvas compuesto para sampleo de leyenda:', e.message);
-      }
 
-      const legendPosPDF = await _drawLegendPDF(doc, mapInst, legendItems, mxMm, myMm, mwMm, mhMm, scale_m, _meta, sampleCanvas, opciones);
+        await _drawLegendPDF(doc, mapInst, legendItems, mxMm, myMm, mwMm, mhMm, scale_m, _meta, sampleCanvas, opciones);
+      }
 
 
 
