@@ -540,7 +540,7 @@ window.LP_STYLE = (() => {
   function wireClassifiedControls(container, mapKey, geom, sec, mode, palId) {
     function applyClassification() {
       const field   = container.querySelector('.lea-field-select')?.value;
-      const palette = getCselValue(container, palId) || 'qualitative';
+      const palette = getCselValue(container, palId) || 'casux_cat';
       const method  = container.querySelector('.lea-method-select')?.value || 'jenks';
       const classes = parseInt(container.querySelector('.lea-classes-input')?.value || 5);
       if (!field) return;
