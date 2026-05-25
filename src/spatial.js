@@ -302,20 +302,20 @@ window.SPATIAL = (() => {
   // verificarUmbralDisplay — decide si una capa puede mostrarse basándose
   // en los campos del catálogo (fileSizeKb y featureCount).
   //
-  // Estrategia actual (solo catálogo):
-  //   1. Usar fileSizeKb como señal primaria.
-  //   2. Si no hay fileSizeKb, usar featureCount como fallback.
-  //   3. Si supera el umbral → bloquear y avisar al usuario.
+  // Estrategia:
+  //   1. clipStrategy='attribute' → eximir SIEMPRE (el servidor filtra).
+  //   2. Usar fileSizeKb como señal primaria.
+  //   3. Si no hay fileSizeKb, usar featureCount como fallback.
+  //   4. Si supera el umbral → bloquear y avisar al usuario.
   //
-  // FUTURO: si el servidor lo permite con latencia aceptable, reimplementar
-  // una consulta en tiempo real para obtener el count real del subconjunto
-  // filtrado (no la capa completa) antes del fetch. Sería especialmente útil
-  // para CQL filters que reducen drásticamente el resultado:
-  //   - WFS: añadir resultType=hits a la request de WFS.
-  //   - ArcGIS REST: añadir returnCountOnly=true a la query.
-  // Timeout recomendado: 5s con fallback al catálogo si no responde.
-  // La implementación anterior de esta función hacía exactamente eso;
-  // ver git history para referencia de código.
+  // FUTURO — consulta en tiempo real (sección 9.1 del diseño):
+  //   Antes del fetch, consultar el count real del subconjunto filtrado:
+  //     WFS:    ?SERVICE=WFS&REQUEST=GetFeature&resultType=hits&CQL_FILTER=...
+  //     ArcGIS: ?f=json&returnCountOnly=true&where=...
+  //   Si count real < umbral → permitir aunque la capa completa esté bloqueada.
+  //   Timeout recomendado: 5 s con fallback al catálogo si no responde.
+  //   Los parámetros _wfsOpts y _cql ya están en la firma reservados.
+  //   Ver git history para la implementación anterior de referencia.
 
   async function verificarUmbralDisplay(layerDef, _wfsOpts, _cql) {
     const ct         = window.CLIP_THRESHOLDS;
@@ -325,14 +325,16 @@ window.SPATIAL = (() => {
     const fs         = layerDef?.fileSizeKb;
     const fc         = layerDef?.featureCount;
 
+    // clipStrategy='attribute': el servidor filtra antes de enviar.
+    // La capa completa nunca se descarga → eximir de todos los umbrales.
+    if (layerDef?.clipStrategy === 'attribute') return true;
+
+    // Límite por peso (señal primaria)
     if (fs !== undefined && fs > fsLimit) {
       const n = `${(fs / 1024).toFixed(0)} mb`;
       window.TOAST?.warning(t('toast_display_limit', { titulo, n }));
       return false;
     }
-
-    // clipStrategy='attribute': el servidor filtra antes de enviar → sin límite duro fc.
-    if (layerDef?.clipStrategy === 'attribute') return true;
 
     const geomType = layerDef?.geomType || 'unknown';
     const fcHard   = ct.displayFcHard?.[geomType] ?? ct.displayFcHard?.unknown;
