@@ -532,8 +532,34 @@ window.REST = (() => {
 
   // ── API pública ───────────────────────────────────────────────
 
+  // fetchCount — equivalente ArcGIS de resultType=hits.
+  // Usa returnCountOnly=true, mismo timeout agresivo que wfs.fetchCount.
+  async function fetchCount(typename, options = {}) {
+    const { restBase, whereClause } = options;
+    if (!restBase) return null;
+    const url = buildUrl(restBase, typename, {
+      where:           whereClause || '1=1',
+      returnCountOnly: 'true',
+      f:               'json',
+    });
+    try {
+      const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      const n = data?.count;
+      if (typeof n === 'number') {
+        console.log(`[REST] count: ${typename}${whereClause ? ' | ' + whereClause : ''} → ${n} features`);
+        return n;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
   return {
     fetch:       fetchLayer,
+    fetchCount,
     filterEqual,
     filterIn,
     clearCache: async () => {
