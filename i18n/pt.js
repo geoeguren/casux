@@ -280,6 +280,8 @@ window.I18N_PT = {
   adv_modal_title:         'Edição avançada',
   adv_no_fields:           'Esta camada não tem campos classificáveis.',
   adv_simple_note:         'O estilo simples é editado diretamente no painel de camadas.',
+  simple_blocked_classified: 'Esta camada possui uma classificação ativa. Para editar o estilo simples, remova a classificação primeiro.',
+  simple_clear_classification: 'Limpar classificação',
   adv_no_numeric_fields:   'Esta camada não tem campos numéricos.',
 
   // ── Botões de estilo ──────────────────────────────────────────
