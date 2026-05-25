@@ -250,6 +250,7 @@ window.I18N_ES = {
   graphic_interface:       'Interfaz',
   graphic_loc_map:         'Mapa de localización',
   graphic_grilla:          'Cuadrícula',
+  graphic_leyenda:         'Leyenda',
   graphic_north:           'Flecha de norte',
   graphic_legend_pos:      'Posición de la leyenda',
   graphic_pos_auto:        'Automática',
