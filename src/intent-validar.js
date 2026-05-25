@@ -41,9 +41,9 @@
  *     - La capa debe estar en activeLayers
  *
  *   CAPA:
- *     - fileSizeKb > 30 MB (desktop) ó > 8 MB (móvil) → bloqueada por peso
- *     - Sin fileSizeKb: featureCount > 40 000 (desktop) ó > 10 000 (móvil) → bloqueada
- *     - featureCount > 25 000 (desktop) ó > 12 000 (móvil) → bloqueada por límite duro
+ *     - fileSizeKb > CLIP_THRESHOLDS.display (desktop) ó .displayMobile (móvil) → bloqueada por peso
+ *     - Sin fileSizeKb: featureCount > .displayFcFallback (desktop) ó .displayMobileFcFallback (móvil) → bloqueada
+ *     - featureCount > .displayFcHard[geomType] (desktop) ó .displayMobileFcHard[geomType] (móvil) → bloqueada por límite duro
  *     - clipStrategy 'none' → no se puede recortar
  *
  *   FILTRAR:
