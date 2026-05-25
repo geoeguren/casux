@@ -308,8 +308,11 @@ window.CHAT = (() => {
           const _proceedStyleVago = (selectedMapKey) => {
             const entry = window.MAP?.getActiveLayers?.()[selectedMapKey];
             const _paramProceed = intencion?.parametros?.param;
-            const _affectsColor = !_paramProceed || _paramProceed === 'color';
-            if (entry?.classification?.field && _affectsColor) {
+            // Solo advertir sobre la clasificación si el prop es explícitamente 'color'
+            // o si es un intent genérico (sin param) — en ese caso el flow de botones
+            // excluirá el color automáticamente si hay clasificación, sin preguntar.
+            const _isExplicitColor = _paramProceed === 'color';
+            if (entry?.classification?.field && _isExplicitColor) {
               const warnEl = UI.addMessage('assistant', t('style_classified_warning'));
               UI.showClassifiedStyleChoice(warnEl, selectedMapKey,
                 () => {
@@ -324,7 +327,9 @@ window.CHAT = (() => {
               );
               history.push({ role: 'assistant', content: t('style_classified_warning'), time: new Date().toISOString() });
             } else {
-              const int2 = { ...intencion, parametros: { ...intencion.parametros, _mapKey: selectedMapKey } };
+              // Sin param explícito + clasificación → excluir color del flow automáticamente
+              const _excColor = entry?.classification?.field && !_paramProceed;
+              const int2 = { ...intencion, parametros: { ...intencion.parametros, _mapKey: selectedMapKey, _excludeColor: _excColor || undefined } };
               UI.showStyleFlowForLayer(int2, selectedMapKey);
             }
           };
@@ -342,8 +347,8 @@ window.CHAT = (() => {
           } else if (layerEntries.length === 1) {
             const [[singleMapKey, singleEntry]] = layerEntries;
             const _paramSingle = intencion?.parametros?.param;
-            const _affectsColorSingle = !_paramSingle || _paramSingle === 'color';
-            if (singleEntry?.classification?.field && _affectsColorSingle) {
+            const _isExplicitColorSingle = _paramSingle === 'color';
+            if (singleEntry?.classification?.field && _isExplicitColorSingle) {
               const warnEl = UI.addMessage('assistant', t('style_classified_warning'));
               UI.showClassifiedStyleChoice(warnEl, singleMapKey,
                 () => UI.showStyleFlow({ ...intencion, parametros: { ...intencion.parametros, _excludeColor: true } }),
@@ -351,9 +356,14 @@ window.CHAT = (() => {
               );
               history.push({ role: 'assistant', content: t('style_classified_warning'), time: new Date().toISOString() });
             } else {
-              UI.showStyleFlow(intencion);
-              const histContent = intencion?.parametros?.param
-                ? t(_PARAM_KEY[intencion.parametros.param] || 'style_what_to_change')
+              // Sin param explícito + clasificación → excluir color del flow automáticamente
+              const _excColor = singleEntry?.classification?.field && !_paramSingle;
+              const intFinal = _excColor
+                ? { ...intencion, parametros: { ...intencion.parametros, _excludeColor: true } }
+                : intencion;
+              UI.showStyleFlow(intFinal);
+              const histContent = _paramSingle
+                ? t(_PARAM_KEY[_paramSingle] || 'style_what_to_change')
                 : t('style_what_to_change');
               history.push({ role: 'assistant', content: histContent, time: new Date().toISOString() });
             }
