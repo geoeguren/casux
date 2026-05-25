@@ -1546,15 +1546,21 @@ window.MAP = (() => {
     const fillColor   = style.fillColor || '#3d52a0';
     const borderColor = style.color     || '#2d3d7a';
     const borderWidth = style.weight    ?? 1.5;
-    const opacity     = style.fillOpacity ?? 0.85;
+    const fillOpacity = style.fillOpacity ?? 0.85;
     const shape       = style.shape || 'circle';
 
     let inner;
     if (shape === 'square') {
+      // Convertir el color hex + opacidad a rgba para no afectar el borde
+      const r = parseInt(fillColor.slice(1,3), 16);
+      const g = parseInt(fillColor.slice(3,5), 16);
+      const b = parseInt(fillColor.slice(5,7), 16);
+      const bg = `rgba(${r},${g},${b},${fillOpacity})`;
       inner = `<div style="
         width:${size}px;height:${size}px;
-        background:${fillColor};opacity:${opacity};
+        background:${bg};
         border:${borderWidth}px solid ${borderColor};
+        border-radius:2px;
         box-sizing:border-box;
       "></div>`;
     } else {
