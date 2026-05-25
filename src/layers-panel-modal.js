@@ -329,6 +329,18 @@ window.LP_MODAL = (() => {
 
     // ── Items editables del modal ─────────────────────────────────
 
+    // Actualiza la apariencia visual del swatch (fill + borde) en la lista de clases.
+    // Se llama al construir el item y cada vez que el usuario cambia colores en el detalle.
+    function _updateSwatchDisplay(swatchEl, fillColor, valStyle) {
+      const fill   = (valStyle?.fillColor) || fillColor;
+      const border = (valStyle?.color)     || fill;
+      swatchEl.style.background    = fill;
+      swatchEl.style.boxShadow     = `inset 0 0 0 2px ${border}`;
+      swatchEl.style.outline       = 'none';
+      swatchEl.style.cursor        = 'default';
+      swatchEl.style.pointerEvents = 'none';
+    }
+
     function buildCatItemsAdv() {
       const nl      = window.MAP.getActiveLayers()[k];
       const cl      = nl?.classification;
@@ -337,7 +349,12 @@ window.LP_MODAL = (() => {
       const isGraduated = itemsEl.classList.contains('adv-grad-items');
       itemsEl.innerHTML = '';
 
-      Object.entries(cl.colorMap).forEach(([val, color]) => {
+      // Usar order explícito si existe para respetar el orden manual del usuario
+      const _itemOrder = (cl.order && cl.order.length)
+        ? cl.order.filter(k => cl.colorMap.hasOwnProperty(k))
+        : Object.keys(cl.colorMap);
+      _itemOrder.forEach(val => {
+        const color = cl.colorMap[val];
         const item = document.createElement('div');
         item.className   = 'adv-cat-item';
         item.dataset.val = val;
@@ -358,19 +375,12 @@ window.LP_MODAL = (() => {
           header.appendChild(handle);
         }
 
-        const swatch = document.createElement('label');
-        swatch.className      = 'adv-cat-swatch';
-        swatch.style.background = color;
-        const pick = document.createElement('input');
-        pick.type  = 'color';
-        pick.value = color;
-        pick.addEventListener('input', e => {
-          const c = e.target.value;
-          swatch.style.background = c;
-          deselectRamp();
-          updateCatColor(val, c);
-        });
-        swatch.appendChild(pick);
+        // Swatch de solo lectura: muestra fill y borde pero no permite edición directa.
+        // El color se actualiza desde el panel de detalle de cada clase (botón tune).
+        const swatch = document.createElement('div');
+        swatch.className = 'adv-cat-swatch adv-cat-swatch--readonly';
+        swatch.dataset.swatchVal = val;
+        _updateSwatchDisplay(swatch, color, cl.styleMap?.[val]);
 
         const nameInput = document.createElement('input');
         nameInput.type             = 'text';
@@ -404,6 +414,7 @@ window.LP_MODAL = (() => {
           if (!nl2?.classification?.colorMap) return;
           delete nl2.classification.colorMap[val];
           if (nl2.classification.styleMap) delete nl2.classification.styleMap[val];
+          if (nl2.classification.order) nl2.classification.order = nl2.classification.order.filter(v => v !== val);
           window.MAP.applyClassificationFromData(k, nl2.classification);
           window.LP_PANEL.persistClassification(k, nl2.classification);
           buildCatItemsAdv();
@@ -479,6 +490,7 @@ window.LP_MODAL = (() => {
             });
             nl2.classification.colorMap  = newMap;
             nl2.classification.styleMap  = newStyle;
+            nl2.classification.order     = newOrder; // orden explícito para claves numéricas
             window.MAP.applyClassificationFromData(k, nl2.classification);
             window.LP_PANEL.persistClassification(k, nl2.classification);
           });
@@ -499,6 +511,11 @@ window.LP_MODAL = (() => {
         if (!cl.styleMap) cl.styleMap = {};
         delete cl.styleMap[oldVal];
         cl.styleMap[newVal] = style;
+      }
+      // Actualizar order si existe
+      if (cl.order) {
+        const idx = cl.order.indexOf(oldVal);
+        if (idx !== -1) cl.order[idx] = newVal;
       }
       if (cl.field && nl.geojson) {
         nl.geojson.features.forEach(f => {
@@ -657,6 +674,9 @@ window.LP_MODAL = (() => {
       nl.classification.styleMap[val] = { ...(nl.classification.styleMap[val] || {}), fillColor: color, color };
       window.MAP.applyClassificationFromData(k, nl.classification);
       window.LP_PANEL.persistClassification(k, nl.classification);
+      // Actualizar swatch readonly
+      const swatchEl = bodyEl.querySelector(`.adv-cat-swatch--readonly[data-swatch-val="${CSS.escape(val)}"]`);
+      if (swatchEl) _updateSwatchDisplay(swatchEl, color, nl.classification.styleMap[val]);
     }
 
     function updateCatValStyle(val, changes) {
@@ -668,6 +688,9 @@ window.LP_MODAL = (() => {
       if (changes.color && !changes.fillColor) nl.classification.colorMap[val] = changes.color;
       window.MAP.applyClassificationFromData(k, nl.classification);
       window.LP_PANEL.persistClassification(k, nl.classification);
+      // Actualizar el swatch de solo lectura en la lista de clases
+      const swatchEl = bodyEl.querySelector(`.adv-cat-swatch--readonly[data-swatch-val="${CSS.escape(val)}"]`);
+      if (swatchEl) _updateSwatchDisplay(swatchEl, nl.classification.colorMap[val], nl.classification.styleMap[val]);
     }
 
     // ── Render de modos ───────────────────────────────────────────
@@ -865,7 +888,9 @@ window.LP_MODAL = (() => {
       pill.addEventListener('click', () => {
         modal.querySelectorAll('.adv-pill').forEach(p => p.classList.remove('active'));
         pill.classList.add('active');
-        selPalette = initPalette;
+        // Al cambiar de modo, resetear la paleta para que cada modo
+        // muestre su default en vez de heredar la del modo anterior.
+        selPalette = null;
         renderAdvMode(pill.dataset.mode);
       });
     });
@@ -912,6 +937,7 @@ window.LP_MODAL = (() => {
       window.MAP.clearClassification(k);
       window.LP_PANEL.persistClassification(k, null);
       _savedClassification = null;
+      selPalette = null;
       // Volver a modo single sin cerrar el modal
       modal.querySelector('#adv-clear-btn').style.visibility = 'hidden';
       modal.querySelectorAll('.adv-pill').forEach(p => p.classList.toggle('active', p.dataset.mode === 'single'));
