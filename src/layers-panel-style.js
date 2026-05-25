@@ -145,10 +145,29 @@ window.LP_STYLE = (() => {
 
     const contentEl = acc.querySelector(`#lea-content-${k}`);
 
-    // Render modo simple directamente
-    contentEl.innerHTML = styleControlsHTML(geom, s, k);
-    _wireStyleControls(contentEl, k, geom, sec);
-    if (geom === 'line') wireCsel(contentEl, `lea-dash-${k}`, () => _applySimpleStyle(k, contentEl, sec));
+    // Si la capa está clasificada, bloquear edición simple con un aviso
+    if (l.classification?.field) {
+      contentEl.innerHTML = `<div class="lea-classified-notice">
+        <span class="material-icons" style="font-size:18px;opacity:0.45;flex-shrink:0">lock</span>
+        <span>${t('simple_blocked_classified')}</span>
+        <button class="lea-clear-classification-btn" data-key="${k}">
+          <span class="material-icons" style="font-size:14px;pointer-events:none">delete_sweep</span>
+          ${t('simple_clear_classification')}
+        </button>
+      </div>`;
+      contentEl.querySelector('.lea-clear-classification-btn')?.addEventListener('click', () => {
+        window.MAP.clearClassification(k);
+        window.LP_PANEL.persistClassification(k, null);
+        // Reconstruir el acordeón sin clasificación
+        closeEditAccordion(sec);
+        toggleEditAccordion(k, sec.querySelector(`.layer-edit-btn[data-key="${k}"]`), sec);
+      });
+    } else {
+      // Render modo simple directamente
+      contentEl.innerHTML = styleControlsHTML(geom, s, k);
+      _wireStyleControls(contentEl, k, geom, sec);
+      if (geom === 'line') wireCsel(contentEl, `lea-dash-${k}`, () => _applySimpleStyle(k, contentEl, sec));
+    }
 
     // Botón edición avanzada → modal
     // Botón edición avanzada
@@ -275,6 +294,12 @@ window.LP_STYLE = (() => {
 
     window.MAP.updateLayerStyle(mapKey, ns);
     nl.style = ns;
+    // Si hay clasificación activa, forzar un rebuild para que los nuevos valores
+    // base (tamaño, grosor, opacidad) se propaguen correctamente a cada clase.
+    if (nl.classification?.field) {
+      window.MAP.applyClassificationFromData(mapKey, nl.classification);
+      window.LP_PANEL.persistClassification(mapKey, nl.classification);
+    }
     window.LP_PANEL.persistStyle(mapKey, ns);
 
     // Actualizar SVG en la fila del panel
