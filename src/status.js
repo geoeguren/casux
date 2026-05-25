@@ -106,18 +106,20 @@ function getLayersBySource() {
   const result = {};
   if (!window.LAYERS) return result;
 
-  // Determina si una capa está restringida (mismo criterio que spatial.js).
+  // Determina si una capa está restringida (mismo criterio que spatial.js e intent-validar.js).
   // Señal primaria: fileSizeKb. Fallback: featureCount.
+  // displayFcHard es un objeto {polygon, line, point, unknown} — ver layers/index.js.
+  // clipStrategy='attribute': el servidor filtra → nunca llega completa → sin límite duro fc.
   const ct = window.CLIP_THRESHOLDS;
-  const _fsLimit    = ct.display;
-  const _fcFallback = ct.displayFcFallback;
-  const _fcHard     = ct.displayFcHard;
   function _isRestricted(layer) {
     const fs = layer.fileSizeKb;
     const fc = layer.featureCount;
-    if (fs !== undefined && fs > _fsLimit)  return true;
-    if (fc !== undefined && fc > _fcHard)   return true;
-    if (fs === undefined && fc !== undefined && fc > _fcFallback) return true;
+    if (fs !== undefined && fs > ct.display) return true;
+    if (layer.clipStrategy === 'attribute')   return false;
+    const geomType = layer.geomType || 'unknown';
+    const fcHard   = ct.displayFcHard?.[geomType] ?? ct.displayFcHard?.unknown;
+    if (fc !== undefined && fcHard !== undefined && fc > fcHard) return true;
+    if (fs === undefined && fc !== undefined && fc > ct.displayFcFallback) return true;
     return false;
   }
 
@@ -300,12 +302,14 @@ function renderLayerRow(l) {
     // Tooltip: razón de la restricción (peso o cantidad de features)
     const ct = window.CLIP_THRESHOLDS;
     let restrictedReason = '';
-    if (l.fileSizeKb != null && l.fileSizeKb > (ct.display)) {
-      const limit = ((ct.display) / 1024).toFixed(0);
+    if (l.fileSizeKb != null && l.fileSizeKb > ct.display) {
+      const limit = (ct.display / 1024).toFixed(0);
       const mb    = (l.fileSizeKb / 1024).toFixed(0);
       restrictedReason = `${l.featureCount?.toLocaleString() ?? ''} elementos — ${mb} mb (límite: ${limit} mb)`;
     } else if (l.featureCount != null) {
-      const limit = (ct.displayFcHard).toLocaleString();
+      const geomType = l.geomType || 'unknown';
+      const fcHard   = ct.displayFcHard?.[geomType] ?? ct.displayFcHard?.unknown;
+      const limit    = fcHard?.toLocaleString() ?? '?';
       restrictedReason = `${l.featureCount.toLocaleString()} elementos — límite: ${limit}`;
     }
     return `
