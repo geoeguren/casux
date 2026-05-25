@@ -314,9 +314,20 @@ window.MAP = (() => {
       // Mismo ícono/forma, solo cambió un valor visual: actualizar divIcon sin reconstruir
       entry.leafletLayer.eachLayer(l => {
         if (!l.setIcon) return;
-        const svgRaw  = window._makiSvgCache[entry.style.icon]?.svgRaw || null;
-        const newHtml = _makiIconHtml(entry.style, svgRaw);
-        const newSize = Math.round((entry.style.radius ?? 12) * 2);
+        let newHtml, newSize;
+        if (entry.style.icon) {
+          // Ícono Maki
+          const svgRaw = window._makiSvgCache[entry.style.icon]?.svgRaw || null;
+          newHtml = _makiIconHtml(entry.style, svgRaw);
+          newSize = Math.round((entry.style.radius ?? 12) * 2);
+        } else {
+          // Shape (square, etc.) — reconstruir con _shapeIcon
+          const shapeIcon = _shapeIcon(entry.style);
+          if (!shapeIcon) return;
+          // Extraer el html del divIcon recién creado
+          newHtml = shapeIcon.options.html;
+          newSize = (entry.style.radius ?? 8) * 2;
+        }
         l.setIcon(L.divIcon({
           html:        newHtml,
           className:   '',
