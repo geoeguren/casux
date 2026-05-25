@@ -342,7 +342,7 @@ window.SPATIAL = (() => {
       const mb = (fs / 1024).toFixed(0);
       window.TOAST?.warning(t('toast_display_limit', {
         titulo: layerDef.titulo,
-        n:      `${mb} MB`,
+        n:      `${mb} mb`,
       }));
     } else {
       window.TOAST?.warning(t('toast_display_limit', {
