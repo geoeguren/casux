@@ -281,7 +281,7 @@ window.I18N_EN = {
   adv_no_fields:           'This layer has no classifiable fields.',
   adv_simple_note:         'Simple style is edited directly in the layers panel.',
   simple_classified_color_hint:    'Colors are edited per class in advanced editing.',
-  simple_classified_override_hint: 'Some classes have this parameter customized — the global change won\'t affect them.',
+  simple_classified_override_hint: 'Some classes have custom parameters. Simple style changes won\'t affect them.',
   adv_no_numeric_fields:   'This layer has no numeric fields.',
 
   // ── Style buttons ─────────────────────────────────────────────
