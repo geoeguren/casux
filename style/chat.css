@@ -214,6 +214,10 @@ body.day, html.day .map-card-title { color: #1a1814; }
 body.day, html.day .map-card-btn { color: #5a5650; border-color: #c8c4be; }
 body.day, html.day .map-card-btn:hover { background: rgba(0,0,0,0.06); color: var(--accent); border-color: var(--accent); }
 
+/* Card de mapa anterior — inhabilitado */
+.msg-map-card.map-card-stale { opacity: 0.4; pointer-events: none; }
+.msg-map-card.map-card-stale .map-card-btn { cursor: default; }
+
 /* Input area */
 .chat-input-area {
   padding: 16px 16px 0; border-top: none; flex-shrink: 0;
