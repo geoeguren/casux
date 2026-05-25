@@ -122,15 +122,15 @@ window.LAYERS = {
  */
 window.CLIP_THRESHOLDS = {
   // ── Desktop ────────────────────────────────────────────────────
-  display:                  80_000,  // KB — bloquea si fileSizeKb > 80 MB (antes: 30 MB)
-  displayFcFallback:        50_000,  // features — fallback sin fileSizeKb (antes: 40 K)
+  display:                  45_000,  // KB — bloquea si fileSizeKb > 45 MB (antes: 80 MB → demasiado para Leaflet mid-range)
+  displayFcFallback:        50_000,  // features — fallback sin fileSizeKb
 
   // Límite duro por geomType (desktop). Ver explicación arriba.
   displayFcHard: {
-    polygon: 25_000,   // antes: 15 000
-    line:    30_000,   // antes: 20 000
-    point:   75_000,   // antes: 50 000
-    unknown: 20_000,   // conservador: sin info de geom, entre polygon y line
+    polygon: 18_000,   // antes: 25 000 → polígonos densos saturan el hilo principal
+    line:    30_000,
+    point:   75_000,
+    unknown: 15_000,   // conservador: sin info de geom, entre polygon y line
   },
 
   // Zona de advertencia NO bloqueante (nueva).
@@ -164,7 +164,7 @@ window.CLIP_THRESHOLDS = {
   // Por debajo de ese peso, el roundtrip HTTP al servidor no vale la pena.
   // Usados por src/spatial-utils.js → deberiaUsarEdgeFunction().
   edgeFnUmbralKb: 2_000,   // KB — fileSizeKb por encima del cual usar edge function
-  edgeFnUmbralFc: 2_000,   // features — fallback cuando no hay fileSizeKb
+  edgeFnUmbralFc: 4_500,   // features — fallback cuando no hay fileSizeKb (antes: 2 000 → demasiado conservador para cliente)
 };
 
 // ── Umbral de clasificación de campos ──────────────────────────────────────
