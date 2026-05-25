@@ -63,8 +63,18 @@ window.LAYERS = {
 window.CLIP_THRESHOLDS = {
   display:                  80_000,  // KB — bloquea si fileSizeKb > 80 MB (desktop)
   displayFcFallback:       100_000,  // features — fallback cuando no hay fileSizeKb (desktop)
+  displayFcHard:            55_000,  // features — límite duro de features independiente del peso
+  //
+  // displayFcHard existe porque fileSizeKb no captura el costo de renderizado en Leaflet.
+  // Una capa con 84K líneas de 34 MB (huella_ar) pesa poco pero cuelga el browser porque
+  // Leaflet debe crear y mantener 84K objetos SVG en el DOM.
+  // Benchmarks empíricos: líneas/puntos > ~55K features → degradación severa en hardware medio.
+  // Esta restricción se aplica ADEMÁS del límite de peso (OR lógico, no AND):
+  //   bloquear si fileSizeKb > 80 MB  OR  featureCount > 55 000
+  //
   displayMobile:            15_000,  // KB — bloquea si fileSizeKb > 15 MB (móvil)
   displayMobileFcFallback:  20_000,  // features — fallback móvil sin fileSizeKb
+  displayMobileFcHard:      20_000,  // features — límite duro móvil (coincide con fallback)
 };
 
 // ── Umbral de clasificación de campos ──────────────────────────────────────
