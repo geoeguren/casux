@@ -164,7 +164,7 @@ window.WFS = (() => {
       const src    = Object.values(window.SOURCES || {}).find(s => s.wfsBase?.includes(host));
       const source = src ? Object.keys(window.SOURCES).find(k => window.SOURCES[k] === src) : null;
       if (!source) return null;
-      const safe = typename.replace(/[\/\\]/g, '__').replace(/:/g, '__');
+      const safe = typename.replace(/[\/\\]/g, '__');
       return `${base.replace(/\/$/, '')}/${source}/${safe}.geojson`;
     } catch { return null; }
   }
