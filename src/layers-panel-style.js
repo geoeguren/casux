@@ -167,16 +167,27 @@ window.LP_STYLE = (() => {
         el.style.pointerEvents = 'none';
       });
 
-      _wireStyleControls(controls, k, geom, sec);
-      if (geom === 'line') wireCsel(controls, `lea-dash-${k}`, () => _applySimpleStyle(k, controls, sec));
-
-      // Banner informativo debajo de los colores (antes del botón de edición avanzada)
+      // Banner informativo: insertar INMEDIATAMENTE después del último row con color picker
       const banner = document.createElement('div');
       banner.className = 'lea-classified-banner';
       banner.innerHTML = `
         <span class="material-icons" style="font-size:13px;flex-shrink:0">block</span>
         <span>${t('simple_classified_color_hint')}</span>`;
-      acc.querySelector('.lea-advanced-btn').insertAdjacentElement('beforebegin', banner);
+      const allRows = controls.querySelectorAll('.lea-row');
+      let lastColorRow = null;
+      allRows.forEach(row => {
+        if (row.querySelector('.lea-color-pick, .lea-hex-input, .lea-color-swatch')) {
+          lastColorRow = row;
+        }
+      });
+      if (lastColorRow) {
+        lastColorRow.insertAdjacentElement('afterend', banner);
+      } else {
+        controls.appendChild(banner);
+      }
+
+      _wireStyleControls(controls, k, geom, sec);
+      if (geom === 'line') wireCsel(controls, `lea-dash-${k}`, () => _applySimpleStyle(k, controls, sec));
     } else {
       // Render modo simple directamente
       contentEl.innerHTML = styleControlsHTML(geom, s, k);
@@ -302,21 +313,23 @@ window.LP_STYLE = (() => {
 
     if (ns.icon) window.MAP.precacheMakiIcon?.(ns.icon);
 
-    window.MAP.updateLayerStyle(mapKey, ns);
-    nl.style = ns;
-    // Si hay clasificación activa, forzar un rebuild para que los nuevos valores
-    // base (tamaño, grosor, opacidad) se propaguen correctamente a cada clase.
     if (nl.classification?.field) {
+      // Con clasificación activa: actualizar el estilo base directamente en el objeto
+      // compartido y forzar un rebuildLayer completo vía applyClassificationFromData.
+      // Esto garantiza:
+      //   1) El orden de pintado de features (z-order por clase) se recalcula correctamente.
+      //   2) Los styleMap individuales no se alteran.
+      //   3) No hay un eachLayer intermedio que pise temporalmente los colores de la rampa.
+      nl.style = ns;
       window.MAP.applyClassificationFromData(mapKey, nl.classification);
       window.LP_PANEL.persistClassification(mapKey, nl.classification);
 
       // Detectar si alguna clase tiene overrides del parámetro que se acaba de
-      // cambiar en su styleMap. Si los hay, mostrar un hint sutil para que el
-      // usuario entienda por qué esas clases no reflejan el cambio global.
-      const changedProps = container.querySelectorAll('.lea-range-input[data-prop]');
+      // cambiar en su styleMap. Si los hay, mostrar un hint para que el usuario
+      // entienda por qué esas clases no reflejan el cambio global.
       const styleMap = nl.classification.styleMap || {};
       const overriddenProps = new Set();
-      changedProps.forEach(inp => {
+      container.querySelectorAll('.lea-range-input[data-prop]').forEach(inp => {
         const prop = inp.dataset.prop;
         if (!prop) return;
         Object.values(styleMap).forEach(vs => {
@@ -328,7 +341,6 @@ window.LP_STYLE = (() => {
       }
 
       if (overriddenProps.size > 0) {
-        // Mostrar hint inline solo si no hay uno ya visible
         let hint = container.querySelector('.lea-override-hint');
         if (!hint) {
           hint = document.createElement('p');
@@ -339,7 +351,11 @@ window.LP_STYLE = (() => {
       } else {
         container.querySelector('.lea-override-hint')?.remove();
       }
+    } else {
+      window.MAP.updateLayerStyle(mapKey, ns);
+      nl.style = ns;
     }
+
     window.LP_PANEL.persistStyle(mapKey, ns);
 
     // Actualizar SVG en la fila del panel
