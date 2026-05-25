@@ -138,7 +138,7 @@ window.LP_STYLE = (() => {
     acc.innerHTML =
       `<div class="lea-mode-content" id="lea-content-${k}"></div>` +
       `<button class="lea-advanced-btn" data-key="${k}" style="border-top:0.5px solid var(--border-md)"><span class="material-icons">biotech</span>${t('layers_advanced')}</button>` +
-      `<button class="lea-delete-btn" data-key="${k}" style="border-top:0.5px solid var(--border-md);border-bottom:0.5px solid var(--border-md)"><span class="material-icons">delete</span>${t('layers_delete_layer')}</button>`;
+      `<button class="lea-delete-btn" data-key="${k}" style="border-top:0.5px solid var(--border-md)"><span class="material-icons">delete</span>${t('layers_delete_layer')}</button>`;
 
     const row = sec.querySelector(`.layers-data-row[data-key="${k}"]`);
     row?.insertAdjacentElement('afterend', acc);
