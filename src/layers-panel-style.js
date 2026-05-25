@@ -154,17 +154,18 @@ window.LP_STYLE = (() => {
       controls.innerHTML = styleControlsHTML(geom, s, k, '', false);
       contentEl.appendChild(controls);
 
-      // Deshabilitar los controles de color (pickers y hex inputs)
+      // Deshabilitar las filas de color completas (label + control)
+      // La clase lea-row--color-disabled aplica opacidad y bloquea interacción a toda la fila,
+      // lo que señaliza visualmente el estado inhabilitado de forma más clara que solo el picker.
+      controls.querySelectorAll('.lea-row').forEach(row => {
+        if (row.querySelector('.lea-color-pick, .lea-hex-input, .lea-color-swatch')) {
+          row.classList.add('lea-row--color-disabled');
+        }
+      });
+      // Deshabilitar también los inputs individualmente para que _applySimpleStyle
+      // no los lea (el selector :not([disabled]) filtra los hex inputs al leer valores)
       controls.querySelectorAll('.lea-color-pick, .lea-hex-input').forEach(el => {
         el.disabled = true;
-        el.style.opacity = '0.4';
-        el.style.pointerEvents = 'none';
-        el.style.cursor = 'not-allowed';
-      });
-      controls.querySelectorAll('.lea-color-swatch').forEach(el => {
-        el.style.opacity = '0.4';
-        el.style.cursor = 'not-allowed';
-        el.style.pointerEvents = 'none';
       });
 
       // Banner informativo: insertar INMEDIATAMENTE después del último row con color picker
@@ -188,6 +189,19 @@ window.LP_STYLE = (() => {
 
       _wireStyleControls(controls, k, geom, sec);
       if (geom === 'line') wireCsel(controls, `lea-dash-${k}`, () => _applySimpleStyle(k, controls, sec));
+
+      // Mostrar el hint de override por defecto si ya hay clases con parámetros
+      // personalizados en el styleMap — no esperar al primer cambio de slider.
+      const _styleMap = l.classification.styleMap || {};
+      const _hasOverrides = Object.values(_styleMap).some(vs =>
+        Object.keys(vs).some(p => p !== 'fillColor' && p !== 'color')
+      );
+      if (_hasOverrides) {
+        const hint = document.createElement('p');
+        hint.className = 'lea-override-hint';
+        hint.innerHTML = `<span class="material-icons" style="font-size:13px;flex-shrink:0">block</span><span>${t('simple_classified_override_hint')}</span>`;
+        controls.appendChild(hint);
+      }
     } else {
       // Render modo simple directamente
       contentEl.innerHTML = styleControlsHTML(geom, s, k);
