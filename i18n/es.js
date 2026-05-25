@@ -347,6 +347,7 @@ window.I18N_ES = {
   validate_export_no_layers:            'No hay capas cargadas para exportar.',
   validate_basemap_invalid:             'Mapa de fondo no reconocido.',
   validate_layer_too_many_features:     '{titulo} es demasiado pesada ({n}) para mostrarse completa. Pedí una región o provincia específica.',
+  validate_layer_may_be_slow:           '{titulo} ({n} features) puede tardar unos segundos en cargar. Continuando de todos modos.',
   validate_no_active_layers_to_add:     'No hay capas cargadas en el mapa para agregar.',
   validate_layer_already_on_map:        'Esa capa ya está en el mapa.',
   validate_filter_no_filterable_fields: 'Esta capa no tiene campos filtrables definidos.',
