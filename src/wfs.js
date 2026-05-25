@@ -164,7 +164,7 @@ window.WFS = (() => {
       const src    = Object.values(window.SOURCES || {}).find(s => s.wfsBase?.includes(host));
       const source = src ? Object.keys(window.SOURCES).find(k => window.SOURCES[k] === src) : null;
       if (!source) return null;
-      const safe = typename.replace(/[\/\\]/g, '__');
+      const safe = typename.replace(/[\/\\]/g, '__').replace(/:/g, '__');
       return `${base.replace(/\/$/, '')}/${source}/${safe}.geojson`;
     } catch { return null; }
   }
@@ -260,6 +260,7 @@ window.WFS = (() => {
       bbox,
       forceRefresh,
       tituloUI,
+      clipStrategy,
     } = options;
 
     if (!wfsBase) throw new Error(`[WFS] wfsBase requerido para "${typename}". Verificá que la capa tenga "source" y que esté definido en window.SOURCES.`);
@@ -339,7 +340,9 @@ window.WFS = (() => {
         } catch {}
 
         const msg = isTruncated
-          ? t('toast_layer_truncated', { titulo: tituloUI || typename })
+          ? (clipStrategy === 'attribute'
+              ? t('toast_layer_truncated_attribute', { titulo: tituloUI || typename })
+              : t('toast_layer_truncated', { titulo: tituloUI || typename }))
           : isServerError
             ? t('toast_server_unavailable', { org: orgLabel })
             : t('toast_layer_fetch_error', { typename, msg: err.message });
