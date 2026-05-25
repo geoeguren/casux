@@ -108,10 +108,10 @@ function getLayersBySource() {
 
   // Determina si una capa está restringida (mismo criterio que spatial.js).
   // Señal primaria: fileSizeKb. Fallback: featureCount.
-  const ct = window.CLIP_THRESHOLDS || {};
-  const _fsLimit    = ct.display            ?? 80_000;
-  const _fcFallback = ct.displayFcFallback  ?? 100_000;
-  const _fcHard     = ct.displayFcHard      ?? 55_000;
+  const ct = window.CLIP_THRESHOLDS;
+  const _fsLimit    = ct.display;
+  const _fcFallback = ct.displayFcFallback;
+  const _fcHard     = ct.displayFcHard;
   function _isRestricted(layer) {
     const fs = layer.fileSizeKb;
     const fc = layer.featureCount;
@@ -298,14 +298,14 @@ function renderLayerRow(l) {
 
   if (l.restricted) {
     // Tooltip: razón de la restricción (peso o cantidad de features)
-    const ct = window.CLIP_THRESHOLDS || {};
+    const ct = window.CLIP_THRESHOLDS;
     let restrictedReason = '';
-    if (l.fileSizeKb != null && l.fileSizeKb > (ct.display ?? 80_000)) {
-      const limit = ((ct.display ?? 80_000) / 1024).toFixed(0);
+    if (l.fileSizeKb != null && l.fileSizeKb > (ct.display)) {
+      const limit = ((ct.display) / 1024).toFixed(0);
       const mb    = (l.fileSizeKb / 1024).toFixed(0);
       restrictedReason = `${l.featureCount?.toLocaleString() ?? ''} elementos — ${mb} mb (límite: ${limit} mb)`;
     } else if (l.featureCount != null) {
-      const limit = (ct.displayFcHard ?? 55_000).toLocaleString();
+      const limit = (ct.displayFcHard).toLocaleString();
       restrictedReason = `${l.featureCount.toLocaleString()} elementos — límite: ${limit}`;
     }
     return `
