@@ -370,6 +370,11 @@ window.I18N_PT = {
   // ── Estilo com classificação ativa ────────────────────────────
   style_classified_warning:          'Esta camada tem uma classificação ativa. O que você quer fazer?',
   style_keep_classification:         'Manter classificação',
+  style_keep_classification_msg:     'OK, a cor não foi alterada. Para editar a cor por classe, use o editor avançado no painel de camadas.',
+  dash_solid:         'Sólido',
+  dash_dashed:        'Tracejado',
+  dash_dotted:        'Pontilhado',
+  dash_dash_dot:      'Traço-ponto',
   style_keep_classification_sub:     'não altera a cor',
   style_replace_classification:      'Substituir por cor sólida',
   style_replace_classification_sub:  'remove a classificação atual',
