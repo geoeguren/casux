@@ -370,6 +370,11 @@ window.I18N_EN = {
   // ── Style with active classification ─────────────────────────
   style_classified_warning:          'This layer has an active classification. What do you want to do?',
   style_keep_classification:         'Keep classification',
+  style_keep_classification_msg:     'OK, color left unchanged. To edit colors per class, use the advanced editor in the layers panel.',
+  dash_solid:      'Solid',
+  dash_dashed:     'Dashed',
+  dash_dotted:     'Dotted',
+  dash_dash_dot:   'Dash-dot',
   style_keep_classification_sub:     'does not change the color',
   style_replace_classification:      'Replace with solid color',
   style_replace_classification_sub:  'removes the current classification',
