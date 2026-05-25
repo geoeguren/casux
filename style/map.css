@@ -191,7 +191,7 @@ body.day, html.day .layer-name-input { color: #1a1814; }
 
 /* Acordeón de edición de capa */
 .layer-edit-accordion {
-  padding: 4px 0 6px;
+  padding: 4px 0 0;
   border-top: 0.5px solid var(--border);
   background: var(--bg);
   display: flex; flex-direction: column; gap: 0;
