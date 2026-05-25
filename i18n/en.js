@@ -134,7 +134,7 @@ window.I18N_EN = {
   toast_layer_truncated:    '{titulo} is too large to load without a filter. Try specifying a department or region.',
 
   // ── Clip toasts ──────────────────────────────────────────────
-  toast_display_limit:     '{titulo} has {n} elements — too many to display.',
+  toast_display_limit:     '{titulo} is too large ({n}) to display. Try requesting a specific region.',
   toast_spatial_none:      '{titulo} cannot be clipped. Showing the full layer.',
   toast_spatial_limit:     '{titulo} has {n} elements — showing full layer without clipping.',
   toast_spatial_fallback:  'Server took too long. Processing on device…',
@@ -346,7 +346,7 @@ window.I18N_EN = {
   validate_export_format_not_supported: 'Format {formato} is not supported. You can export as: JPEG, PDF, GeoJSON or HTML.',
   validate_export_no_layers:            'No layers loaded to export.',
   validate_basemap_invalid:             'Unknown basemap.',
-  validate_layer_too_many_features:     '{titulo} has too many features ({n}) to display without clipping.',
+  validate_layer_too_many_features:     '{titulo} is too large ({n}) to display in full. Ask for a specific region or province.',
   validate_no_active_layers_to_add:     'No layers loaded on the map to add to.',
   validate_layer_already_on_map:        'That layer is already on the map.',
   validate_filter_no_filterable_fields: 'This layer has no filterable fields defined.',
