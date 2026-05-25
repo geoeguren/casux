@@ -14,6 +14,8 @@
 
 window.CAT_PALETTES = {
   // Paletas cualitativas — 12 colores con contraste perceptual validado (ΔE mínimo entre pares)
+  // Primera posición: paleta de marca Casux (índigo + complementarios)
+  casux_cat:     ['#3d52a0','#e07b39','#4a9e6b','#c94f5a','#6ab0c8','#b5832a','#7c5c99','#2a6b55','#c05080','#2e7da6','#9b4d4d','#8db84a'],
   cat_tableau:   ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#edc948','#b07aa1','#ff9da7','#9c755f','#d37295','#a0cbe8','#499894'],
   cat_bold:      ['#e6194b','#3cb44b','#4363d8','#f58231','#911eb4','#42d4f4','#f032e6','#bfef45','#469990','#9a6324','#800000','#aaffc3'],
   cat_pastel:    ['#aec6cf','#ffb347','#b5ead7','#ff6961','#c3b1e1','#fdfd96','#77dd77','#ff9aa2','#ffc8a2','#ffe5b4','#ffd1dc','#e6e6fa'],
@@ -26,6 +28,8 @@ window.CAT_PALETTES = {
 // 6 paletas × 8 colores, de claro (bajo) a oscuro/saturado (alto)
 
 window.SEQ_PALETTES = {
+  // Primera posición: paleta secuencial de marca Casux (crema → índigo profundo)
+  casux_seq:     ['#eef1f9','#c8d0ea','#a3b2da','#7d93ca','#5a74b8','#3d52a0','#2d3d7a','#1d2850'],
   seq_blues:     ['#f7fbff','#deebf7','#c6dbef','#9ecae1','#6baed6','#3182bd','#08519c','#08306b'],
   seq_greens:    ['#f7fcf5','#e5f5e0','#c7e9c0','#a1d99b','#74c476','#31a354','#006d2c','#00441b'],
   seq_oranges:   ['#fff5eb','#feedde','#fdd0a2','#fdae6b','#fd8d3c','#e6550d','#a63603','#7f2704'],
@@ -49,6 +53,8 @@ window.PALETTES = {
 };
 
 window.PALETTE_LABELS = {
+  casux_cat:     'Casux',
+  casux_seq:     'Casux',
   cat_tableau:   'tableau',
   cat_bold:      'bold',
   cat_pastel:    'pastel',
