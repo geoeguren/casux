@@ -109,13 +109,15 @@ function getLayersBySource() {
   // Determina si una capa está restringida (mismo criterio que spatial.js).
   // Señal primaria: fileSizeKb. Fallback: featureCount.
   const ct = window.CLIP_THRESHOLDS || {};
-  const _fsLimit = ct.display            ?? 80_000;
-  const _fcLimit = ct.displayFcFallback  ?? 100_000;
+  const _fsLimit    = ct.display            ?? 80_000;
+  const _fcFallback = ct.displayFcFallback  ?? 100_000;
+  const _fcHard     = ct.displayFcHard      ?? 55_000;
   function _isRestricted(layer) {
     const fs = layer.fileSizeKb;
-    if (fs !== undefined) return fs > _fsLimit;
     const fc = layer.featureCount;
-    if (fc !== undefined) return fc > _fcLimit;
+    if (fs !== undefined && fs > _fsLimit)  return true;
+    if (fc !== undefined && fc > _fcHard)   return true;
+    if (fs === undefined && fc !== undefined && fc > _fcFallback) return true;
     return false;
   }
 
