@@ -729,10 +729,7 @@ body.day, html.day .html-csel-chk-label--mono { color: #6a6560; }
 .graphic-export-warn.hidden { display: none; }
 body.day, html.day .graphic-export-warn { color: #8a8580; }
 
-/* Salida gráfica: sin línea separadora entre el body y el footer */
-#graphic-export-modal .adv-modal-footer {
-  border-top: none;
-}
+/* Salida gráfica: la línea separadora se aplica inline en export-graphic.js */
 
 /* Fila de rampa con botón de invertir */
 .adv-ramp-row-inner {
