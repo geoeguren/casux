@@ -289,6 +289,7 @@ window.I18N_PT = {
   style_ask_color:         'Para qual cor você quer mudar?',
   style_ask_size:          'Para qual tamanho você quer mudar?',
   style_ask_weight:        'Para qual espessura você quer mudar?',
+  style_ask_dash:          'Qual estilo de linha você quer usar?',
   style_ask_icon:          'Qual ícone você quer usar?',
   style_ask_geom:          'Qual forma você quer usar?',
   style_ask_opacity:       'Para qual opacidade você quer mudar?',
