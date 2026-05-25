@@ -294,8 +294,8 @@ function renderLayerRow(l) {
   let sizeTitle = '';
   if (l.fileSizeKb != null) {
     const mb = (l.fileSizeKb / 1024).toFixed(1);
-    sizeLabel = `${mb} MB`;
-    sizeTitle = `${mb} MB`;
+    sizeLabel = `${mb} mb`;
+    sizeTitle = `${mb} mb`;
   } else if (l.featureCount != null) {
     sizeLabel = l.featureCount.toLocaleString();
     sizeTitle = `${l.featureCount.toLocaleString()} elementos`;
@@ -312,7 +312,7 @@ function renderLayerRow(l) {
     if (l.fileSizeKb != null) {
       const limit = (( ct.display ?? 80_000 ) / 1024).toFixed(0);
       const mb    = (l.fileSizeKb / 1024).toFixed(0);
-      restrictedReason = `${mb} MB — límite: ${limit} MB`;
+      restrictedReason = `${mb} mb — límite: ${limit} mb`;
     } else if (l.featureCount != null) {
       const limit = ( ct.displayFcFallback ?? 100_000 ).toLocaleString();
       restrictedReason = `${l.featureCount.toLocaleString()} elementos — límite: ${limit}`;
