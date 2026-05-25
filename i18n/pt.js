@@ -131,7 +131,8 @@ window.I18N_PT = {
   toast_snapshot_unfiltered: 'Sem conexão ao servidor. Exibindo a camada completa sem filtros aplicados.',
   toast_server_unavailable: 'O servidor de {org} está indisponível. Tente novamente em alguns minutos.',
   toast_layer_fetch_error:  'Não foi possível obter "{typename}": {msg}.',
-  toast_layer_truncated:    '{titulo} é grande demais para carregar sem filtro. Tente especificar um departamento ou região.',
+  toast_layer_truncated:          '{titulo} é grande demais para carregar sem filtro. Tente especificar um departamento ou região.',
+  toast_layer_truncated_attribute: 'O servidor WFS cortou a resposta de {titulo}. Tente especificar um departamento ou região para filtrar.',
 
   // ── Toasts de clip ───────────────────────────────────────────
   toast_display_limit:     '{titulo} é muito pesada ({n}) para exibir. Tente pedir uma região específica.',
