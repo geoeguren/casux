@@ -95,7 +95,8 @@ window.LP_MODAL = (() => {
       // TODO(heatmap): Modo heatmap — pendiente de implementación.
       // Requiere Leaflet.heat o similar. Deshabilitado hasta que se defina la estrategia
       // de pesos/intensidad por atributo y se elija la librería.
-      { mode: 'heatmap',     label: t('adv_heatmap'), disabled: true },
+      // En móvil se omite directamente: ocupa espacio y no aporta si no está implementado.
+      ...( window.MAP_CONTROLS?.isMobile?.() ? [] : [{ mode: 'heatmap', label: t('adv_heatmap'), disabled: true }] ),
     ];
     const pills = modes.map(b =>
       `<button class="adv-pill ${b.mode === initMode ? 'active' : ''}" data-mode="${b.mode}"
