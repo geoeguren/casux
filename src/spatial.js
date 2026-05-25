@@ -93,9 +93,10 @@ window.SPATIAL = (() => {
       };
     }
     return {
-      wfsBase:    source.wfsBase,
-      wfsVersion: source.wfsVersion || '1.1.0',
-      tituloUI:   layerDef?.tituloUI,
+      wfsBase:      source.wfsBase,
+      wfsVersion:   source.wfsVersion || '1.1.0',
+      tituloUI:     layerDef?.tituloUI,
+      clipStrategy: layerDef?.clipStrategy,
     };
   }
 
