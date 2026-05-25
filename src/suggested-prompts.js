@@ -346,15 +346,19 @@ window.SUGGESTED_PROMPTS = (() => {
 
   // Filtra el pool dejando solo las capas que existen en window.LAYERS
   // y que no están restringidas por peso/featureCount (sin filtro = no cargarían).
+  // Misma lógica que intent-validar.js/_estaRestringida — mantener sincronizadas.
   function _estaRestringida(layerDef) {
     const ct = window.CLIP_THRESHOLDS || {};
     const fsLimit    = ct.display           ?? 80_000;
-    const fcFallback = ct.displayFcFallback ?? 100_000;
-    const fcHard     = ct.displayFcHard     ?? 55_000;
+    const fcFallback = ct.displayFcFallback ?? 50_000;
     const fs = layerDef?.fileSizeKb;
     const fc = layerDef?.featureCount;
-    if (fs !== undefined && fs > fsLimit)  return true;
-    if (fc !== undefined && fc > fcHard)   return true;
+    // clipStrategy='attribute': el servidor filtra → nunca llega completa.
+    if (layerDef?.clipStrategy === 'attribute') return false;
+    if (fs !== undefined && fs > fsLimit) return true;
+    const geomType = layerDef?.geomType || 'unknown';
+    const fcHard   = ct.displayFcHard?.[geomType] ?? ct.displayFcHard?.unknown ?? 25_000;
+    if (fc !== undefined && fc > fcHard) return true;
     if (fs === undefined && fc !== undefined && fc > fcFallback) return true;
     return false;
   }
