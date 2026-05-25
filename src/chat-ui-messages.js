@@ -223,7 +223,7 @@ window.UI = (() => {
     const el = document.createElement('div');
     el.className = 'msg-error-card';
     const desc = externalMsg
-      ? `<span class="error-card-desc error-card-external"><span class="material-icons" style="font-size:13px;vertical-align:-2px">info</span> ${externalMsg}</span>`
+      ? `<span class="error-card-desc error-card-external">${externalMsg}</span>`
       : `<span class="error-card-desc">${t('error_no_response')}</span>`;
     el.innerHTML = `
       <div class="error-card-left">
@@ -261,6 +261,16 @@ window.UI = (() => {
   }
 
   function showMapReady(plan) {
+    // Inhabilitar todos los map cards anteriores que aún estén activos
+    $msgs()?.querySelectorAll('.msg-map-card:not(.map-card-stale)').forEach(prev => {
+      prev.classList.add('map-card-stale');
+      const btn = prev.querySelector('.map-card-btn');
+      if (btn) {
+        btn.disabled = true;
+        btn.setAttribute('aria-disabled', 'true');
+      }
+    });
+
     const capas = (plan.instrucciones || [])
       .map(i => {
         const titulo = _tituloInstruccion(i);
