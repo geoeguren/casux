@@ -695,7 +695,7 @@ window.APP = (() => {
         const STYLE_FALLBACK = {
           polygon: { fillColor: '#3d52a0', fillOpacity: 0.2,  color: '#3d52a0', weight: 1.5, opacity: 1 },
           line:    { color: '#3d52a0',     weight: 2,          opacity: 1 },
-          point:   { fillColor: '#3d52a0', fillOpacity: 0.85,  color: '#fff',   radius: 5,   weight: 1.5, opacity: 1 },
+          point:   { fillColor: '#3d52a0', fillOpacity: 0.85,  color: '#3d52a0', radius: 5,   weight: 1.5, opacity: 1 },
         };
         const style = prevStyleByLayerKey[inst.layerKey]
           ? { ...prevStyleByLayerKey[inst.layerKey].style }
@@ -756,11 +756,12 @@ window.APP = (() => {
           if (clSource.colorMap && Object.keys(clSource.colorMap).length > 0) {
             const entry = window.MAP.getActiveLayers()[mapKey];
             if (entry?.classification) {
-              const savedKeys   = Object.keys(clSource.colorMap);
+              // Usar order explícito si existe (robusto con claves numéricas)
+              const savedOrder  = clSource.order || Object.keys(clSource.colorMap);
               const currentMap  = entry.classification.colorMap || {};
               const orderedMap  = {};
               // Primero las claves del orden guardado
-              savedKeys.forEach(k => {
+              savedOrder.forEach(k => {
                 if (currentMap.hasOwnProperty(k)) orderedMap[k] = clSource.colorMap[k];
               });
               // Luego cualquier clave nueva que haya calculado applyClassification
@@ -768,6 +769,13 @@ window.APP = (() => {
                 if (!orderedMap.hasOwnProperty(k)) orderedMap[k] = currentMap[k];
               });
               entry.classification.colorMap = orderedMap;
+              // Restaurar el order guardado (puede incluir claves que ya no existen —
+              // filtrar contra orderedMap para mantenerlo limpio)
+              entry.classification.order = savedOrder.filter(k => orderedMap.hasOwnProperty(k));
+              // Agregar claves nuevas al final
+              Object.keys(currentMap).forEach(k => {
+                if (!entry.classification.order.includes(k)) entry.classification.order.push(k);
+              });
               // Restaurar styleMap con los overrides por clase (tamaño, grosor, etc.)
               if (clSource.styleMap && Object.keys(clSource.styleMap).length > 0) {
                 entry.classification.styleMap = { ...clSource.styleMap };
