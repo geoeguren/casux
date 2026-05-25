@@ -196,22 +196,10 @@ window.LP_STYLE = (() => {
     }
 
     // Botón edición avanzada → modal
-    // Botón edición avanzada
     const advBtn = acc.querySelector('.lea-advanced-btn');
-    if (window.MAP_CONTROLS?.isMobile?.()) {
-      advBtn.disabled = true;
-      advBtn.style.opacity = '0.45';
-      advBtn.style.cursor  = 'not-allowed';
-      // Mensaje inline bajo el botón
-      const hint = document.createElement('p');
-      hint.style.cssText = 'font-size:11px;color:var(--cream2);padding:2px 16px 6px;margin:0';
-      hint.textContent = t('layers_advanced_mobile');
-      advBtn.insertAdjacentElement('afterend', hint);
-    } else {
-      advBtn.addEventListener('click', () => {
-        window.LP_MODAL.openAdvancedModal(k, sec);
-      });
-    }
+    advBtn.addEventListener('click', () => {
+      window.LP_MODAL.openAdvancedModal(k, sec);
+    });
 
     // Botón eliminar capa
     acc.querySelector('.lea-delete-btn')?.addEventListener('click', () => {
