@@ -346,11 +346,15 @@ window.LP_MODAL = (() => {
         header.className = 'adv-cat-header';
 
         if (!isGraduated) {
-          item.draggable = true;
+          item.draggable = false; // El drag se activa solo desde el handle
           const handle = document.createElement('span');
           handle.className  = 'adv-cat-drag material-icons';
           handle.textContent = 'drag_indicator';
           handle.setAttribute('data-tooltip', t('adv_drag_reorder'));
+          // Solo el handle activa el draggable del item
+          handle.addEventListener('mousedown', () => { item.draggable = true; });
+          handle.addEventListener('touchstart', () => { item.draggable = true; }, { passive: true });
+          item.addEventListener('dragend', () => { item.draggable = false; });
           header.appendChild(handle);
         }
 
@@ -476,6 +480,7 @@ window.LP_MODAL = (() => {
             nl2.classification.colorMap  = newMap;
             nl2.classification.styleMap  = newStyle;
             window.MAP.applyClassificationFromData(k, nl2.classification);
+            window.LP_PANEL.persistClassification(k, nl2.classification);
           });
         });
       }
@@ -512,8 +517,25 @@ window.LP_MODAL = (() => {
         const w  = s.weight ?? 1.5;
         const fo = s.fillOpacity ?? 0.85;
         const shape = s.shape || 'circle';
-        const shapeLabel = shape === 'square' ? t('shape_square') : t('shape_circle');
-        rows += leaRow(t('style_geometry'), `<span style="font-size:13px;color:var(--cream2);font-family:var(--font-sans)">${shapeLabel}</span>`);
+        const shapeId = `adv-detail-shape-${val}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const shapeOpts = [
+          { value: 'circle', label: t('shape_circle') },
+          { value: 'square', label: t('shape_square') },
+        ];
+        const curShapeLabel = shapeOpts.find(o => o.value === shape)?.label || t('shape_circle');
+        rows += leaRow(t('style_geometry'), `
+          <div class="adv-ramp-csel adv-field-csel adv-shape-csel" id="${shapeId}" data-shape-val="${shape}">
+            <div class="adv-ramp-trigger adv-field-trigger" style="cursor:pointer">
+              <span class="adv-field-selected">${curShapeLabel}</span>
+              <span class="adv-ramp-arrow">▾</span>
+            </div>
+            <div class="adv-ramp-dropdown hidden adv-shape-dropdown">
+              ${shapeOpts.map(o => `
+                <div class="adv-ramp-option adv-field-option adv-shape-opt${o.value === shape ? ' selected' : ''}" data-shape="${o.value}">
+                  <span class="adv-ramp-option-label">${o.label}</span>
+                </div>`).join('')}
+            </div>
+          </div>`);
         rows += leaRow(t('style_size'),
           `<div class="lea-slider-wrap"><input class="lea-range-input" data-prop="radius" type="range" min="1" max="25" step="0.5" value="${r}" /><span class="lea-val">${r}</span></div>`);
         rows += leaRow(t('style_border_weight'),
@@ -550,6 +572,39 @@ window.LP_MODAL = (() => {
     function wireDetailControls(detail, val, initStyle) {
       if (detail.dataset.wired) return;
       detail.dataset.wired = '1';
+
+      // Selector de geometría (solo puntos)
+      const shapeCsel = detail.querySelector('.adv-shape-csel');
+      if (shapeCsel) {
+        const trigger  = shapeCsel.querySelector('.adv-field-trigger');
+        const dropdown = shapeCsel.querySelector('.adv-shape-dropdown');
+        const arrow    = shapeCsel.querySelector('.adv-ramp-arrow');
+        const selected = shapeCsel.querySelector('.adv-field-selected');
+        trigger.addEventListener('click', e => {
+          e.stopPropagation();
+          const isOpen = !dropdown.classList.contains('hidden');
+          dropdown.classList.toggle('hidden', isOpen);
+          arrow.classList.toggle('open', !isOpen);
+        });
+        shapeCsel.querySelectorAll('.adv-shape-opt').forEach(opt => {
+          opt.addEventListener('click', e => {
+            e.stopPropagation();
+            const shape = opt.dataset.shape;
+            shapeCsel.querySelectorAll('.adv-shape-opt').forEach(o => o.classList.remove('selected'));
+            opt.classList.add('selected');
+            selected.textContent = opt.querySelector('.adv-ramp-option-label').textContent;
+            dropdown.classList.add('hidden');
+            arrow.classList.remove('open');
+            updateCatValStyle(val, { shape });
+          });
+        });
+        document.addEventListener('click', function _closeShape(e) {
+          if (!shapeCsel.contains(e.target)) {
+            dropdown.classList.add('hidden');
+            arrow?.classList.remove('open');
+          }
+        }, { passive: true });
+      }
 
       detail.querySelectorAll('.lea-color-pick').forEach(pick => {
         pick.addEventListener('input', e => {
