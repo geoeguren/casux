@@ -12,6 +12,38 @@ window.MAP = (() => {
   let leafletMap   = null;
   let activeLayers = {};  // { layerKey: { geojson, leafletLayer, style, titulo } }
 
+  // ── Panes custom por capa de puntos ──────────────────────────
+  // Cuando una capa de puntos clasificada tiene shapes mixtos (circles → SVG overlayPane z=400,
+  // squares → HTML divIcon markerPane z=600), los cuadrados quedan SIEMPRE encima de los
+  // círculos sin importar el sort, porque viven en panes Leaflet distintos.
+  // Solución: crear un pane único por capa donde tanto L.circleMarker como L.marker/divIcon
+  // conviven en el mismo contexto DOM → el orden de inserción controla el z-order.
+  const _layerPanes = {}; // mapKey → { paneName, renderer }
+
+  function _getOrCreateLayerPane(mapKey, zIndex) {
+    if (_layerPanes[mapKey]) return _layerPanes[mapKey];
+    const paneName = `layer-pane-${mapKey}`;
+    if (leafletMap.getPane(paneName)) {
+      try { leafletMap.getPane(paneName).remove(); } catch {}
+    }
+    leafletMap.createPane(paneName);
+    const paneEl = leafletMap.getPane(paneName);
+    paneEl.style.zIndex = String(zIndex ?? 600);
+    // SVG renderer ligado a este pane — los circleMarkers lo usarán explícitamente
+    const renderer = L.svg({ pane: paneName });
+    renderer.addTo(leafletMap);
+    _layerPanes[mapKey] = { paneName, renderer };
+    return _layerPanes[mapKey];
+  }
+
+  function _removeLayerPane(mapKey) {
+    const pd = _layerPanes[mapKey];
+    if (!pd) return;
+    try { const p = leafletMap.getPane(pd.paneName); if (p) p.remove(); } catch {}
+    try { leafletMap.removeLayer(pd.renderer); } catch {}
+    delete _layerPanes[mapKey];
+  }
+
   // ── Inicialización ─────────────────────────────────────────────
 
   function init() {
@@ -252,6 +284,7 @@ window.MAP = (() => {
   function removeLayer(mapKey) {
     if (activeLayers[mapKey]) {
       leafletMap.removeLayer(activeLayers[mapKey].leafletLayer);
+      _removeLayerPane(mapKey);
       delete activeLayers[mapKey];
       if (_layersChangeCb) _layersChangeCb();
     }
@@ -260,6 +293,7 @@ window.MAP = (() => {
   function clearAll() {
     Object.keys(activeLayers).forEach(k => {
       leafletMap.removeLayer(activeLayers[k].leafletLayer);
+      _removeLayerPane(k);
       delete activeLayers[k];
     });
     if (_layersChangeCb) _layersChangeCb();
@@ -923,8 +957,13 @@ window.MAP = (() => {
     };
 
     if (geom === 'point') {
+      // Capas de puntos clasificadas pueden tener circles (overlayPane SVG, z=400) y
+      // squares (markerPane HTML, z=600) mezclados. El pane custom unifica el contexto DOM
+      // para que el sort de features controle el z-order correctamente.
+      const needsCustomPane = !!(cl?.type === 'categorized' || (entry.style.shape && entry.style.shape !== 'circle'));
+      const paneData = needsCustomPane ? _getOrCreateLayerPane(mapKey, 600) : null;
       newLayer = L.geoJSON(geojson, {
-        pointToLayer:  (feat, latlng) => _pointToLayer(feat, latlng, getStyle(feat)),
+        pointToLayer:  (feat, latlng) => _pointToLayer(feat, latlng, getStyle(feat), paneData),
         onEachFeature: bindIdentify
       });
     } else if (geom === 'line') {
@@ -1592,11 +1631,26 @@ window.MAP = (() => {
     });
   }
 
-  function _pointToLayer(feat, latlng, style) {
-    if (style.icon)  return L.marker(latlng, { icon: _makiIcon(style) });
+  function _pointToLayer(feat, latlng, style, paneData) {
+    if (style.icon) {
+      const opts = { icon: _makiIcon(style) };
+      if (paneData) opts.pane = paneData.paneName;
+      return L.marker(latlng, opts);
+    }
     const shapeIcon = _shapeIcon(style);
-    if (shapeIcon)   return L.marker(latlng, { icon: shapeIcon });
-    return L.circleMarker(latlng, pointStyle(style));
+    if (shapeIcon) {
+      const opts = { icon: shapeIcon };
+      if (paneData) opts.pane = paneData.paneName;
+      return L.marker(latlng, opts);
+    }
+    const ps = pointStyle(style);
+    if (paneData) {
+      // Ligar el circleMarker al SVG renderer del pane custom para que quede
+      // en el mismo contexto DOM que los markers divIcon de la misma capa.
+      ps.pane     = paneData.paneName;
+      ps.renderer = paneData.renderer;
+    }
+    return L.circleMarker(latlng, ps);
   }
 
   function pointStyle(s) {
