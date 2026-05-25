@@ -463,7 +463,7 @@ body.day, html.day .lea-classified-banner { color: #6a6560; border-color: #c8c4b
 .lea-override-hint {
   margin: 0; padding: 5px 16px 7px;
   font-size: 11px; color: var(--cream2); font-family: var(--font-sans); line-height: 1.4;
-  font-style: italic;
+  display: flex; align-items: center; gap: 4px;
 }
 body.day, html.day .lea-override-hint { color: #8a8580; }
 
