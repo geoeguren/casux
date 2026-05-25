@@ -299,23 +299,58 @@ window.SPATIAL = (() => {
 
   // ── Verificaciones de umbral ──────────────────────────────────
 
-  // Valor por defecto para el umbral de display.
-  // window.CLIP_THRESHOLDS (definido en layers/index.js) puede sobreescribirlo.
-  // En mobile, map-controls.js lo baja dinámicamente a 5000 al abrir el mapa.
-  // El umbral spatial fue eliminado — el recorte lo hace el servidor, sin límite.
-  // IMPORTANTE: mantener en sync con display: en layers/index.js.
-  const _DISPLAY_DEFAULT = 55000;
+  // Determina si una capa supera el umbral de display (no se puede mostrar).
+  //
+  // Señal primaria: fileSizeKb (peso real del GeoJSON descargado).
+  // Fallback: featureCount (para capas sin fileSizeKb, ej: fuentes ArcGIS de Chile).
+  //
+  // Los umbrales viven en window.CLIP_THRESHOLDS (layers/index.js):
+  //   display             → límite KB desktop   (default 80 000 KB = 80 MB)
+  //   displayFcFallback   → límite fc desktop    (default 100 000)
+  //   displayMobile       → límite KB móvil      (leído en map-controls.js)
+  //   displayMobileFcFallback → límite fc móvil  (leído en map-controls.js)
+  //
+  // En móvil, map-controls.js sobreescribe display y displayFcFallback con los
+  // valores Mobile al abrir el mapa, restaurándolos al cerrar.
+  //
+  // Defaults hardcodeados (usados si CLIP_THRESHOLDS no está disponible):
+  const _DISPLAY_FS_DEFAULT    = 80_000;   // KB
+  const _DISPLAY_FC_DEFAULT    = 100_000;  // features
+
+  function estaRestringida(layerDef) {
+    const ct = window.CLIP_THRESHOLDS || {};
+    const fsLimit = ct.display            ?? _DISPLAY_FS_DEFAULT;
+    const fcLimit = ct.displayFcFallback  ?? _DISPLAY_FC_DEFAULT;
+
+    const fs = layerDef?.fileSizeKb;
+    if (fs !== undefined) return fs > fsLimit;
+
+    const fc = layerDef?.featureCount;
+    if (fc !== undefined) return fc > fcLimit;
+
+    return false; // sin datos → permitir (no bloquear por falta de información)
+  }
 
   function verificarUmbralDisplay(layerDef) {
-    const displayThreshold = window.CLIP_THRESHOLDS?.display ?? _DISPLAY_DEFAULT;
-    if (layerDef.featureCount !== undefined && layerDef.featureCount > displayThreshold) {
+    if (!estaRestringida(layerDef)) return true;
+
+    // Construir mensaje según qué dato está disponible
+    const fs = layerDef?.fileSizeKb;
+    const fc = layerDef?.featureCount;
+
+    if (fs !== undefined) {
+      const mb = (fs / 1024).toFixed(0);
       window.TOAST?.warning(t('toast_display_limit', {
         titulo: layerDef.titulo,
-        n: layerDef.featureCount.toLocaleString(),
+        n:      `${mb} MB`,
       }));
-      return false;
+    } else {
+      window.TOAST?.warning(t('toast_display_limit', {
+        titulo: layerDef.titulo,
+        n:      fc?.toLocaleString() ?? '?',
+      }));
     }
-    return true;
+    return false;
   }
 
   // ── Operación: clip ───────────────────────────────────────────
