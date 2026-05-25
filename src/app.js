@@ -924,14 +924,15 @@ window.APP = (() => {
   // Rotación de paletas por tipo — cada capa clasificada recibe una paleta distinta.
   // Mismo comportamiento para categorized y graduated.
   const _PALETTE_ROTATION = {
-    categorized: ['cat_tableau', 'cat_bold', 'cat_earth', 'cat_vivid', 'cat_dark', 'cat_pastel'],
-    graduated:   ['seq_blues', 'seq_oranges', 'seq_greens', 'seq_purples', 'seq_teal', 'seq_redyellow'],
+    // Casux primero — es la paleta de marca; las demás rotan a partir de la segunda capa
+    categorized: ['casux_cat', 'cat_tableau', 'cat_bold', 'cat_earth', 'cat_vivid', 'cat_dark', 'cat_pastel'],
+    graduated:   ['casux_seq', 'seq_blues', 'seq_oranges', 'seq_greens', 'seq_purples', 'seq_teal', 'seq_redyellow'],
   };
 
   function _pickClassifyPalette(cEntry) {
     const type = cEntry.type || 'categorized';
     const rotation = _PALETTE_ROTATION[type] || _PALETTE_ROTATION.categorized;
-    const defaultPalette = type === 'graduated' ? 'seq_blues' : 'qualitative';
+    const defaultPalette = type === 'graduated' ? 'casux_seq' : 'casux_cat';
 
     // Si el LLM o el usuario pidieron una paleta específica (distinta a la default), respetarla.
     if (cEntry.palette && cEntry.palette !== defaultPalette && window.PALETTES[cEntry.palette]) {
