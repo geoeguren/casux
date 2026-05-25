@@ -76,7 +76,7 @@ window.INTENT_VERBOS = (() => {
     // ─────────────────────────────────────────────────────────────
     // EXPORTAR — descargar el mapa o sus datos
     // ─────────────────────────────────────────────────────────────
-    EXPORTAR: /\b(?:export[ae](r|lo|la|me)?|exports?\b|exporte|exportá|descarg[ae](r|lo|la|me)?|descargue|descargá|guard[ae](r|lo|la|me)?\s+(?:como|el\s+mapa|los\s+datos)?|guarde|guardá|baj[ae](r|lo|la|me)?|guardar\s+como|descargar\s+como|download(?:\s+the)?|save(?:\s+as)?(?:\s+the)?|get\s+the\s+(?:map|data)|baixa(r|me)?|salva(r|me)?|descarrega(r|me)?|gravar?)\b/i,
+    EXPORTAR: /\b(?:export[ae](r|lo|la|me)?|exports?\b|exporte|exportá|descarg[ae](r|lo|la|me)?|descargue|descargá|guard[ae](r|lo|la|me)?\s+(?:como|el\s+mapa|los\s+datos)?|guarde|guardá|guardar\s+como|descargar\s+como|download(?:\s+the)?|save(?:\s+as)?(?:\s+the)?|get\s+the\s+(?:map|data)|baixa(r|me)?|salva(r|me)?|descarrega(r|me)?|gravar?)\b/i,
 
     // ─────────────────────────────────────────────────────────────
     // BASEMAP — cambiar el mapa de fondo
