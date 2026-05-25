@@ -134,6 +134,21 @@ window.CHAT = (() => {
   async function send(userText) {
     if (isStreaming) return;
 
+    // Deshabilitar todas las botoneras/controles interactivos previos.
+    // Si el usuario ignora una botonera y escribe un mensaje nuevo, los controles
+    // anteriores quedan visualmente inactivos para evitar modificaciones accidentales.
+    document.querySelectorAll(
+      '.msg-export-choice button, .style-flow-container button, ' +
+      '.style-flow-container input, .msg-rename-card button, .msg-rename-card input'
+    ).forEach(el => {
+      el.disabled = true;
+      el.style.opacity = '0.4';
+      el.style.pointerEvents = 'none';
+    });
+    // Los style-flow-container (sliders, color pickers en vivo) se remueven
+    // directamente — ya no tienen sentido sin el contexto de la acción anterior.
+    document.querySelectorAll('.style-flow-container').forEach(el => el.remove());
+
     window.SUGGESTED_PROMPTS?.hide();
     history.push({ role: 'user', content: userText, time: new Date().toISOString() });
     UI.addMessage('user', userText, { time: new Date() });
@@ -265,7 +280,10 @@ window.CHAT = (() => {
               const warnEl = UI.addMessage('assistant', t('style_classified_warning'));
               UI.showClassifiedStyleChoice(warnEl, mapKey,
                 () => {
-                  UI.addMessage('assistant', t('style_reset_done'));
+                  // Mantener clasificación: informar y no hacer nada más.
+                  const msgKeep = UI.addMessage('assistant', t('style_keep_classification_msg'));
+                  UI.setMessageMeta(msgKeep, { time: new Date(), model: 'pim' });
+                  history.push({ role: 'assistant', content: t('style_keep_classification_msg'), time: new Date().toISOString(), model: 'pim' });
                 },
                 () => {
                   window.MAP?.clearClassification?.(mapKey);
@@ -316,8 +334,10 @@ window.CHAT = (() => {
               const warnEl = UI.addMessage('assistant', t('style_classified_warning'));
               UI.showClassifiedStyleChoice(warnEl, selectedMapKey,
                 () => {
-                  const int2 = { ...intencion, parametros: { ...intencion.parametros, _mapKey: selectedMapKey, _excludeColor: true } };
-                  UI.showStyleFlowForLayer(int2, selectedMapKey);
+                  // Mantener clasificación: informar y no continuar el flow.
+                  const msgKeep2 = UI.addMessage('assistant', t('style_keep_classification_msg'));
+                  UI.setMessageMeta(msgKeep2, { time: new Date(), model: 'pim' });
+                  history.push({ role: 'assistant', content: t('style_keep_classification_msg'), time: new Date().toISOString(), model: 'pim' });
                 },
                 () => {
                   window.MAP?.clearClassification?.(selectedMapKey);
@@ -351,7 +371,12 @@ window.CHAT = (() => {
             if (singleEntry?.classification?.field && _isExplicitColorSingle) {
               const warnEl = UI.addMessage('assistant', t('style_classified_warning'));
               UI.showClassifiedStyleChoice(warnEl, singleMapKey,
-                () => UI.showStyleFlow({ ...intencion, parametros: { ...intencion.parametros, _excludeColor: true } }),
+                () => {
+                  // Mantener clasificación: informar y no continuar el flow.
+                  const msgKeep3 = UI.addMessage('assistant', t('style_keep_classification_msg'));
+                  UI.setMessageMeta(msgKeep3, { time: new Date(), model: 'pim' });
+                  history.push({ role: 'assistant', content: t('style_keep_classification_msg'), time: new Date().toISOString(), model: 'pim' });
+                },
                 () => { window.MAP?.clearClassification?.(singleMapKey); UI.showStyleFlow(intencion); }
               );
               history.push({ role: 'assistant', content: t('style_classified_warning'), time: new Date().toISOString() });
