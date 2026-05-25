@@ -61,22 +61,32 @@ window.INTENT_VALIDAR = (() => {
   const MAX_CATS_CATEGORIZED = 8;    // paletas cualitativas tienen 8 colores
   const MAX_CATS_GRADUATED   = 8;    // breaks de Jenks: máximo 8 clases
   const MIN_UNIQUE_VALUES    = 2;    // mínimo de valores únicos para clasificar
-  // Defaults para display (usados si CLIP_THRESHOLDS no cargó).
-  // La señal primaria es fileSizeKb; featureCount es fallback.
-  // Ver documentación completa en layers/index.js.
   // Helper: guardia rápida pre-fetch usando campos del catálogo.
   // La verificación definitiva ocurre en spatial.js justo antes del fetch.
   // CLIP_THRESHOLDS siempre está disponible (carga sincrónica en layers/index.js).
+  //
+  // displayFcHard es un objeto {polygon, line, point, unknown} — el límite varía
+  // según geomType porque el costo de renderizado en Leaflet no es igual para todos.
+  // Capas con clipStrategy='attribute': el servidor filtra antes de enviar → sin límite duro fc.
+  // Ver documentación completa en layers/index.js.
   function _estaRestringida(layerDef) {
-    const ct = window.CLIP_THRESHOLDS;
+    const ct         = window.CLIP_THRESHOLDS;
     const fsLimit    = ct.display;
     const fcFallback = ct.displayFcFallback;
-    const fcHard     = ct.displayFcHard;
     const fs = layerDef?.fileSizeKb;
     const fc = layerDef?.featureCount;
-    if (fs !== undefined && fs > fsLimit)  return true;
-    if (fc !== undefined && fc > fcHard)   return true;
-    if (fs === undefined && fc !== undefined && fc > fcFallback) return true;
+
+    if (fs !== undefined && fs > fsLimit) return true;
+
+    // clipStrategy='attribute': el servidor filtra → nunca llega la capa completa.
+    // No aplicar límite duro por featureCount.
+    if (layerDef?.clipStrategy === 'attribute') return false;
+
+    const geomType = layerDef?.geomType || 'unknown';
+    const fcHard   = ct.displayFcHard?.[geomType] ?? ct.displayFcHard?.unknown;
+
+    if (fc !== undefined && fcHard !== undefined && fc > fcHard) return true;
+    if (fs === undefined && fc !== undefined && fc > fcFallback)  return true;
     return false;
   }
 
