@@ -341,6 +341,16 @@ window.MAP = (() => {
       return;
     }
 
+    // Para clasificación categorizada, usar rebuildLayer para garantizar que el
+    // orden de pintado de features (z-order por clase) sea correcto. eachLayer
+    // con setStyle pinta en el orden original del GeoJSON, ignorando el sort por clase.
+    if (entry.classification?.field && entry.classification.type === 'categorized') {
+      rebuildLayer(entry, mapKey);
+      updateLegend();
+      if (_layerStyleCallback) _layerStyleCallback(mapKey, entry.style);
+      return;
+    }
+
     entry.leafletLayer.eachLayer(l => {
       if (geomType === 'point') {
         l.setStyle(pointStyle(entry.style));
@@ -351,8 +361,7 @@ window.MAP = (() => {
       }
     });
 
-    // Si hay clasificación activa, re-aplicar colores por feature encima del estilo base.
-    // eachLayer con setStyle(entry.style) aplica un color uniforme que pisa la clasificación.
+    // Si hay clasificación activa (graduated), re-aplicar colores por feature.
     if (entry.classification?.field) {
       const cl = entry.classification;
       entry.leafletLayer.eachLayer(l => {
@@ -364,20 +373,6 @@ window.MAP = (() => {
           featureStyle = geomType === 'line'
             ? { ...entry.style, color: fill }
             : { ...entry.style, color: border, fillColor: fill };
-        } else {
-          // categorized
-          if (!cl.colorMap?.hasOwnProperty(val)) {
-            featureStyle = geomType === 'point'
-              ? { ...entry.style, radius: 0, opacity: 0, fillOpacity: 0 }
-              : { ...entry.style, opacity: 0, fillOpacity: 0, weight: 0 };
-          } else {
-            const fill = cl.colorMap[val];
-            const valStyle = cl.styleMap?.[val] || {};
-            const border = valStyle.color || darkenHex(valStyle.fillColor || fill);
-            featureStyle = geomType === 'line'
-              ? { ...entry.style, ...valStyle, color: valStyle.color || fill }
-              : { ...entry.style, ...valStyle, color: border, fillColor: valStyle.fillColor || fill };
-          }
         }
         if (featureStyle) l.setStyle(featureStyle);
       });
