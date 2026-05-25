@@ -148,7 +148,7 @@ window.LP_MODAL = (() => {
       const makeRamp = (pk) => {
         const colors = window.PALETTES[pk] || [];
         if (!colors.length) return '';
-        if (pk.startsWith('seq_') || pk === 'blues' || pk === 'greens' || pk === 'oranges' || pk === 'purples' || pk === 'redblue' || pk === 'browngreen') {
+        if (pk === 'casux_seq' || pk.startsWith('seq_') || pk === 'blues' || pk === 'greens' || pk === 'oranges' || pk === 'purples' || pk === 'redblue' || pk === 'browngreen') {
           const stops = colors.join(', ');
           return `<span class="adv-ramp-bar" style="background:linear-gradient(to right,${stops})"></span>`;
         }
@@ -290,7 +290,7 @@ window.LP_MODAL = (() => {
       if (curMode === 'single') { window.MAP.clearClassification(k); return; }
       const fieldEl  = bodyEl.querySelector('.adv-field');
       const field    = fieldEl?.getValue ? fieldEl.getValue() : (fieldEl?.value || '');
-      const palette  = selPalette || (curMode === 'graduated' ? 'seq_blues' : 'cat_tableau');
+      const palette  = selPalette || (curMode === 'graduated' ? 'casux_seq' : 'casux_cat');
       const methodEl = bodyEl.querySelector('.adv-method');
       const method   = methodEl?.getValue ? methodEl.getValue() : (methodEl?.value || 'jenks');
       const classes  = parseInt(bodyEl.querySelector('.adv-classes')?.value || 5);
