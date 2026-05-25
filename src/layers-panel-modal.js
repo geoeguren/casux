@@ -71,7 +71,7 @@ window.LP_MODAL = (() => {
     const numericFields = attrs.filter(a => a.numeric);
 
     const initMode               = l.classification?.type || 'single';
-    const initField              = l.classification?.field || (allFields[0]?.campo || '');
+    const initField              = l.classification?.field || '';
     const initPalette            = l.classification?.palette || null;
     const initMethod             = l.classification?.method || 'jenks';
     const initClasses            = l.classification?.classes || 5;
@@ -654,7 +654,7 @@ window.LP_MODAL = (() => {
       if (!nl?.classification) return;
       nl.classification.colorMap[val] = color;
       if (!nl.classification.styleMap) nl.classification.styleMap = {};
-      nl.classification.styleMap[val] = { ...(nl.classification.styleMap[val] || nl.style || {}), fillColor: color, color };
+      nl.classification.styleMap[val] = { ...(nl.classification.styleMap[val] || {}), fillColor: color, color };
       window.MAP.applyClassificationFromData(k, nl.classification);
       window.LP_PANEL.persistClassification(k, nl.classification);
     }
@@ -663,7 +663,7 @@ window.LP_MODAL = (() => {
       const nl = window.MAP.getActiveLayers()[k];
       if (!nl?.classification) return;
       if (!nl.classification.styleMap) nl.classification.styleMap = {};
-      nl.classification.styleMap[val] = { ...(nl.classification.styleMap[val] || nl.style || {}), ...changes };
+      nl.classification.styleMap[val] = { ...(nl.classification.styleMap[val] || {}), ...changes };
       if (changes.fillColor) nl.classification.colorMap[val] = changes.fillColor;
       if (changes.color && !changes.fillColor) nl.classification.colorMap[val] = changes.color;
       window.MAP.applyClassificationFromData(k, nl.classification);
