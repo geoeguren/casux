@@ -101,8 +101,10 @@ window.MAP_CONTROLS = (() => {
       if (isMobile() && window.CLIP_THRESHOLDS) {
         window.CLIP_THRESHOLDS._desktopDisplay          = window.CLIP_THRESHOLDS._desktopDisplay          || window.CLIP_THRESHOLDS.display;
         window.CLIP_THRESHOLDS._desktopDisplayFcFallback = window.CLIP_THRESHOLDS._desktopDisplayFcFallback || window.CLIP_THRESHOLDS.displayFcFallback;
+        window.CLIP_THRESHOLDS._desktopDisplayFcHard     = window.CLIP_THRESHOLDS._desktopDisplayFcHard     || window.CLIP_THRESHOLDS.displayFcHard;
         window.CLIP_THRESHOLDS.display            = window.CLIP_THRESHOLDS.displayMobile            ?? 15_000;
         window.CLIP_THRESHOLDS.displayFcFallback  = window.CLIP_THRESHOLDS.displayMobileFcFallback  ?? 20_000;
+        window.CLIP_THRESHOLDS.displayFcHard      = window.CLIP_THRESHOLDS.displayMobileFcHard      ?? 20_000;
       }
 
       window.MAP.init();
@@ -132,6 +134,7 @@ window.MAP_CONTROLS = (() => {
       if (isMobile() && window.CLIP_THRESHOLDS?._desktopDisplay) {
         window.CLIP_THRESHOLDS.display           = window.CLIP_THRESHOLDS._desktopDisplay;
         window.CLIP_THRESHOLDS.displayFcFallback = window.CLIP_THRESHOLDS._desktopDisplayFcFallback || window.CLIP_THRESHOLDS.displayFcFallback;
+        window.CLIP_THRESHOLDS.displayFcHard     = window.CLIP_THRESHOLDS._desktopDisplayFcHard     || window.CLIP_THRESHOLDS.displayFcHard;
       }
     }
   }
