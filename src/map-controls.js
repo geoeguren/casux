@@ -106,9 +106,11 @@ window.MAP_CONTROLS = (() => {
         window.CLIP_THRESHOLDS._desktopDisplay          = window.CLIP_THRESHOLDS._desktopDisplay          || window.CLIP_THRESHOLDS.display;
         window.CLIP_THRESHOLDS._desktopDisplayFcFallback = window.CLIP_THRESHOLDS._desktopDisplayFcFallback || window.CLIP_THRESHOLDS.displayFcFallback;
         window.CLIP_THRESHOLDS._desktopDisplayFcHard     = window.CLIP_THRESHOLDS._desktopDisplayFcHard     || window.CLIP_THRESHOLDS.displayFcHard;
+        window.CLIP_THRESHOLDS._desktopDisplayFcWarn     = window.CLIP_THRESHOLDS._desktopDisplayFcWarn     || window.CLIP_THRESHOLDS.displayFcWarn;
         window.CLIP_THRESHOLDS.display           = window.CLIP_THRESHOLDS.displayMobile;
         window.CLIP_THRESHOLDS.displayFcFallback = window.CLIP_THRESHOLDS.displayMobileFcFallback;
         window.CLIP_THRESHOLDS.displayFcHard     = window.CLIP_THRESHOLDS.displayMobileFcHard;
+        window.CLIP_THRESHOLDS.displayFcWarn     = window.CLIP_THRESHOLDS.displayMobileFcWarn;
       }
 
       window.MAP.init();
@@ -139,6 +141,7 @@ window.MAP_CONTROLS = (() => {
         window.CLIP_THRESHOLDS.display           = window.CLIP_THRESHOLDS._desktopDisplay;
         window.CLIP_THRESHOLDS.displayFcFallback = window.CLIP_THRESHOLDS._desktopDisplayFcFallback;
         window.CLIP_THRESHOLDS.displayFcHard     = window.CLIP_THRESHOLDS._desktopDisplayFcHard;
+        window.CLIP_THRESHOLDS.displayFcWarn     = window.CLIP_THRESHOLDS._desktopDisplayFcWarn;
       }
     }
   }
