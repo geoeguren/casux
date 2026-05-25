@@ -585,7 +585,12 @@ window.MAP = (() => {
           let html = `<div class="legend-item legend-item-title">
             <span>${entry.titulo || key}</span>${countTag}
           </div>`;
-          Object.entries(cl.colorMap).forEach(([val, color]) => {
+          // Usar order explícito si existe para respetar el orden manual del usuario
+          const catKeys = (cl.order && cl.order.length)
+            ? cl.order.filter(k => cl.colorMap.hasOwnProperty(k))
+            : Object.keys(cl.colorMap);
+          catKeys.forEach(val => {
+            const color = cl.colorMap[val];
             const valStyle   = cl.styleMap?.[val] || {};
             const fill       = valStyle.fillColor || color;
             const border     = valStyle.color     || (geom === 'line' ? fill : darkenHex(fill));
@@ -862,12 +867,14 @@ window.MAP = (() => {
   // Aplica a cualquier geometría. El orden inicial es alfabético (colorMap se construye
   // con .sort()); si el usuario arrastra clases en el panel, colorMap refleja el nuevo
   // orden y el render se actualiza en consecuencia.
-  function _sortFeaturesByClassOrder(geojson, colorMap, field) {
+  function _sortFeaturesByClassOrder(geojson, colorMap, field, order) {
     if (!geojson?.features?.length || !colorMap || !field) return geojson;
-    const classKeys = Object.keys(colorMap); // orden actual del panel
+    // Usar el array 'order' explícito si existe (robusto con claves numéricas),
+    // si no caer en Object.keys (funciona para strings no-numéricos).
+    const classKeys = (order && order.length) ? order : Object.keys(colorMap);
     // Índice de posición: mayor índice = más arriba en la lista = se pinta último = encima
     const rank = {};
-    classKeys.forEach((k, i) => { rank[k] = i; });
+    classKeys.forEach((k, i) => { rank[String(k)] = i; });
     return {
       ...geojson,
       features: [...geojson.features].sort((a, b) => {
@@ -887,7 +894,7 @@ window.MAP = (() => {
     // Para capas clasificadas (cualquier geometría), ordenar features según el orden
     // de clases en colorMap: primera clase del panel arriba en el visor.
     const geojson = (cl?.type === 'categorized' && cl.colorMap && cl.field)
-      ? _sortFeaturesByClassOrder(entry.geojson, cl.colorMap, cl.field)
+      ? _sortFeaturesByClassOrder(entry.geojson, cl.colorMap, cl.field, cl.order)
       : entry.geojson;
 
     const getStyle = (feat) => {
@@ -960,21 +967,23 @@ window.MAP = (() => {
             { op: 'breaks', values: numVals, method: method || 'jenks', classes: classes || 5 },
             () => computeBreaksSync(numVals, method || 'jenks', classes || 5)
           );
-          entry.classification = { type: 'graduated', field, palette, paletteColors: colors, method: method || 'jenks', classes: classes || 5, breaks };
+          entry.classification = { type: 'graduated', field, palette, paletteColors: colors, method: method || 'jenks', classes: classes || 5, breaks, order: null };
         } else {
           // Demasiados valores categóricos → clasificar con MAX_CATS y agrupar el resto en "Otros"
           const colorMap = await runClassifyWorker(
             { op: 'colorMap', values: rawValues, colors, maxCats: MAX_CATS },
             () => computeColorMapSync(rawValues, colors, MAX_CATS)
           );
-          entry.classification = { type, field, palette, paletteColors: colors, colorMap };
+          entry.classification = { type, field, palette, paletteColors: colors, colorMap,
+            order: Object.keys(colorMap) };
         }
       } else {
         const colorMap = await runClassifyWorker(
           { op: 'colorMap', values: rawValues, colors, maxCats: MAX_CATS },
           () => computeColorMapSync(rawValues, colors, MAX_CATS)
         );
-        entry.classification = { type, field, palette, paletteColors: colors, colorMap };
+        entry.classification = { type, field, palette, paletteColors: colors, colorMap,
+          order: Object.keys(colorMap) };
       }
 
     } else if (type === 'graduated') {
