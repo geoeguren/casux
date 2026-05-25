@@ -173,8 +173,8 @@
       const warnEl = window.UI.addMessage('assistant', t('style_classified_warning'));
       window.UI.showClassifiedStyleChoice(warnEl, mapKey,
         () => {
-          // Mantener clasificación → no tocar el color
-          window.UI.addMessage('assistant', t('style_keep_classification'));
+          // Mantener clasificación → informar con mensaje claro y cerrar el flow.
+          window.UI.addMessage('assistant', t('style_keep_classification_msg'));
           containerRef?.remove();
           window.UI.scrollBottom();
         },
@@ -365,24 +365,43 @@
 
   function _showDashPicker(container, mapKey, layer, containerRef) {
     const cur = layer.style?.dashArray || 'none';
-    const dashId = `chat-dash-${mapKey}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    // Cuatro patrones disponibles: sólido, guión, punteo, guión-punto.
+    // Se muestran como botones con preview SVG — igual al color picker.
+    const DASH_OPTS = [
+      { v: 'none',    label: t('dash_solid'),     da: '' },
+      { v: '8,4',     label: t('dash_dashed'),    da: '8,4' },
+      { v: '2,4',     label: t('dash_dotted'),    da: '2,4' },
+      { v: '8,4,2,4', label: t('dash_dash_dot'),  da: '8,4,2,4' },
+    ];
+
+    const svgPreview = (da) => `<svg viewBox="0 0 44 10" width="44" height="10" style="display:block">
+      <line x1="2" y1="5" x2="42" y2="5" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" ${da ? `stroke-dasharray="${da}"` : ''}/>
+    </svg>`;
 
     const wrap = document.createElement('div');
-    wrap.className = 'style-slider-wrap'; // reutiliza el padding del slider
+    wrap.className = 'style-grid';
 
-    // buildDashSelect y wireCsel viven en LP_UTILS (layers-panel-utils.js)
-    wrap.innerHTML = window.LP_UTILS?.buildDashSelect?.(cur, dashId) || '';
-
-    container.appendChild(wrap);
-
-    window.LP_UTILS?.wireCsel?.(wrap, dashId, (dashVal) => {
-      const newStyle = { dashArray: dashVal === 'none' ? null : dashVal };
-      _applyStyle(mapKey, newStyle);
-      window.UI.addMessage('assistant', t('style_applied'));
-      containerRef?.remove();
-      window.UI.scrollBottom();
+    DASH_OPTS.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'style-grid-btn' + (opt.v === cur ? ' style-grid-btn--active' : '');
+      btn.innerHTML = `
+        <div class="style-grid-swatch" style="display:flex;align-items:center;justify-content:center;background:transparent">
+          ${svgPreview(opt.da)}
+        </div>
+        <span class="style-grid-label">${opt.label}</span>`;
+      btn.addEventListener('click', () => {
+        const newStyle = { dashArray: opt.v === 'none' ? null : opt.v };
+        _applyStyle(mapKey, newStyle);
+        window.UI.addMessage('assistant', t('style_applied'));
+        containerRef?.remove();
+        window.UI.scrollBottom();
+      });
+      wrap.appendChild(btn);
     });
 
+    container.appendChild(wrap);
     window.UI.scrollBottom();
   }
 
