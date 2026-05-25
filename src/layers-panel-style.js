@@ -146,28 +146,24 @@ window.LP_STYLE = (() => {
     const contentEl = acc.querySelector(`#lea-content-${k}`);
 
     if (l.classification?.field) {
-      // Capa clasificada: mostrar controles simples SIN colores + banner informativo.
+      // Capa clasificada: mostrar controles simples SIN colores.
       // Los colores se editan clase por clase en el modal avanzado.
       // Los parámetros no-color (tamaño, grosor, opacidad, geometría, etc.) se
       // pueden cambiar globalmente y se propagan a las clases que no los tengan
       // personalizados en su styleMap.
-      const banner = document.createElement('div');
-      banner.className = 'lea-classified-banner';
-      banner.innerHTML = `
-        <span class="material-icons" style="font-size:14px;flex-shrink:0;opacity:0.6">palette</span>
-        <span>${t('simple_classified_color_hint')}</span>
-        <button class="lea-classified-adv-btn" data-key="${k}">${t('layers_advanced')}</button>`;
-      contentEl.appendChild(banner);
-      banner.querySelector('.lea-classified-adv-btn')?.addEventListener('click', () => {
-        window.LP_MODAL.openAdvancedModal(k, sec);
-      });
-
-      // Controles sin colores
       const controls = document.createElement('div');
       controls.innerHTML = styleControlsHTML(geom, s, k, '', true);
       contentEl.appendChild(controls);
       _wireStyleControls(controls, k, geom, sec);
       if (geom === 'line') wireCsel(controls, `lea-dash-${k}`, () => _applySimpleStyle(k, controls, sec));
+
+      // Banner informativo: justo arriba del botón de edición avanzada, sin botón propio
+      const banner = document.createElement('div');
+      banner.className = 'lea-classified-banner';
+      banner.innerHTML = `
+        <span class="material-icons" style="font-size:14px;flex-shrink:0;opacity:0.6">palette</span>
+        <span>${t('simple_classified_color_hint')}</span>`;
+      acc.querySelector('.lea-advanced-btn').insertAdjacentElement('beforebegin', banner);
     } else {
       // Render modo simple directamente
       contentEl.innerHTML = styleControlsHTML(geom, s, k);
