@@ -27,6 +27,33 @@ window.LP_UTILS = (() => {
 
   function geomSVG(l) {
     const geom        = l.geomType || 'polygon';
+
+    // Si la capa tiene clasificación activa, mostrar siempre el símbolo índigo
+    // neutro de Casux — el estilo real es la leyenda, no el icono de fila.
+    if (l.classification?.field) {
+      const INDIGO = '#3d52a0';
+      if (geom === 'line') {
+        return `<svg class="layer-geom-svg" viewBox="0 0 14 14" width="14" height="14">
+          <line x1="1" y1="7" x2="13" y2="7"
+            stroke="${INDIGO}" stroke-width="3"
+            stroke-opacity="1" stroke-linecap="round"/>
+        </svg>`;
+      }
+      if (geom === 'point') {
+        return `<svg class="layer-geom-svg" viewBox="0 0 14 14" width="14" height="14">
+          <circle cx="7" cy="7" r="5"
+            fill="${INDIGO}" fill-opacity="0.85"
+            stroke="${INDIGO}" stroke-width="1.5" stroke-opacity="1"/>
+        </svg>`;
+      }
+      // polygon
+      return `<svg class="layer-geom-svg" viewBox="0 0 14 14" width="14" height="14">
+        <rect x="1" y="1" width="12" height="12" rx="2"
+          fill="${INDIGO}" fill-opacity="0.2"
+          stroke="${INDIGO}" stroke-width="1.5" stroke-opacity="1"/>
+      </svg>`;
+    }
+
     const s           = l.style || {};
     const fill        = s.fillColor  || s.color   || '#888';
     const fillOpacity = s.fillOpacity ?? (geom === 'polygon' ? 0.5 : 0.85);
