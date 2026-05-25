@@ -70,12 +70,14 @@ window.INTENT_VALIDAR = (() => {
   // Usa la misma lógica que spatial.js::estaRestringida().
   function _estaRestringida(layerDef) {
     const ct = window.CLIP_THRESHOLDS || {};
-    const fsLimit = ct.display           ?? _DISPLAY_FS_DEFAULT;
-    const fcLimit = ct.displayFcFallback ?? _DISPLAY_FC_DEFAULT;
+    const fsLimit    = ct.display            ?? _DISPLAY_FS_DEFAULT;
+    const fcFallback = ct.displayFcFallback  ?? _DISPLAY_FC_DEFAULT;
+    const fcHard     = ct.displayFcHard      ?? 55_000;
     const fs = layerDef?.fileSizeKb;
-    if (fs !== undefined) return fs > fsLimit;
     const fc = layerDef?.featureCount;
-    if (fc !== undefined) return fc > fcLimit;
+    if (fs !== undefined && fs > fsLimit)  return true;
+    if (fc !== undefined && fc > fcHard)   return true;
+    if (fs === undefined && fc !== undefined && fc > fcFallback) return true;
     return false;
   }
 
