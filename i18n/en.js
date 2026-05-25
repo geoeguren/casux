@@ -303,6 +303,7 @@ window.I18N_EN = {
   style_applied:           'Done, applied.',
   style_applied_layer:     'Done, applied the change to {titulo}.',
   style_auto_layer:        'That parameter only applies to {geom} layers, so I\'ll change it in {titulo}.',
+  style_auto_layer_only:   'I\'ll apply it to {titulo}.',
   style_reset_done_layer:  'Done, restored the original style of {titulo}.',
   style_confirm:           'Confirm',
   style_opening_editor:    'Opening the layer editor.',
