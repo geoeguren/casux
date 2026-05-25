@@ -40,41 +40,54 @@ window.LAYERS = {
 //
 // Lógica (aplicada en spatial.js, intent-validar.js y map-controls.js):
 //
-//   display:          límite en KB para desktop  → bloquea si fileSizeKb > 80 000 KB (80 MB)
-//   displayFcFallback: límite en features para desktop cuando no hay fileSizeKb → 100 000
-//   displayMobile:    límite en KB para móvil    → bloquea si fileSizeKb > 15 000 KB (15 MB)
-//   displayMobileFcFallback: límite features para móvil sin fileSizeKb → 20 000
+//   display:           límite en KB para desktop  → bloquea si fileSizeKb > display
+//   displayFcFallback: límite en features para desktop cuando no hay fileSizeKb
+//   displayFcHard:     límite duro de features independiente del peso (desktop)
+//   displayMobile:     límite en KB para móvil
+//   displayMobileFcFallback: límite features para móvil sin fileSizeKb
+//   displayMobileFcHard:     límite duro features en móvil
 //
 // Por qué estos valores:
-//   - 80 MB desktop: límite práctico del parser JSON del browser sin freezear el hilo
-//     principal en hardware de gama media (>3 s de bloqueo). Leaflet también empieza
-//     a tener problemas de renderizado de polígonos complejos a partir de ese peso.
-//   - 15 MB móvil: en mobile la memoria disponible y la CPU son más limitadas.
-//     Representa ~40 K polígonos simples o ~5 K polígonos medianos, manejable.
-//   - fc fallback 100 K / 20 K: para capas sin fileSizeKb (principalmente fuentes
-//     ArcGIS REST de Chile que tienden a features simples). Más conservador en móvil.
+//   - 30 MB desktop: Leaflet empieza a freezear el hilo principal del browser
+//     con GeoJSONs > ~30 MB en hardware de gama media (polígonos complejos).
+//     El valor anterior de 80 MB era demasiado generoso y dejaba pasar capas
+//     que colgaban el browser durante varios segundos.
+//   - 8 MB móvil: la memoria y CPU de mobile son más limitadas. Equivale a
+//     ~20 K polígonos simples o ~3 K polígonos medianos.
+//   - displayFcHard 25 000 desktop: Leaflet crea un objeto SVG/Canvas por feature.
+//     Benchmarks empíricos: polígonos > ~25 K features → degradación severa
+//     en hardware medio (tab congelado varios segundos). El anterior de 55 000
+//     dejaba pasar capas que colgaban el browser.
+//   - fc fallback 40 K / 10 K: para capas sin fileSizeKb (principalmente fuentes
+//     ArcGIS REST de Chile). Conservador porque sin fileSizeKb no podemos saber
+//     la complejidad real de los vértices.
 //
-// Antes: un único umbral `display: 55000` basado solo en featureCount.
-// Problema: 13 K polígonos hidrológicos de 115 M vértices pesaban 3 GB y pasaban,
-// mientras que 64 K puntos simples de 35 MB quedaban bloqueados incorrectamente.
+// La restricción se aplica con OR lógico (no AND):
+//   bloquear si fileSizeKb > display  OR  featureCount > displayFcHard
 //
 // COBERTURA: 68% de las capas tienen fileSizeKb. El 32% restante (principalmente
 // mop.js de Chile) usa el fallback de featureCount hasta que se completen los campos.
+//
+// NOTA: la validación se basa exclusivamente en los campos del catálogo (fileSizeKb,
+// featureCount). En el futuro, si el servidor lo permite, se podría reimplementar
+// una consulta en tiempo real (resultType=hits para WFS / returnCountOnly=true para
+// ArcGIS REST) para obtener el count real del subconjunto filtrado antes de hacer
+// el fetch. La infraestructura para eso ya existió en spatial.js (verificarUmbralDisplay)
+// y fue removida por latencia y complejidad; ver git history para referencia.
 window.CLIP_THRESHOLDS = {
-  display:                  80_000,  // KB — bloquea si fileSizeKb > 80 MB (desktop)
-  displayFcFallback:       100_000,  // features — fallback cuando no hay fileSizeKb (desktop)
-  displayFcHard:            55_000,  // features — límite duro de features independiente del peso
+  display:                  30_000,  // KB — bloquea si fileSizeKb > 30 MB (desktop)
+  displayFcFallback:        40_000,  // features — fallback cuando no hay fileSizeKb (desktop)
+  displayFcHard:            25_000,  // features — límite duro de features independiente del peso
   //
   // displayFcHard existe porque fileSizeKb no captura el costo de renderizado en Leaflet.
-  // Una capa con 84K líneas de 34 MB (huella_ar) pesa poco pero cuelga el browser porque
-  // Leaflet debe crear y mantener 84K objetos SVG en el DOM.
-  // Benchmarks empíricos: líneas/puntos > ~55K features → degradación severa en hardware medio.
+  // Una capa con muchas líneas o puntos puede pesar poco pero colgar el browser porque
+  // Leaflet debe crear y mantener un objeto SVG/Canvas por feature en el DOM.
   // Esta restricción se aplica ADEMÁS del límite de peso (OR lógico, no AND):
-  //   bloquear si fileSizeKb > 80 MB  OR  featureCount > 55 000
+  //   bloquear si fileSizeKb > 30 MB  OR  featureCount > 25 000
   //
-  displayMobile:            15_000,  // KB — bloquea si fileSizeKb > 15 MB (móvil)
-  displayMobileFcFallback:  20_000,  // features — fallback móvil sin fileSizeKb
-  displayMobileFcHard:      20_000,  // features — límite duro móvil (coincide con fallback)
+  displayMobile:             8_000,  // KB — bloquea si fileSizeKb > 8 MB (móvil)
+  displayMobileFcFallback:  10_000,  // features — fallback móvil sin fileSizeKb
+  displayMobileFcHard:      12_000,  // features — límite duro móvil
 };
 
 // ── Umbral de clasificación de campos ──────────────────────────────────────
