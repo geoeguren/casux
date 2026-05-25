@@ -98,13 +98,17 @@ window.MAP_CONTROLS = (() => {
 
       // Reducir umbrales de display en mobile (señal primaria fileSizeKb, fallback featureCount).
       // Se guardan los valores desktop para restaurarlos al cerrar el mapa.
+      // En móvil, reemplazar los valores desktop por los móvil y guardar los originales
+      // para restaurarlos al cerrar el mapa.
+      // displayFcHard y displayMobileFcHard son objetos {polygon, line, point, unknown} —
+      // se swapean completos, no campo a campo.
       if (isMobile() && window.CLIP_THRESHOLDS) {
         window.CLIP_THRESHOLDS._desktopDisplay          = window.CLIP_THRESHOLDS._desktopDisplay          || window.CLIP_THRESHOLDS.display;
         window.CLIP_THRESHOLDS._desktopDisplayFcFallback = window.CLIP_THRESHOLDS._desktopDisplayFcFallback || window.CLIP_THRESHOLDS.displayFcFallback;
         window.CLIP_THRESHOLDS._desktopDisplayFcHard     = window.CLIP_THRESHOLDS._desktopDisplayFcHard     || window.CLIP_THRESHOLDS.displayFcHard;
-        window.CLIP_THRESHOLDS.display            = window.CLIP_THRESHOLDS.displayMobile            ?? 15_000;
-        window.CLIP_THRESHOLDS.displayFcFallback  = window.CLIP_THRESHOLDS.displayMobileFcFallback  ?? 20_000;
-        window.CLIP_THRESHOLDS.displayFcHard      = window.CLIP_THRESHOLDS.displayMobileFcHard      ?? 20_000;
+        window.CLIP_THRESHOLDS.display           = window.CLIP_THRESHOLDS.displayMobile;
+        window.CLIP_THRESHOLDS.displayFcFallback = window.CLIP_THRESHOLDS.displayMobileFcFallback;
+        window.CLIP_THRESHOLDS.displayFcHard     = window.CLIP_THRESHOLDS.displayMobileFcHard;
       }
 
       window.MAP.init();
@@ -133,8 +137,8 @@ window.MAP_CONTROLS = (() => {
 
       if (isMobile() && window.CLIP_THRESHOLDS?._desktopDisplay) {
         window.CLIP_THRESHOLDS.display           = window.CLIP_THRESHOLDS._desktopDisplay;
-        window.CLIP_THRESHOLDS.displayFcFallback = window.CLIP_THRESHOLDS._desktopDisplayFcFallback || window.CLIP_THRESHOLDS.displayFcFallback;
-        window.CLIP_THRESHOLDS.displayFcHard     = window.CLIP_THRESHOLDS._desktopDisplayFcHard     || window.CLIP_THRESHOLDS.displayFcHard;
+        window.CLIP_THRESHOLDS.displayFcFallback = window.CLIP_THRESHOLDS._desktopDisplayFcFallback;
+        window.CLIP_THRESHOLDS.displayFcHard     = window.CLIP_THRESHOLDS._desktopDisplayFcHard;
       }
     }
   }
