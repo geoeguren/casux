@@ -66,8 +66,8 @@ window.INTENT_VALIDAR = (() => {
   const _DISPLAY_FS_DEFAULT = 80_000;   // KB
   const _DISPLAY_FC_DEFAULT = 100_000;  // features
 
-  // Helper: determina si una capa supera el umbral de display.
-  // Usa la misma lógica que spatial.js::estaRestringida().
+  // Helper: guardia rápida pre-fetch usando campos del catálogo.
+  // La verificación definitiva ocurre en spatial.js con un hits request real al servidor.
   function _estaRestringida(layerDef) {
     const ct = window.CLIP_THRESHOLDS || {};
     const fsLimit    = ct.display            ?? _DISPLAY_FS_DEFAULT;
