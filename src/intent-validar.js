@@ -86,7 +86,7 @@ window.INTENT_VALIDAR = (() => {
     const titulo = layerDef?.titulo || layerKey;
     if (fs !== undefined) {
       const mb = (fs / 1024).toFixed(0);
-      return { titulo, n: `${mb} MB`, tipo: 'size' };
+      return { titulo, n: `${mb} mb`, tipo: 'size' };
     }
     return { titulo, n: fc?.toLocaleString() ?? '?', tipo: 'count' };
   }
