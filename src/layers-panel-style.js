@@ -148,14 +148,12 @@ window.LP_STYLE = (() => {
     // Si la capa está clasificada, bloquear edición simple con un aviso
     if (l.classification?.field) {
       contentEl.innerHTML = `<div class="lea-classified-notice">
-        <span class="material-icons" style="font-size:18px;opacity:0.45;flex-shrink:0">lock</span>
         <span>${t('simple_blocked_classified')}</span>
-        <button class="lea-clear-classification-btn" data-key="${k}">
-          <span class="material-icons" style="font-size:14px;pointer-events:none">delete_sweep</span>
+        <button class="adv-footer-btn adv-clear" data-key="${k}">
           ${t('simple_clear_classification')}
         </button>
       </div>`;
-      contentEl.querySelector('.lea-clear-classification-btn')?.addEventListener('click', () => {
+      contentEl.querySelector('.adv-footer-btn')?.addEventListener('click', () => {
         window.MAP.clearClassification(k);
         window.LP_PANEL.persistClassification(k, null);
         // Reconstruir el acordeón sin clasificación
