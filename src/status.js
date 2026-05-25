@@ -105,19 +105,35 @@ function getCountries() {
 function getLayersBySource() {
   const result = {};
   if (!window.LAYERS) return result;
-  const displayThreshold = window.CLIP_THRESHOLDS?.display ?? 55000;
+
+  // Determina si una capa está restringida (mismo criterio que spatial.js).
+  // Señal primaria: fileSizeKb. Fallback: featureCount.
+  const ct = window.CLIP_THRESHOLDS || {};
+  const _fsLimit = ct.display            ?? 80_000;
+  const _fcLimit = ct.displayFcFallback  ?? 100_000;
+  function _isRestricted(layer) {
+    const fs = layer.fileSizeKb;
+    if (fs !== undefined) return fs > _fsLimit;
+    const fc = layer.featureCount;
+    if (fc !== undefined) return fc > _fcLimit;
+    return false;
+  }
+
   for (const [, layer] of Object.entries(window.LAYERS)) {
     if (layer.special !== false) continue;
     if (layer.visible === false) continue;
     if (!layer.source) continue;
     if (!result[layer.source]) result[layer.source] = [];
-    const fc = layer.featureCount ?? null;
+    const fc   = layer.featureCount ?? null;
+    const fs   = layer.fileSizeKb   ?? null;
+    const restr = _isRestricted(layer);
     result[layer.source].push({
       titulo:       layerTitle(layer),
       typename:     layer.typename || '',
       geomType:     layer.geomType || 'polygon',
       featureCount: fc,
-      restricted:   fc != null && fc > displayThreshold,
+      fileSizeKb:   fs,
+      restricted:   restr,
       keywordsEs:   layer.keywordsEs || [],
       keywordsEn:   layer.keywordsEn || [],
       keywordsPt:   layer.keywordsPt || [],
@@ -273,20 +289,43 @@ function geomIconHTML(type) {
 }
 
 function renderLayerRow(l) {
-  const count = l.featureCount != null
-    ? `<span class="layer-count${l.restricted ? ' layer-count-restricted' : ''}">${l.featureCount.toLocaleString()}</span>`
+  // Construir etiqueta de tamaño: fileSizeKb en MB si está disponible, si no featureCount
+  let sizeLabel = '';
+  let sizeTitle = '';
+  if (l.fileSizeKb != null) {
+    const mb = (l.fileSizeKb / 1024).toFixed(1);
+    sizeLabel = `${mb} MB`;
+    sizeTitle = `${mb} MB`;
+  } else if (l.featureCount != null) {
+    sizeLabel = l.featureCount.toLocaleString();
+    sizeTitle = `${l.featureCount.toLocaleString()} elementos`;
+  }
+
+  const count = sizeLabel
+    ? `<span class="layer-count${l.restricted ? ' layer-count-restricted' : ''}" title="${sizeTitle}">${sizeLabel}</span>`
     : '';
 
   if (l.restricted) {
+    // Texto del tooltip: qué valor superó qué límite
+    const ct = window.CLIP_THRESHOLDS || {};
+    let restrictedReason = '';
+    if (l.fileSizeKb != null) {
+      const limit = (( ct.display ?? 80_000 ) / 1024).toFixed(0);
+      const mb    = (l.fileSizeKb / 1024).toFixed(0);
+      restrictedReason = `${mb} MB — límite: ${limit} MB`;
+    } else if (l.featureCount != null) {
+      const limit = ( ct.displayFcFallback ?? 100_000 ).toLocaleString();
+      restrictedReason = `${l.featureCount.toLocaleString()} elementos — límite: ${limit}`;
+    }
     return `
-      <div class="layer-row layer-row-restricted" data-typename="${l.typename}">
+      <div class="layer-row layer-row-restricted" data-typename="${l.typename}" title="${restrictedReason}">
         <div class="layer-geom layer-geom-restricted">${geomIconHTML(l.geomType)}</div>
         <div class="layer-text">
           <span class="layer-name layer-name-restricted">${l.titulo}</span>
           <span class="layer-key layer-key-restricted">${l.typename}</span>
         </div>
         ${count}
-        <span class="material-icons layer-restricted-icon">block</span>
+        <span class="material-icons layer-restricted-icon" title="${restrictedReason}">block</span>
       </div>
     `;
   }
