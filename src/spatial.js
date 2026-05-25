@@ -315,20 +315,30 @@ window.SPATIAL = (() => {
   //
   // Defaults hardcodeados (usados si CLIP_THRESHOLDS no está disponible):
   const _DISPLAY_FS_DEFAULT    = 80_000;   // KB
-  const _DISPLAY_FC_DEFAULT    = 100_000;  // features
+  const _DISPLAY_FC_DEFAULT    = 100_000;  // features fallback
+  const _DISPLAY_FC_HARD       = 55_000;   // features límite duro (costo de renderizado Leaflet)
 
   function estaRestringida(layerDef) {
     const ct = window.CLIP_THRESHOLDS || {};
-    const fsLimit = ct.display            ?? _DISPLAY_FS_DEFAULT;
-    const fcLimit = ct.displayFcFallback  ?? _DISPLAY_FC_DEFAULT;
+    const fsLimit   = ct.display            ?? _DISPLAY_FS_DEFAULT;
+    const fcFallback = ct.displayFcFallback ?? _DISPLAY_FC_DEFAULT;
+    const fcHard     = ct.displayFcHard     ?? _DISPLAY_FC_HARD;
 
     const fs = layerDef?.fileSizeKb;
-    if (fs !== undefined) return fs > fsLimit;
-
     const fc = layerDef?.featureCount;
-    if (fc !== undefined) return fc > fcLimit;
 
-    return false; // sin datos → permitir (no bloquear por falta de información)
+    // Restricción de peso: fileSizeKb > límite
+    if (fs !== undefined && fs > fsLimit) return true;
+
+    // Restricción dura de features: independiente del peso.
+    // Protege contra capas livianas en bytes pero costosas para el DOM de Leaflet
+    // (ej: huella_ar — 84K líneas, 34 MB → cuelga el browser).
+    if (fc !== undefined && fc > fcHard) return true;
+
+    // Fallback puro: sin fileSizeKb, solo featureCount (capas ArcGIS sin fileSizeKb)
+    if (fs === undefined && fc !== undefined && fc > fcFallback) return true;
+
+    return false;
   }
 
   function verificarUmbralDisplay(layerDef) {
