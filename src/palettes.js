@@ -53,8 +53,8 @@ window.PALETTES = {
 };
 
 window.PALETTE_LABELS = {
-  casux_cat:     'Casux',
-  casux_seq:     'Casux',
+  casux_cat:     'casux',
+  casux_seq:     'casux',
   cat_tableau:   'tableau',
   cat_bold:      'bold',
   cat_pastel:    'pastel',
