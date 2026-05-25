@@ -158,6 +158,13 @@ window.CLIP_THRESHOLDS = {
     point:   15_000,
     unknown:  5_000,
   },
+
+  // ── Edge function (clip/intersect en servidor) ─────────────────
+  // Break-even calculado: a 10 Mbps, 2 MB sin comprimir ≈ 640 KB en tránsito.
+  // Por debajo de ese peso, el roundtrip HTTP al servidor no vale la pena.
+  // Usados por src/spatial-utils.js → deberiaUsarEdgeFunction().
+  edgeFnUmbralKb: 2_000,   // KB — fileSizeKb por encima del cual usar edge function
+  edgeFnUmbralFc: 2_000,   // features — fallback cuando no hay fileSizeKb
 };
 
 // ── Umbral de clasificación de campos ──────────────────────────────────────
