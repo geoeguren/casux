@@ -375,8 +375,10 @@
       { v: '8,4,2,4', label: t('dash_dash_dot'),  da: '8,4,2,4' },
     ];
 
-    const svgPreview = (da) => `<svg viewBox="0 0 44 10" width="44" height="10" style="display:block">
-      <line x1="2" y1="5" x2="42" y2="5" stroke="currentColor" stroke-width="2"
+    // SVG idéntico al panel simple (buildDashSelect en layers-panel-utils.js):
+    // viewBox 0 0 60 14, stroke-width 2, línea de extremo a extremo.
+    const svgPreview = (da) => `<svg viewBox="0 0 60 14" width="52" height="14" style="display:block">
+      <line x1="0" y1="7" x2="60" y2="7" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" ${da ? `stroke-dasharray="${da}"` : ''}/>
     </svg>`;
 
@@ -386,11 +388,12 @@
     DASH_OPTS.forEach(opt => {
       const btn = document.createElement('button');
       btn.className = 'style-grid-btn' + (opt.v === cur ? ' style-grid-btn--active' : '');
+      // Sin label: el patrón visual es autoexplicativo, igual que en el panel simple.
+      // SVG idéntico al panel simple: viewBox 0 0 60 14, stroke-width 2, línea completa.
       btn.innerHTML = `
-        <div class="style-grid-swatch" style="display:flex;align-items:center;justify-content:center;background:transparent">
+        <div class="style-grid-swatch" style="display:flex;align-items:center;justify-content:center;background:transparent;width:52px;height:28px">
           ${svgPreview(opt.da)}
-        </div>
-        <span class="style-grid-label">${opt.label}</span>`;
+        </div>`;
       btn.addEventListener('click', () => {
         const newStyle = { dashArray: opt.v === 'none' ? null : opt.v };
         _applyStyle(mapKey, newStyle);
