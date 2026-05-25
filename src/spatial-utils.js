@@ -155,12 +155,25 @@ window._SPATIAL_UTILS = (() => {
   // Casos en que siempre procesa en cliente:
   //   - ArcGIS REST: la edge function solo soporta WFS
   //   - Operaciones _exclude: necesitan TODOS los features, el bbox las rompe
-  //   - Capas pequeñas (≤ EDGE_FN_UMBRAL): overhead del roundtrip supera al ahorro
   //
-  // En cualquier otro caso, la edge function ahorra ancho de banda: fetchea
-  // en el servidor con bbox pre-filtro y manda solo el resultado al cliente.
+  // Casos en que siempre va al servidor (independientemente del tamaño):
+  //   - dissolve / within_layer / adjacent / nearest: lógica que requiere Turf server-side
+  //
+  // Para clip e intersect: se usa fileSizeKb como señal primaria.
+  //   - fileSizeKb > EDGE_FN_UMBRAL_KB → servidor (el pre-filtro bbox ahorra ancho de banda)
+  //   - fileSizeKb no disponible → featureCount > EDGE_FN_UMBRAL_FC → servidor
+  //   - Por debajo de los umbrales → cliente directo (overhead del roundtrip supera al ahorro)
+  //
+  // Break-even calculado: a 10 Mbps el fetch local de 2 MB tarda ~1.6 s.
+  // Con compresión gzip (~3×), 2 MB sin comprimir ≈ 640 KB en tránsito.
+  // Por debajo de ese peso, el roundtrip HTTP al servidor no vale la pena.
+  //
+  // Antes: EDGE_FN_UMBRAL = 500 features (solo featureCount, sin peso).
+  // Problema: municipios (~2 300 features, ~1 MB) iban al servidor innecesariamente,
+  // consumiendo invocaciones de Vercel y fallando por timeout en Hobby (10 s).
 
-  const EDGE_FN_UMBRAL = 500;
+  const EDGE_FN_UMBRAL_KB = 2_000;  // KB — fileSizeKb por encima del cual usar edge function
+  const EDGE_FN_UMBRAL_FC = 2_000;  // features — fallback cuando no hay fileSizeKb
 
   function deberiaUsarEdgeFunction(layerDef, op, isArcgis) {
     if (isArcgis)                    return false;
@@ -181,9 +194,12 @@ window._SPATIAL_UTILS = (() => {
     // nearest siempre va al servidor — necesita todos los features para ordenar
     if (op === 'nearest')                return true;
     if (op === 'nearest_exclude')        return true;
+    // Para clip e intersect: señal primaria = fileSizeKb, fallback = featureCount
+    const fs = layerDef?.fileSizeKb;
+    if (fs !== undefined) return fs > EDGE_FN_UMBRAL_KB;
     const fc = layerDef?.featureCount;
-    if (fc !== undefined && fc <= EDGE_FN_UMBRAL) return false;
-    return true;
+    if (fc !== undefined) return fc > EDGE_FN_UMBRAL_FC;
+    return true; // sin datos → servidor por precaución
   }
 
   // ── toastFallbackOnce ─────────────────────────────────────────
