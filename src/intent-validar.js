@@ -41,7 +41,8 @@
  *     - La capa debe estar en activeLayers
  *
  *   CAPA:
- *     - featureCount > 55000 → bloqueada por umbral de display
+ *     - fileSizeKb > 80 MB (desktop) ó > 15 MB (móvil) → bloqueada por peso
+ *     - Sin fileSizeKb: featureCount > 100 000 (desktop) ó > 20 000 (móvil) → bloqueada
  *     - clipStrategy 'none' → no se puede recortar
  *
  *   FILTRAR:
@@ -59,7 +60,36 @@ window.INTENT_VALIDAR = (() => {
   const MAX_CATS_CATEGORIZED = 8;    // paletas cualitativas tienen 8 colores
   const MAX_CATS_GRADUATED   = 8;    // breaks de Jenks: máximo 8 clases
   const MIN_UNIQUE_VALUES    = 2;    // mínimo de valores únicos para clasificar
-  const DISPLAY_THRESHOLD    = 55000;// featureCount máximo para mostrar sin recorte
+  // Defaults para display (usados si CLIP_THRESHOLDS no cargó).
+  // La señal primaria es fileSizeKb; featureCount es fallback.
+  // Ver documentación completa en layers/index.js.
+  const _DISPLAY_FS_DEFAULT = 80_000;   // KB
+  const _DISPLAY_FC_DEFAULT = 100_000;  // features
+
+  // Helper: determina si una capa supera el umbral de display.
+  // Usa la misma lógica que spatial.js::estaRestringida().
+  function _estaRestringida(layerDef) {
+    const ct = window.CLIP_THRESHOLDS || {};
+    const fsLimit = ct.display           ?? _DISPLAY_FS_DEFAULT;
+    const fcLimit = ct.displayFcFallback ?? _DISPLAY_FC_DEFAULT;
+    const fs = layerDef?.fileSizeKb;
+    if (fs !== undefined) return fs > fsLimit;
+    const fc = layerDef?.featureCount;
+    if (fc !== undefined) return fc > fcLimit;
+    return false;
+  }
+
+  // Helper: construye los params del mensaje de error de restricción.
+  function _restrictedParams(layerDef, layerKey) {
+    const fs = layerDef?.fileSizeKb;
+    const fc = layerDef?.featureCount;
+    const titulo = layerDef?.titulo || layerKey;
+    if (fs !== undefined) {
+      const mb = (fs / 1024).toFixed(0);
+      return { titulo, n: `${mb} MB`, tipo: 'size' };
+    }
+    return { titulo, n: fc?.toLocaleString() ?? '?', tipo: 'count' };
+  }
 
   const FORMATOS_SOPORTADOS = new Set(['jpeg', 'pdf', 'geojson', 'html']);
   const FORMATOS_NO_SOPORTADOS = new Set(['shapefile', 'shp', 'csv', 'xlsx', 'xls', 'kml', 'kmz', 'gpx', 'dxf', 'dwg']);
@@ -207,13 +237,11 @@ window.INTENT_VALIDAR = (() => {
         error:   'validate_layer_too_many_features',
         errorParams: (p) => {
           const layerDef = window.LAYERS?.[p.layerKey];
-          return { titulo: layerDef?.titulo || p.layerKey, n: layerDef?.featureCount?.toLocaleString() };
+          return _restrictedParams(layerDef, p.layerKey);
         },
         check:   (p) => {
           const layerDef = window.LAYERS?.[p.layerKey];
-          if (!layerDef?.featureCount) return true;
-          const threshold = window.CLIP_THRESHOLDS?.display ?? DISPLAY_THRESHOLD;
-          return layerDef.featureCount <= threshold;
+          return !_estaRestringida(layerDef);
         },
       },
     ],
@@ -228,19 +256,17 @@ window.INTENT_VALIDAR = (() => {
           return !Object.values(ctx.activeLayers).some(e => e.layerKey === p.layerKey);
         },
       },
-      // Hereda las validaciones de 'capa' para el featureCount
+      // Hereda la validación de display de 'capa' (peso / featureCount)
       {
         bloquea: true,
         error:   'validate_layer_too_many_features',
         errorParams: (p) => {
           const layerDef = window.LAYERS?.[p.layerKey];
-          return { titulo: layerDef?.titulo || p.layerKey, n: layerDef?.featureCount?.toLocaleString() };
+          return _restrictedParams(layerDef, p.layerKey);
         },
         check:   (p) => {
           const layerDef = window.LAYERS?.[p.layerKey];
-          if (!layerDef?.featureCount) return true;
-          const threshold = window.CLIP_THRESHOLDS?.display ?? DISPLAY_THRESHOLD;
-          return layerDef.featureCount <= threshold;
+          return !_estaRestringida(layerDef);
         },
       },
     ],
@@ -526,7 +552,8 @@ window.INTENT_VALIDAR = (() => {
     getPropsValidasParaGeom,
     MAX_CATS_CATEGORIZED,
     MAX_CATS_GRADUATED,
-    DISPLAY_THRESHOLD,
+    // DISPLAY_THRESHOLD removida — usar CLIP_THRESHOLDS (layers/index.js)
+    // o la función interna _estaRestringida() de este módulo.
     FORMATOS_SOPORTADOS,
     FORMATOS_NO_SOPORTADOS,
   };
