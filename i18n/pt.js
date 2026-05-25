@@ -303,6 +303,7 @@ window.I18N_PT = {
   style_applied:           'Pronto, aplicado.',
   style_applied_layer:     'Pronto, apliquei a alteração em {titulo}.',
   style_auto_layer:        'Esse parâmetro só se aplica a camadas de {geom}, então vou alterar em {titulo}.',
+  style_auto_layer_only:   'Vou aplicar em {titulo}.',
   style_reset_done_layer:  'Pronto, restaurei o estilo original de {titulo}.',
   style_confirm:           'Confirmar',
   style_opening_editor:    'Abrindo o editor de camadas.',
