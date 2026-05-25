@@ -370,6 +370,11 @@ window.I18N_ES = {
   // ── Estilo con clasificación activa ──────────────────────────
   style_classified_warning:          'Esta capa tiene una clasificación activa. ¿Qué querés hacer?',
   style_keep_classification:         'Mantener clasificación',
+  style_keep_classification_msg:     'OK, no se cambia el color. Si querés editar el color por clase, podés hacerlo desde la edición avanzada del panel de capas.',
+  dash_solid:      'Sólido',
+  dash_dashed:     'Guión',
+  dash_dotted:     'Punteado',
+  dash_dash_dot:   'Guión-punto',
   style_keep_classification_sub:     'no cambia el color',
   style_replace_classification:      'Reemplazar con color sólido',
   style_replace_classification_sub:  'elimina la clasificación actual',
