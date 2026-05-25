@@ -559,7 +559,7 @@ window.MAP = (() => {
     el.innerHTML = `
       <div class="legend-header">
         <div class="legend-title">${t('legend_title')}</div>
-        <button class="legend-collapse-btn" data-tooltip="${isCollapsed ? t('legend_expand') : t('legend_collapse')}">
+        <button class="legend-collapse-btn">
           <span class="material-icons">${isCollapsed ? 'expand_less' : 'expand_more'}</span>
         </button>
       </div>
