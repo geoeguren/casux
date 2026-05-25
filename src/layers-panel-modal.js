@@ -684,11 +684,16 @@ window.LP_MODAL = (() => {
       if (!nl?.classification) return;
       if (!nl.classification.styleMap) nl.classification.styleMap = {};
       nl.classification.styleMap[val] = { ...(nl.classification.styleMap[val] || {}), ...changes };
+      // colorMap[val] representa SIEMPRE el color de relleno (fill) de la clase.
+      // Solo actualizarlo cuando explícitamente cambia el fillColor — nunca con el color del borde,
+      // porque eso contaminaría el fill con el borde y rompería el render y el swatch.
       if (changes.fillColor) nl.classification.colorMap[val] = changes.fillColor;
-      if (changes.color && !changes.fillColor) nl.classification.colorMap[val] = changes.color;
       window.MAP.applyClassificationFromData(k, nl.classification);
       window.LP_PANEL.persistClassification(k, nl.classification);
-      // Actualizar el swatch de solo lectura en la lista de clases
+      // Actualizar el swatch de solo lectura en la lista de clases.
+      // _updateSwatchDisplay lee colorMap[val] como fill y styleMap[val].color como borde —
+      // ahora que colorMap no se contamina con el borde, el swatch refleja correctamente
+      // el estado: fill del relleno + boxShadow del borde cuando ambos están definidos.
       const swatchEl = bodyEl.querySelector(`.adv-cat-swatch--readonly[data-swatch-val="${CSS.escape(val)}"]`);
       if (swatchEl) _updateSwatchDisplay(swatchEl, nl.classification.colorMap[val], nl.classification.styleMap[val]);
     }
