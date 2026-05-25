@@ -298,69 +298,76 @@ window.SPATIAL = (() => {
   }
 
   // ── Verificaciones de umbral ──────────────────────────────────
-
-  // Determina si una capa supera el umbral de display (no se puede mostrar).
   //
-  // Señal primaria: fileSizeKb (peso real del GeoJSON descargado).
-  // Fallback: featureCount (para capas sin fileSizeKb, ej: fuentes ArcGIS de Chile).
+  // verificarUmbralDisplay — consulta el count real al servidor ANTES de pedir
+  // los datos. Reemplaza la dependencia en fileSizeKb/featureCount del catálogo,
+  // que pueden estar desactualizados o ser incorrectos para el servidor actual.
   //
-  // Los umbrales viven en window.CLIP_THRESHOLDS (layers/index.js):
-  //   display             → límite KB desktop   (default 80 000 KB = 80 MB)
-  //   displayFcFallback   → límite fc desktop    (default 100 000)
-  //   displayMobile       → límite KB móvil      (leído en map-controls.js)
-  //   displayMobileFcFallback → límite fc móvil  (leído en map-controls.js)
+  // Estrategia:
+  //   1. Pedir count al servidor (resultType=hits / returnCountOnly=true).
+  //      Timeout 5s — si no responde, ir al paso 2.
+  //   2. Fallback: usar featureCount/fileSizeKb del catálogo.
+  //   3. Si count > umbral → bloquear y avisar al usuario.
+  //   4. Si count ≤ umbral → permitir el fetch.
   //
-  // En móvil, map-controls.js sobreescribe display y displayFcFallback con los
-  // valores Mobile al abrir el mapa, restaurándolos al cerrar.
-  //
-  // Defaults hardcodeados (usados si CLIP_THRESHOLDS no está disponible):
-  const _DISPLAY_FS_DEFAULT    = 80_000;   // KB
-  const _DISPLAY_FC_DEFAULT    = 100_000;  // features fallback
-  const _DISPLAY_FC_HARD       = 55_000;   // features límite duro (costo de renderizado Leaflet)
+  // El CQL/where se pasa para que el count refleje el subconjunto real
+  // (ej: "caminería del departamento Montevideo" → count solo de Montevideo).
 
-  function estaRestringida(layerDef) {
-    const ct = window.CLIP_THRESHOLDS || {};
-    const fsLimit   = ct.display            ?? _DISPLAY_FS_DEFAULT;
-    const fcFallback = ct.displayFcFallback ?? _DISPLAY_FC_DEFAULT;
-    const fcHard     = ct.displayFcHard     ?? _DISPLAY_FC_HARD;
+  const _DISPLAY_FC_HARD    = 55_000;
+  const _DISPLAY_FS_DEFAULT = 80_000;
+  const _DISPLAY_FC_DEFAULT = 100_000;
 
-    const fs = layerDef?.fileSizeKb;
-    const fc = layerDef?.featureCount;
+  async function verificarUmbralDisplay(layerDef, wfsOpts, cql) {
+    const ct     = window.CLIP_THRESHOLDS || {};
+    const fcHard = ct.displayFcHard ?? _DISPLAY_FC_HARD;
+    const source = window.SOURCES?.[layerDef?.source];
+    const titulo = layerDef?.titulo || '';
 
-    // Restricción de peso: fileSizeKb > límite
-    if (fs !== undefined && fs > fsLimit) return true;
+    // ── 1. Count real del servidor ────────────────────────────
+    let count = null;
+    try {
+      if (source?.tipo === 'arcgis') {
+        count = await window.REST?.fetchCount?.(layerDef.typename, {
+          restBase:    wfsOpts?.restBase,
+          whereClause: cql || '1=1',
+        });
+      } else {
+        count = await window.WFS?.fetchCount?.(layerDef.typename, {
+          wfsBase:    wfsOpts?.wfsBase,
+          wfsVersion: wfsOpts?.wfsVersion,
+          cqlFilter:  cql || undefined,
+        });
+      }
+    } catch { count = null; }
 
-    // Restricción dura de features: independiente del peso.
-    // Protege contra capas livianas en bytes pero costosas para el DOM de Leaflet
-    // (ej: huella_ar — 84K líneas, 34 MB → cuelga el browser).
-    if (fc !== undefined && fc > fcHard) return true;
-
-    // Fallback puro: sin fileSizeKb, solo featureCount (capas ArcGIS sin fileSizeKb)
-    if (fs === undefined && fc !== undefined && fc > fcFallback) return true;
-
-    return false;
-  }
-
-  function verificarUmbralDisplay(layerDef) {
-    if (!estaRestringida(layerDef)) return true;
-
-    // Construir mensaje según qué dato está disponible
-    const fs = layerDef?.fileSizeKb;
-    const fc = layerDef?.featureCount;
-
-    if (fs !== undefined) {
-      const mb = (fs / 1024).toFixed(0);
-      window.TOAST?.warning(t('toast_display_limit', {
-        titulo: layerDef.titulo,
-        n:      `${mb} mb`,
-      }));
-    } else {
-      window.TOAST?.warning(t('toast_display_limit', {
-        titulo: layerDef.titulo,
-        n:      fc?.toLocaleString() ?? '?',
-      }));
+    if (count !== null) {
+      if (count > fcHard) {
+        console.warn(`[SPATIAL] Bloqueado por count real: ${layerDef.typename} → ${count} features (límite: ${fcHard})`);
+        window.TOAST?.warning(t('toast_display_limit', { titulo, n: count.toLocaleString() }));
+        return false;
+      }
+      console.log(`[SPATIAL] Count OK: ${layerDef.typename} → ${count} features`);
+      return true;
     }
-    return false;
+
+    // ── 2. Fallback: campos del catálogo ──────────────────────
+    console.warn(`[SPATIAL] hits no disponible para ${layerDef.typename} — usando fallback del catálogo`);
+    const fsLimit    = ct.display           ?? _DISPLAY_FS_DEFAULT;
+    const fcFallback = ct.displayFcFallback ?? _DISPLAY_FC_DEFAULT;
+    const fs = layerDef?.fileSizeKb;
+    const fc = layerDef?.featureCount;
+
+    let restringida = false;
+    if (fs !== undefined && fs > fsLimit)  restringida = true;
+    if (fc !== undefined && fc > fcHard)   restringida = true;
+    if (fs === undefined && fc !== undefined && fc > fcFallback) restringida = true;
+
+    if (restringida) {
+      const n = fs !== undefined ? `${(fs / 1024).toFixed(0)} mb` : (fc?.toLocaleString() ?? '?');
+      window.TOAST?.warning(t('toast_display_limit', { titulo, n }));
+      return false;
+    }
+    return true;
   }
 
   // ── Operación: clip ───────────────────────────────────────────
@@ -587,14 +594,14 @@ window.SPATIAL = (() => {
     const layerDef = window.LAYERS[layerKey];
     if (!layerDef) throw new Error(`[SPATIAL] Capa desconocida: "${layerKey}"`);
 
-    // Umbral de display — aplica a todas las operaciones
-    if (!verificarUmbralDisplay(layerDef)) {
-      return { type: 'FeatureCollection', features: [], _blockedByThreshold: true };
-    }
-
     const source  = resolverFuente(layerDef, layerKey);
     const wfsOpts = buildWfsOpts(source, layerDef);
     const cql     = (filtro || '').trim();
+
+    // Umbral de display — consulta el count real al servidor antes de pedir datos
+    if (!await verificarUmbralDisplay(layerDef, wfsOpts, cql)) {
+      return { type: 'FeatureCollection', features: [], _blockedByThreshold: true };
+    }
 
     // Capa sin soporte de recorte — clipStrategy null o 'none'
     // null: la capa no tiene estrategia definida (polígonos únicos, capas auxiliares)
