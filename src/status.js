@@ -109,13 +109,14 @@ function getLayersBySource() {
   // Determina si una capa está restringida (mismo criterio que spatial.js e intent-validar.js).
   // Señal primaria: fileSizeKb. Fallback: featureCount.
   // displayFcHard es un objeto {polygon, line, point, unknown} — ver layers/index.js.
-  // clipStrategy='attribute': el servidor filtra → nunca llega completa → sin límite duro fc.
+  // clipStrategy='attribute': el servidor filtra → nunca llega completa → eximir de TODO.
   const ct = window.CLIP_THRESHOLDS;
   function _isRestricted(layer) {
     const fs = layer.fileSizeKb;
     const fc = layer.featureCount;
+    // attribute: eximir ANTES del chequeo de fileSizeKb
+    if (layer.clipStrategy === 'attribute') return false;
     if (fs !== undefined && fs > ct.display) return true;
-    if (layer.clipStrategy === 'attribute')   return false;
     const geomType = layer.geomType || 'unknown';
     const fcHard   = ct.displayFcHard?.[geomType] ?? ct.displayFcHard?.unknown;
     if (fc !== undefined && fcHard !== undefined && fc > fcHard) return true;
