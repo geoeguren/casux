@@ -31,9 +31,9 @@ window.SUGGESTED_PROMPTS = (() => {
       layerKey: 'provincia_ar', weight: 10,
     },
     {
-      es: { text: 'Departamentos de Argentina',    prompt: 'Departamentos de Argentina' },
-      en: { text: 'Departments of Argentina',      prompt: 'Departments of Argentina' },
-      pt: { text: 'Departamentos da Argentina',    prompt: 'Departamentos da Argentina' },
+      es: { text: 'Departamentos de Córdoba',       prompt: 'Departamentos de la provincia de Córdoba' },
+      en: { text: 'Departments of Córdoba',         prompt: 'Departments of the province of Córdoba' },
+      pt: { text: 'Departamentos de Córdoba',       prompt: 'Departamentos da província de Córdoba' },
       layerKey: 'departamento_ar', weight: 8,
     },
     {
@@ -43,9 +43,9 @@ window.SUGGESTED_PROMPTS = (() => {
       layerKey: 'departamento_uy', weight: 8,
     },
     {
-      es: { text: 'Municipios de Argentina',       prompt: 'Municipios de Argentina' },
-      en: { text: 'Municipalities of Argentina',   prompt: 'Municipalities of Argentina' },
-      pt: { text: 'Municípios da Argentina',       prompt: 'Municípios da Argentina' },
+      es: { text: 'Municipios de Buenos Aires',    prompt: 'Municipios de la provincia de Buenos Aires' },
+      en: { text: 'Municipalities of Buenos Aires', prompt: 'Municipalities of the province of Buenos Aires' },
+      pt: { text: 'Municípios de Buenos Aires',    prompt: 'Municípios da província de Buenos Aires' },
       layerKey: 'municipio_ar', weight: 6,
     },
     // Transporte
@@ -56,9 +56,9 @@ window.SUGGESTED_PROMPTS = (() => {
       layerKey: 'vial_nacional_ar', weight: 10,
     },
     {
-      es: { text: 'Rutas provinciales de Argentina',         prompt: 'Red vial provincial de Argentina' },
-      en: { text: 'Provincial roads of Argentina',           prompt: 'Provincial road network of Argentina' },
-      pt: { text: 'Estradas provinciais da Argentina',       prompt: 'Rede rodoviária provincial da Argentina' },
+      es: { text: 'Rutas provinciales de Santa Fe',          prompt: 'Red vial provincial de Santa Fe' },
+      en: { text: 'Provincial roads of Santa Fe',            prompt: 'Provincial road network of Santa Fe' },
+      pt: { text: 'Estradas provinciais de Santa Fe',        prompt: 'Rede rodoviária provincial de Santa Fe' },
       layerKey: 'vial_provincial_ar', weight: 7,
     },
     {
@@ -86,12 +86,8 @@ window.SUGGESTED_PROMPTS = (() => {
       layerKey: 'puerto_ar', weight: 6,
     },
     // Hidrografía
-    {
-      es: { text: 'Ríos de Argentina',             prompt: 'Ríos y corrientes de Argentina' },
-      en: { text: 'Rivers of Argentina',           prompt: 'Rivers and streams of Argentina' },
-      pt: { text: 'Rios da Argentina',             prompt: 'Rios e córregos da Argentina' },
-      layerKey: 'rio_ar', weight: 8,
-    },
+    // rio_ar excluida: fileSizeKb=110 992 KB (108 MB) > límite 80 MB.
+    // Para ver ríos, el usuario puede pedir "ríos de la provincia de X".
     {
       es: { text: 'Lagos de Argentina',            prompt: 'Lagos y embalses de Argentina' },
       en: { text: 'Lakes of Argentina',            prompt: 'Lakes and reservoirs of Argentina' },
@@ -111,12 +107,8 @@ window.SUGGESTED_PROMPTS = (() => {
       pt: { text: 'Áreas protegidas da Argentina', prompt: 'Áreas protegidas da Argentina' },
       layerKey: 'area_protegida_ar', weight: 9,
     },
-    {
-      es: { text: 'Bosques de Argentina',          prompt: 'Bosques y selvas de Argentina' },
-      en: { text: 'Forests of Argentina',          prompt: 'Forests and jungles of Argentina' },
-      pt: { text: 'Florestas da Argentina',        prompt: 'Florestas e matas da Argentina' },
-      layerKey: 'bosque_ar', weight: 7,
-    },
+    // bosque_ar excluida: fileSizeKb=199 051 KB (194 MB) > límite 80 MB.
+    // Para ver bosques, el usuario puede pedir "bosques de la provincia de X".
     // Infraestructura
     {
       es: { text: 'Localidades de Argentina',      prompt: 'Localidades de Argentina' },
