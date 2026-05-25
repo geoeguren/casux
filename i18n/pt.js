@@ -347,6 +347,7 @@ window.I18N_PT = {
   validate_export_no_layers:            'Nenhuma camada carregada para exportar.',
   validate_basemap_invalid:             'Mapa base não reconhecido.',
   validate_layer_too_many_features:     '{titulo} é grande demais ({n}) para exibir por completo. Peça uma região ou província específica.',
+  validate_layer_may_be_slow:           '{titulo} ({n} features) pode demorar alguns segundos para carregar. Continuando mesmo assim.',
   validate_no_active_layers_to_add:     'Nenhuma camada carregada no mapa para adicionar.',
   validate_layer_already_on_map:        'Essa camada já está no mapa.',
   validate_filter_no_filterable_fields: 'Esta camada não tem campos filtráveis definidos.',
