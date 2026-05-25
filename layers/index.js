@@ -33,17 +33,47 @@ window.LAYERS = {
  * spatial eliminado — el recorte geométrico ahora lo hace el servidor (Vercel),
  *   no el cliente. No hay límite de features para operaciones espaciales.
  */
+// ── Umbrales de display (qué capas se pueden mostrar) ─────────────────────
+//
+// La señal primaria es fileSizeKb (peso real del GeoJSON descargado).
+// Si la capa no declara fileSizeKb, se usa featureCount como fallback.
+//
+// Lógica (aplicada en spatial.js, intent-validar.js y map-controls.js):
+//
+//   display:          límite en KB para desktop  → bloquea si fileSizeKb > 80 000 KB (80 MB)
+//   displayFcFallback: límite en features para desktop cuando no hay fileSizeKb → 100 000
+//   displayMobile:    límite en KB para móvil    → bloquea si fileSizeKb > 15 000 KB (15 MB)
+//   displayMobileFcFallback: límite features para móvil sin fileSizeKb → 20 000
+//
+// Por qué estos valores:
+//   - 80 MB desktop: límite práctico del parser JSON del browser sin freezear el hilo
+//     principal en hardware de gama media (>3 s de bloqueo). Leaflet también empieza
+//     a tener problemas de renderizado de polígonos complejos a partir de ese peso.
+//   - 15 MB móvil: en mobile la memoria disponible y la CPU son más limitadas.
+//     Representa ~40 K polígonos simples o ~5 K polígonos medianos, manejable.
+//   - fc fallback 100 K / 20 K: para capas sin fileSizeKb (principalmente fuentes
+//     ArcGIS REST de Chile que tienden a features simples). Más conservador en móvil.
+//
+// Antes: un único umbral `display: 55000` basado solo en featureCount.
+// Problema: 13 K polígonos hidrológicos de 115 M vértices pesaban 3 GB y pasaban,
+// mientras que 64 K puntos simples de 35 MB quedaban bloqueados incorrectamente.
+//
+// COBERTURA: 68% de las capas tienen fileSizeKb. El 32% restante (principalmente
+// mop.js de Chile) usa el fallback de featureCount hasta que se completen los campos.
 window.CLIP_THRESHOLDS = {
-  display: 55000,
+  display:                  80_000,  // KB — bloquea si fileSizeKb > 80 MB (desktop)
+  displayFcFallback:       100_000,  // features — fallback cuando no hay fileSizeKb (desktop)
+  displayMobile:            15_000,  // KB — bloquea si fileSizeKb > 15 MB (móvil)
+  displayMobileFcFallback:  20_000,  // features — fallback móvil sin fileSizeKb
 };
 
-/**
- * Umbral de clasificación de campos.
- * Si un campo tiene más de este número de valores únicos, no es clasificable en la UI.
- * Subir cuando el rendimiento del clasificador mejore.
- */
+// ── Umbral de clasificación de campos ──────────────────────────────────────
+//
+// Si un campo tiene más de este número de valores únicos, no es clasificable
+// en la UI (categorización). Alineado con el tamaño máximo de la paleta (12 colores).
+// Antes era 15 — con 13-15 clases las últimas no tenían color diferenciado.
 window.CLASSIFY_THRESHOLDS = {
-  maxUnique: 15,
+  maxUnique: 12,   // alineado con paleta categórica de 12 colores
 };
 
 
