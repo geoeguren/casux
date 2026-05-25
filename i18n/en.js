@@ -289,6 +289,7 @@ window.I18N_EN = {
   style_ask_color:         'What color would you like?',
   style_ask_size:          'What size would you like?',
   style_ask_weight:        'What thickness would you like?',
+  style_ask_dash:          'Which line style would you like?',
   style_ask_icon:          'Which icon would you like to use?',
   style_ask_geom:          'Which shape would you like to use?',
   style_ask_opacity:       'What opacity would you like?',
