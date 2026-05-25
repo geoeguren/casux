@@ -451,18 +451,31 @@ body.day, html.day .lea-advanced-btn:hover { background: rgba(0,0,0,0.05); color
 
 /* Banner informativo en capa clasificada — aparece inmediatamente debajo del último color picker */
 .lea-classified-banner {
-  display: flex; align-items: center; gap: 7px;
+  display: flex; align-items: flex-start; gap: 7px;
   padding: 4px 16px 6px;
   font-size: 12px; color: var(--cream2); font-family: var(--font-sans); line-height: 1.4;
 }
+.lea-classified-banner .material-icons {
+  margin-top: 1px; /* alinea el ícono con la primera línea del texto */
+}
 body.day, html.day .lea-classified-banner { color: #6a6560; }
+
+/* Filas de color deshabilitadas (capa clasificada) — la fila entera reduce su peso visual */
+.lea-row--color-disabled {
+  opacity: 0.38;
+  pointer-events: none;
+  cursor: not-allowed;
+}
 
 /* Hint de override por clase — aparece debajo de los controles cuando hay
    clases con ese parámetro personalizado en su styleMap */
 .lea-override-hint {
   margin: 0; padding: 5px 16px 7px;
   font-size: 12px; color: var(--cream2); font-family: var(--font-sans); line-height: 1.4;
-  display: flex; align-items: center; gap: 4px;
+  display: flex; align-items: flex-start; gap: 4px;
+}
+.lea-override-hint .material-icons {
+  margin-top: 1px;
 }
 body.day, html.day .lea-override-hint { color: #8a8580; }
 
