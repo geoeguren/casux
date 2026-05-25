@@ -836,10 +836,4 @@ body.day, html.day .leaflet-control-attribution { background: rgba(240,237,232,0
     border-radius: var(--radius-sm) !important;
   }
 
-  /* Modal de edición avanzada: ocultar en mobile */
-  #adv-modal-backdrop,
-  #adv-modal {
-    display: none !important;
-  }
-
 }
