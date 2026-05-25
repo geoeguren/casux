@@ -303,7 +303,7 @@ body.day, html.day .adv-modal-title { color: #1a1814; }
 body.day, html.day .adv-modal-pills { border-color: #c8c4be; }
 
 .adv-pill {
-  padding: 5px 14px; border-radius: 20px;
+  padding: 5px 14px; border-radius: var(--radius-sm);
   background: transparent; border: 0.5px solid var(--border-md);
   font-family: var(--font-sans); font-size: 13px; color: var(--cream2);
   cursor: pointer; white-space: nowrap;
