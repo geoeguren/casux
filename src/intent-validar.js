@@ -41,8 +41,9 @@
  *     - La capa debe estar en activeLayers
  *
  *   CAPA:
- *     - fileSizeKb > 80 MB (desktop) ó > 15 MB (móvil) → bloqueada por peso
- *     - Sin fileSizeKb: featureCount > 100 000 (desktop) ó > 20 000 (móvil) → bloqueada
+ *     - fileSizeKb > 30 MB (desktop) ó > 8 MB (móvil) → bloqueada por peso
+ *     - Sin fileSizeKb: featureCount > 40 000 (desktop) ó > 10 000 (móvil) → bloqueada
+ *     - featureCount > 25 000 (desktop) ó > 12 000 (móvil) → bloqueada por límite duro
  *     - clipStrategy 'none' → no se puede recortar
  *
  *   FILTRAR:
@@ -63,16 +64,14 @@ window.INTENT_VALIDAR = (() => {
   // Defaults para display (usados si CLIP_THRESHOLDS no cargó).
   // La señal primaria es fileSizeKb; featureCount es fallback.
   // Ver documentación completa en layers/index.js.
-  const _DISPLAY_FS_DEFAULT = 80_000;   // KB
-  const _DISPLAY_FC_DEFAULT = 100_000;  // features
-
   // Helper: guardia rápida pre-fetch usando campos del catálogo.
-  // La verificación definitiva ocurre en spatial.js con un hits request real al servidor.
+  // La verificación definitiva ocurre en spatial.js justo antes del fetch.
+  // CLIP_THRESHOLDS siempre está disponible (carga sincrónica en layers/index.js).
   function _estaRestringida(layerDef) {
-    const ct = window.CLIP_THRESHOLDS || {};
-    const fsLimit    = ct.display            ?? _DISPLAY_FS_DEFAULT;
-    const fcFallback = ct.displayFcFallback  ?? _DISPLAY_FC_DEFAULT;
-    const fcHard     = ct.displayFcHard      ?? 55_000;
+    const ct = window.CLIP_THRESHOLDS;
+    const fsLimit    = ct.display;
+    const fcFallback = ct.displayFcFallback;
+    const fcHard     = ct.displayFcHard;
     const fs = layerDef?.fileSizeKb;
     const fc = layerDef?.featureCount;
     if (fs !== undefined && fs > fsLimit)  return true;
