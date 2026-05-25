@@ -11,10 +11,39 @@
  * Contiene: showStyleFlow, showStyleFlowForLayer,
  *           _applyStyle, _applyColorChange,
  *           _showColorPicker, _showSlider, _showOpacitySlider,
- *           _showIconPicker, _showGeomPicker,
+ *           _showDashPicker, _showIconPicker, _showGeomPicker,
  *           _showParamButtons, _showParamControl, _showLayerButtons,
  *           _makeConfirmMsg, _makeConfirmBtn,
  *           _openLayerStyleEditor, _openLayerAdvancedModal, _validateParam
+ *
+ * ── BRECHAS CON EL PANEL DE EDICIÓN SIMPLE ────────────────────────────────
+ *
+ * El chat y el panel de edición simple NO son funcionalmente equivalentes.
+ * Las diferencias documentadas abajo están pendientes de resolver.
+ * Ver análisis completo en la sesión del 24/05/2026.
+ *
+ * [BRECHA-1] Color de borde y relleno por separado
+ *   Panel: dos color pickers independientes (fillColor y color).
+ *   Chat:  un único "color" — _applyColorChange infiere el borde automáticamente
+ *          oscureciendo el fillColor un 12%. El usuario no puede controlar
+ *          el color de borde de forma independiente desde el chat.
+ *   Para implementar: agregar 'borderColor' y 'fillColor' como props distinguibles
+ *   en GEOM_PROPS_VALIDAS (point, polygon), actualizar intent-verbos con vocabulario
+ *   para "borde" vs "relleno", y agregar los pickers correspondientes acá.
+ *
+ * [BRECHA-2] El color picker no refleja el color actual de la capa
+ *   Panel: los controles muestran el valor real de la propiedad.
+ *   Chat:  el color picker sugiere 3 colores aleatorios de STYLE_PALETTE,
+ *          sin mostrar el color actualmente aplicado. El slider sí lee el
+ *          valor actual (cur = layer.style?.[prop]).
+ *   Para implementar: agregar el color actual como primera opción visual
+ *   (con etiqueta "actual") antes de las sugerencias aleatorias.
+ *
+ * [BRECHA-3] Ícono SVG no disponible en el panel simple (solo en modal avanzado)
+ *   Panel: el panel simple NO tiene selector de ícono — solo en modal avanzado.
+ *   Chat:  sí tiene _showIconPicker con sugerencias contextuales.
+ *   No es una brecha a corregir — es una diferencia de diseño intencional.
+ *   El chat tiene más capacidad que el panel en este punto.
  */
 
 (function () {
@@ -332,6 +361,31 @@
     window.UI.scrollBottom();
   }
 
+  // ── Patrón de línea (dashArray) ───────────────────────────────
+
+  function _showDashPicker(container, mapKey, layer, containerRef) {
+    const cur = layer.style?.dashArray || 'none';
+    const dashId = `chat-dash-${mapKey}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    const wrap = document.createElement('div');
+    wrap.className = 'style-slider-wrap'; // reutiliza el padding del slider
+
+    // buildDashSelect y wireCsel viven en LP_UTILS (layers-panel-utils.js)
+    wrap.innerHTML = window.LP_UTILS?.buildDashSelect?.(cur, dashId) || '';
+
+    container.appendChild(wrap);
+
+    window.LP_UTILS?.wireCsel?.(wrap, dashId, (dashVal) => {
+      const newStyle = { dashArray: dashVal === 'none' ? null : dashVal };
+      _applyStyle(mapKey, newStyle);
+      window.UI.addMessage('assistant', t('style_applied'));
+      containerRef?.remove();
+      window.UI.scrollBottom();
+    });
+
+    window.UI.scrollBottom();
+  }
+
   // ── Geometría (puntos) ───────────────────────────────────────
 
   function _showGeomPicker(container, mapKey, layer, containerRef) {
@@ -369,12 +423,13 @@
     const validProps = window.INTENT_VALIDAR?.getPropsValidasParaGeom?.(geom) || ['color', 'opacity'];
 
     const PROP_LABELS = {
-      color:   () => t('style_color'),
-      radius:  () => t('style_size'),
-      weight:  () => t('style_weight'),
-      icon:    () => t('adv_svg_title'),
-      geom:    () => t('style_geometry'),
-      opacity: () => t('style_opacity'),
+      color:     () => t('style_color'),
+      radius:    () => t('style_size'),
+      weight:    () => t('style_weight'),
+      dashArray: () => t('style_dash'),
+      icon:      () => t('adv_svg_title'),
+      geom:      () => t('style_geometry'),
+      opacity:   () => t('style_opacity'),
     };
 
     const params = validProps
@@ -415,12 +470,13 @@
       _showParamButtons(container, mapKey, layer, chatTitulo, containerRef);
       return;
     }
-    if (param === 'color')   _showColorPicker(container, mapKey, layer, containerRef);
-    if (param === 'radius')  _showSlider(container, mapKey, layer, 'radius', containerRef);
-    if (param === 'weight')  _showSlider(container, mapKey, layer, 'weight', containerRef);
-    if (param === 'opacity') _showOpacitySlider(container, mapKey, layer, containerRef);
-    if (param === 'icon')    _showIconPicker(container, mapKey, layer, chatTitulo, containerRef);
-    if (param === 'geom')    _showGeomPicker(container, mapKey, layer, containerRef);
+    if (param === 'color')     _showColorPicker(container, mapKey, layer, containerRef);
+    if (param === 'radius')    _showSlider(container, mapKey, layer, 'radius', containerRef);
+    if (param === 'weight')    _showSlider(container, mapKey, layer, 'weight', containerRef);
+    if (param === 'dashArray') _showDashPicker(container, mapKey, layer, containerRef);
+    if (param === 'opacity')   _showOpacitySlider(container, mapKey, layer, containerRef);
+    if (param === 'icon')      _showIconPicker(container, mapKey, layer, chatTitulo, containerRef);
+    if (param === 'geom')      _showGeomPicker(container, mapKey, layer, containerRef);
   }
 
   // ── Paso A: elegir capa ───────────────────────────────────────
@@ -534,11 +590,12 @@
     const param = intencion?.parametros?.param || null;
 
     const paramQuestions = {
-      color:  t('style_ask_color'),
-      radius: t('style_ask_size'),
-      weight: t('style_ask_weight'),
-      icon:   t('style_ask_icon'),
-      geom:   t('style_ask_geom'),
+      color:     t('style_ask_color'),
+      radius:    t('style_ask_size'),
+      weight:    t('style_ask_weight'),
+      dashArray: t('style_ask_dash'),
+      icon:      t('style_ask_icon'),
+      geom:      t('style_ask_geom'),
     };
     const question = (param && paramQuestions[param]) || t('style_what_to_change');
     const msgEl = window.UI.addMessage('assistant', question);
@@ -598,12 +655,13 @@
     const param = intencion?.parametros?.param || null;
 
     const _PARAM_QUESTIONS = {
-      color:   'style_ask_color',
-      radius:  'style_ask_size',
-      weight:  'style_ask_weight',
-      icon:    'style_ask_icon',
-      geom:    'style_ask_geom',
-      opacity: 'style_ask_opacity',
+      color:     'style_ask_color',
+      radius:    'style_ask_size',
+      weight:    'style_ask_weight',
+      dashArray: 'style_ask_dash',
+      icon:      'style_ask_icon',
+      geom:      'style_ask_geom',
+      opacity:   'style_ask_opacity',
     };
     const msgEl = window.UI.addMessage('assistant',
       param ? t(_PARAM_QUESTIONS[param] || 'style_what_to_change') : t('style_what_to_change')
