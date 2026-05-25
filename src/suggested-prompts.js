@@ -345,11 +345,30 @@ window.SUGGESTED_PROMPTS = (() => {
   }
 
   // Filtra el pool dejando solo las capas que existen en window.LAYERS
+  // y que no están restringidas por peso/featureCount (sin filtro = no cargarían).
+  function _estaRestringida(layerDef) {
+    const ct = window.CLIP_THRESHOLDS || {};
+    const fsLimit    = ct.display           ?? 80_000;
+    const fcFallback = ct.displayFcFallback ?? 100_000;
+    const fcHard     = ct.displayFcHard     ?? 55_000;
+    const fs = layerDef?.fileSizeKb;
+    const fc = layerDef?.featureCount;
+    if (fs !== undefined && fs > fsLimit)  return true;
+    if (fc !== undefined && fc > fcHard)   return true;
+    if (fs === undefined && fc !== undefined && fc > fcFallback) return true;
+    return false;
+  }
+
   function _available() {
     const layers = window.LAYERS || {};
     const lang   = _lang();
     return POOL
-      .filter(p => layers[p.layerKey] && p[lang])
+      .filter(p => {
+        if (!layers[p.layerKey] || !p[lang]) return false;
+        // Excluir capas que el validador bloquearía sin filtro espacial
+        if (_estaRestringida(layers[p.layerKey])) return false;
+        return true;
+      })
       .map(p => ({ ...p[lang], layerKey: p.layerKey, weight: p.weight }));
   }
 
