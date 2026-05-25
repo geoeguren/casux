@@ -280,6 +280,8 @@ window.I18N_ES = {
   adv_modal_title:         'Edición avanzada',
   adv_no_fields:           'Esta capa no tiene campos clasificables.',
   adv_simple_note:         'El estilo simple se edita directamente en el panel de capas.',
+  simple_blocked_classified: 'Esta capa tiene una clasificación activa. Para editar el estilo simple, primero eliminá la clasificación.',
+  simple_clear_classification: 'Borrar clasificación',
   adv_no_numeric_fields:   'Esta capa no tiene campos numéricos.',
 
   // ── Botones de estilo ─────────────────────────────────────────
