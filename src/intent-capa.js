@@ -542,6 +542,41 @@ window.INTENT_CAPA = (() => {
   // Si es válida, devuelve { tipo: 'capa', parametros: { instruccion } }.
 
   function _validarYRetornar(instruccion, layerDef) {
+    // ── Restricción de tamaño/featureCount ───────────────────────
+    // Bloquear antes de intentar cualquier fetch si la capa supera los umbrales
+    // de display Y el pedido no lleva filtro espacial (sin área de referencia).
+    // Esto evita que wfs.js intente descargar cientos de MB antes de detectar
+    // el problema, que es el comportamiento previo al fix.
+    const tieneArea = !!(instruccion.filtro || instruccion.clipArea?.value ||
+                        instruccion.withinArea?.value || instruccion.refLayerKey ||
+                        instruccion.nearestArea?.value);
+    if (!tieneArea && window.INTENT_VALIDAR?._estaRestringidaPublic) {
+      // Usar API pública si está disponible (ver intent-validar.js)
+    }
+    if (!tieneArea && layerDef) {
+      const ct = window.CLIP_THRESHOLDS || {};
+      const fsLimit    = ct.display           ?? 80_000;
+      const fcFallback = ct.displayFcFallback ?? 100_000;
+      const fcHard     = ct.displayFcHard     ?? 55_000;
+      const fs = layerDef.fileSizeKb;
+      const fc = layerDef.featureCount;
+      const restringida =
+        (fs !== undefined && fs > fsLimit) ||
+        (fc !== undefined && fc > fcHard)  ||
+        (fs === undefined && fc !== undefined && fc > fcFallback);
+      if (restringida) {
+        const titulo = layerDef.titulo || instruccion.layerKey;
+        const n = fs !== undefined ? `${(fs / 1024).toFixed(0)} mb` : (fc?.toLocaleString() ?? '?');
+        return {
+          tipo:       '_validacion_error',
+          parametros: {
+            error:       'validate_layer_too_many_features',
+            errorParams: { titulo, n, tipo: fs !== undefined ? 'size' : 'count' },
+          },
+        };
+      }
+    }
+
     const op = instruccion.op || 'clip';
     const validacion = window.INTENT_VALIDAR?.validarOpEspacial?.(op, instruccion, layerDef);
 
