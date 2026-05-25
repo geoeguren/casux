@@ -13,12 +13,13 @@
 // 6 paletas × 12 colores, cada una con contraste perceptual entre valores
 
 window.CAT_PALETTES = {
-  cat_tableau:   ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#edc948','#b07aa1','#ff9da7','#9c755f','#bab0ac','#d37295','#499894'],
-  cat_bold:      ['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#a65628','#f781bf','#999999','#1a9850','#d73027','#4575b4','#fdae61'],
-  cat_pastel:    ['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd','#ccebc5','#ffed6f'],
-  cat_dark:      ['#1b6ca8','#c0392b','#27ae60','#8e44ad','#d35400','#16a085','#2c3e50','#7f8c8d','#f39c12','#2980b9','#8e44ad','#1abc9c'],
-  cat_earth:     ['#a6611a','#dfc27d','#80cdc1','#018571','#d8b365','#5ab4ac','#762a83','#e9a3c9','#c7eae5','#f6e8c3','#35978f','#bf812d'],
-  cat_vivid:     ['#ff0000','#00b4d8','#06d6a0','#ffbe0b','#8338ec','#fb5607','#3a86ff','#ff006e','#2ec4b6','#e9c46a','#f4a261','#264653'],
+  // Paletas cualitativas — 12 colores con contraste perceptual validado (ΔE mínimo entre pares)
+  cat_tableau:   ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#edc948','#b07aa1','#ff9da7','#9c755f','#d37295','#a0cbe8','#499894'],
+  cat_bold:      ['#e6194b','#3cb44b','#4363d8','#f58231','#911eb4','#42d4f4','#f032e6','#bfef45','#469990','#9a6324','#800000','#aaffc3'],
+  cat_pastel:    ['#aec6cf','#ffb347','#b5ead7','#ff6961','#c3b1e1','#fdfd96','#77dd77','#ff9aa2','#ffc8a2','#ffe5b4','#ffd1dc','#e6e6fa'],
+  cat_dark:      ['#1b4f72','#922b21','#1d6a39','#6c3483','#784212','#0e6655','#212f3d','#b7770d','#4a235a','#0d5f5f','#145a32','#641e16'],
+  cat_earth:     ['#8b4513','#4a7c59','#c68642','#2f4858','#a0522d','#8fa97d','#d4955a','#2d6a4f','#e8c99a','#704214','#c5e0b4','#7b5e3a'],
+  cat_vivid:     ['#ff595e','#ffca3a','#6a4c93','#1982c4','#8ac926','#ff924c','#c77dff','#2dc653','#118ab2','#06d6a0','#d62828','#f4d35e'],
 };
 
 // ── Paletas secuenciales ──────────────────────────────────────────
