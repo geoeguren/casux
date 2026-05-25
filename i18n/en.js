@@ -280,6 +280,8 @@ window.I18N_EN = {
   adv_modal_title:         'Advanced edit',
   adv_no_fields:           'This layer has no classifiable fields.',
   adv_simple_note:         'Simple style is edited directly in the layers panel.',
+  simple_blocked_classified: 'This layer has an active classification. To edit the simple style, remove the classification first.',
+  simple_clear_classification: 'Clear classification',
   adv_no_numeric_fields:   'This layer has no numeric fields.',
 
   // ── Style buttons ─────────────────────────────────────────────
