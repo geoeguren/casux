@@ -172,10 +172,9 @@ window._SPATIAL_UTILS = (() => {
   // Problema: municipios (~2 300 features, ~1 MB) iban al servidor innecesariamente,
   // consumiendo invocaciones de Vercel y fallando por timeout en Hobby (10 s).
 
-  const EDGE_FN_UMBRAL_KB = 2_000;  // KB — fileSizeKb por encima del cual usar edge function
-  const EDGE_FN_UMBRAL_FC = 2_000;  // features — fallback cuando no hay fileSizeKb
-
   function deberiaUsarEdgeFunction(layerDef, op, isArcgis) {
+    const EDGE_FN_UMBRAL_KB = window.CLIP_THRESHOLDS?.edgeFnUmbralKb ?? 2_000;
+    const EDGE_FN_UMBRAL_FC = window.CLIP_THRESHOLDS?.edgeFnUmbralFc ?? 2_000;
     if (isArcgis)                    return false;
     if (op === 'clip_exclude')       return false;
     if (op === 'intersect_exclude')  return false;
