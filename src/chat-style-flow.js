@@ -135,6 +135,33 @@
   // ── Paso C: controles según parámetro ────────────────────────
 
   function _showColorPicker(container, mapKey, layer, containerRef) {
+    // Verificar clasificación activa — el selector de color puede llegar acá
+    // sin haber pasado por el chequeo de clasificación de send() cuando el
+    // usuario llega desde el selector de capa (showLayerSelectorForAction).
+    const activeLayersCheck = window.MAP?.getActiveLayers?.() || {};
+    const entryCheck = activeLayersCheck[mapKey];
+    if (entryCheck?.classification?.field) {
+      const warnEl = window.UI.addMessage('assistant', t('style_classified_warning'));
+      window.UI.showClassifiedStyleChoice(warnEl, mapKey,
+        () => {
+          // Mantener clasificación → no tocar el color
+          window.UI.addMessage('assistant', t('style_keep_classification'));
+          containerRef?.remove();
+          window.UI.scrollBottom();
+        },
+        () => {
+          // Reemplazar → limpiar clasificación y mostrar el picker
+          window.MAP?.clearClassification?.(mapKey);
+          window.LP_PANEL?.persistClassification?.(mapKey, null);
+          const layerFresh = window.MAP?.getActiveLayers?.()[mapKey] || layer;
+          containerRef.innerHTML = '';
+          _showColorPicker(containerRef, mapKey, layerFresh, containerRef);
+          window.UI.scrollBottom();
+        }
+      );
+      return;
+    }
+
     const currentFill = layer.style?.fillColor || layer.style?.color || '#888888';
     const colors = _suggestColors(currentFill);
     const wrap = document.createElement('div');
@@ -415,7 +442,12 @@
       const _tit     = layer.tituloUI || layer.titulo || mapKey;
       const _autoMsg = document.createElement('div');
       _autoMsg.className = 'msg-export-confirm';
-      _autoMsg.textContent = t('style_auto_layer', { geom: t(_geomKey), titulo: _tit });
+      // radius/icon/geom son exclusivos de puntos — el mensaje puede decir "solo aplica a puntos".
+      // weight aplica a líneas y polígonos — el mensaje evita mencionar geometría exclusiva.
+      const _exclusivoGeom = ['radius', 'icon', 'geom'].includes(param);
+      _autoMsg.textContent = _exclusivoGeom
+        ? t('style_auto_layer', { geom: t(_geomKey), titulo: _tit })
+        : t('style_auto_layer_only', { titulo: _tit });
       container.appendChild(_autoMsg);
       _showParamControl(container, mapKey, layer, param, chatTitulo, containerRef);
       window.UI.scrollBottom();
