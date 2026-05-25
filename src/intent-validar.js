@@ -66,7 +66,7 @@ window.INTENT_VALIDAR = (() => {
 
   const GEOM_PROPS_VALIDAS = {
     point:   new Set(['color', 'radius', 'weight', 'icon', 'geom', 'opacity']),
-    line:    new Set(['color', 'weight', 'opacity']),
+    line:    new Set(['color', 'weight', 'opacity', 'dashArray']),
     polygon: new Set(['color', 'opacity', 'weight']),
     unknown: new Set(['color', 'opacity']),
     none:    new Set(),
