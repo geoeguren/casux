@@ -138,11 +138,9 @@ body {
 .summary-chip.pend .dot { background: var(--cream2); animation: pulse 1.2s ease-in-out infinite; }
 .summary-chip.info .dot { background: var(--accent); }
 
-/* Pill activo — fondo tenue del color + texto contrastado en ambos temas */
-.summary-chip.ok.active  { background: rgba(82,183,136,.15); border-color: rgba(82,183,136,.45); color: #2d7a5a; }
-.summary-chip.err.active { background: rgba(230,57,70,.12);  border-color: rgba(230,57,70,.45);  color: #b02030; }
-body.day .summary-chip.ok.active  { color: #1a5e3e; }
-body.day .summary-chip.err.active { color: #8b1520; }
+/* Pill activo — fondo tenue del color, texto queda igual */
+.summary-chip.ok.active  { background: rgba(82,183,136,.15); border-color: rgba(82,183,136,.45); color: var(--cream); }
+.summary-chip.err.active { background: rgba(230,57,70,.12);  border-color: rgba(230,57,70,.45);  color: var(--cream); }
 
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
@@ -329,9 +327,8 @@ body.day .summary-chip.err.active { color: #8b1520; }
 .summary-chip.soon-chip.active {
   background: rgba(200,160,40,0.12);
   border-color: rgba(200,160,40,0.45);
-  color: #a07800;
+  color: var(--cream);
 }
-body.day .summary-chip.soon-chip.active { color: #7a5c00; }
 
 /* Pill 'todos' activo — removed */
 
