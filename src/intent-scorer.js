@@ -56,13 +56,18 @@ window.INTENT_SCORER = (() => {
   // Palabras de contexto administrativo — se usan para distinguir el nombre
   // del país como área administrativa vs. como referencia geográfica general.
   // Ej: "departamento Uruguay" (en Entre Ríos) vs. "capas de Uruguay" (el país).
-  const CONTEXTO_ADMIN = /\b(departamento|depto|partido|provincia|prov|municipio|municipios|distrito)\b/;
+  const CONTEXTO_ADMIN = /\b(departamentos?|depto|partidos?|provincias?|prov|municipios?|distritos?)\b/;
 
   // Tokens de contexto administrativo que se filtran antes del scoring
   // para que no contaminen el matching de keywords de capas.
+  // Incluye plurales: "provincias de Argentina adyacentes al río Paraná" → 'provincias'
+  // no debe matchear keywords genéricas de capas que mencionan 'provincia'.
   const CONTEXTO_ADMIN_TOKENS = new Set([
-    'departamento', 'depto', 'partido', 'provincia', 'prov',
-    'municipio', 'distrito',
+    'departamento', 'departamentos', 'depto',
+    'partido', 'partidos',
+    'provincia', 'provincias', 'prov',
+    'municipio', 'municipios',
+    'distrito', 'distritos',
   ]);
 
   // ── detectarArea ─────────────────────────────────────────────
