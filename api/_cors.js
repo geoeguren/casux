@@ -15,10 +15,15 @@
  */
 
 // Dominios autorizados a llamar a las APIs.
-// Agregar dominios de preview de Vercel si se usan (*.vercel.app).
 const ALLOWED_ORIGINS = new Set([
   'https://casux.vercel.app',
 ]);
+
+// Patrones de origen permitidos (substring match sobre el origin).
+// Cubre todos los preview deploys de Vercel del proyecto casux.
+const ALLOWED_PATTERNS = [
+  'https://casux-',  // preview branches: casux-git-branch-xxx.vercel.app
+];
 
 /**
  * checkOrigin(req) → boolean
@@ -37,10 +42,14 @@ function checkOrigin(req) {
   const origin  = req.headers['origin']  || '';
   const referer = req.headers['referer'] || '';
 
-  // Aceptar si origin está en la lista, o si el referer empieza con un origen permitido
+  // Aceptar si origin está en la lista exacta, o si matchea algún patrón de preview
   for (const allowed of ALLOWED_ORIGINS) {
     if (origin === allowed) return true;
     if (referer.startsWith(allowed)) return true;
+  }
+  for (const pattern of ALLOWED_PATTERNS) {
+    if (origin.startsWith(pattern) && origin.endsWith('.vercel.app')) return true;
+    if (referer.startsWith(pattern)) return true;
   }
 
   // Aceptar requests sin origin (ej: curl interno de Vercel, server-to-server)
