@@ -54,7 +54,7 @@ window.LP_PANEL = (() => {
 
 window.LAYERS_PANEL = (() => {
 
-  const { esc, geomSVG }       = window.LP_UTILS;
+  const { esc, geomSVG, wireTouchDrag } = window.LP_UTILS;
   const { closeEditAccordion,
           toggleEditAccordion } = window.LP_STYLE;
 
@@ -173,6 +173,21 @@ window.LAYERS_PANEL = (() => {
         renderLayerRows(sec);
       });
     });
+
+    // Soporte táctil (móvil): la HTML5 Drag & Drop API no funciona en touch.
+    wireTouchDrag(
+      sec,
+      '.layers-data-row',
+      '.layer-drag-handle',
+      () => {
+        // Sincronizar el orden lógico con el nuevo orden visual del DOM
+        const keys = [...sec.querySelectorAll('.layers-data-row')].map(r => r.dataset.key);
+        keys.forEach((key, idx) => {
+          window.MAP.moveLayer(key, idx);
+        });
+        window.MAP.updateLegend?.();
+      }
+    );
   }
 
   // ── Toggle del dropdown principal ─────────────────────────────
