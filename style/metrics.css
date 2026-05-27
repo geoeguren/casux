@@ -442,8 +442,8 @@ body.day .layer-count { color: #9a9590; }
 
 .last-updated {
   font-size: 12px;
-  color: var(--cream3);
-  margin-top: 4px;
+  color: var(--cream2);
+  margin-top: 6px;
   margin-bottom: 20px;
   font-family: var(--font-sans);
 }
