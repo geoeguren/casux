@@ -37,17 +37,6 @@ const UI = {
     chartMapsByDay:     'mapas generados por día',
     chartSessionsByDay: 'sesiones por día',
     noData:             'sin datos',
-    distAnon:           'anónimos',
-    distRegistered:     'registrados',
-    opClip:             'Recorte',
-    opClipExclude:      'Recorte inverso',
-    opIntersect:        'Intersección',
-    opIntersectExclude: 'Intersección inversa',
-    opBuffer:           'Área de influencia',
-    opBufferExclude:    'Área de influencia inversa',
-    srcAr:              '🇦🇷 Argentina',
-    srcUy:              '🇺🇾 Uruguay',
-    srcCl:              '🇨🇱 Chile',
     btnStatus:          'ESTADO DE GEOSERVICIOS',
     computedAt:         'Calculado',
     retryBtn:           'Reintentar',
@@ -58,9 +47,6 @@ const UI = {
     sectionTrends:      'Evolución',
     sectionExperience:  'Experiencia',
     sectionTopLayers:   'Capas más usadas',
-    sectionAudience:    'Audiencia',
-    sectionOperations:  'Operaciones',
-    sectionSources:     'Datos por país',
 
     periodLabels: {
       '7d':  'últimos 7 días',
@@ -93,17 +79,6 @@ const UI = {
     chartMapsByDay:     'maps generated per day',
     chartSessionsByDay: 'sessions per day',
     noData:             'no data',
-    distAnon:           'anonymous',
-    distRegistered:     'registered',
-    opClip:             'Clip',
-    opClipExclude:      'Inverse clip',
-    opIntersect:        'Intersect',
-    opIntersectExclude: 'Inverse intersect',
-    opBuffer:           'Buffer',
-    opBufferExclude:    'Inverse buffer',
-    srcAr:              '🇦🇷 Argentina',
-    srcUy:              '🇺🇾 Uruguay',
-    srcCl:              '🇨🇱 Chile',
     btnStatus:          'GEOSERVICE STATUS',
     computedAt:         'Computed',
     retryBtn:           'Retry',
@@ -114,9 +89,6 @@ const UI = {
     sectionTrends:      'Trends',
     sectionExperience:  'Experience',
     sectionTopLayers:   'Top layers',
-    sectionAudience:    'Audience',
-    sectionOperations:  'Operations',
-    sectionSources:     'Data by country',
 
     periodLabels: {
       '7d':  'last 7 days',
@@ -149,17 +121,6 @@ const UI = {
     chartMapsByDay:     'mapas gerados por dia',
     chartSessionsByDay: 'sessões por dia',
     noData:             'sem dados',
-    distAnon:           'anônimos',
-    distRegistered:     'registrados',
-    opClip:             'Recorte',
-    opClipExclude:      'Recorte inverso',
-    opIntersect:        'Interseção',
-    opIntersectExclude: 'Interseção inversa',
-    opBuffer:           'Área de influência',
-    opBufferExclude:    'Área de influência inversa',
-    srcAr:              '🇦🇷 Argentina',
-    srcUy:              '🇺🇾 Uruguay',
-    srcCl:              '🇨🇱 Chile',
     btnStatus:          'ESTADO DOS GEOSERVIÇOS',
     computedAt:         'Calculado',
     retryBtn:           'Tentar novamente',
@@ -170,9 +131,6 @@ const UI = {
     sectionTrends:      'Evolução',
     sectionExperience:  'Experiência',
     sectionTopLayers:   'Camadas mais usadas',
-    sectionAudience:    'Audiência',
-    sectionOperations:  'Operações',
-    sectionSources:     'Dados por país',
 
     periodLabels: {
       '7d':  'últimos 7 dias',
@@ -327,82 +285,6 @@ function renderTopLayers(layers) {
   return `<div class="layers-table">${rows}</div>`;
 }
 
-function renderDistLang(byLang) {
-  const data  = byLang || {};
-  const total = Object.values(data).reduce((a, b) => a + b, 0);
-  const langs = [
-    { code: 'es', label: 'Español' },
-    { code: 'en', label: 'English' },
-    { code: 'pt', label: 'Português' },
-  ];
-  const cards = langs.map(({ code, label }) => {
-    const count = data[code] || 0;
-    const pct   = total > 0 ? Math.round((count / total) * 100) : 0;
-    return `<div class="kpi-card"><div class="kpi-value">${pct}%</div><div class="kpi-label">${label}</div></div>`;
-  }).join('');
-  return `<div class="kpi-grid">${cards}</div>`;
-}
-
-function renderDistDevice(byDevice) {
-  if (!byDevice) return '';
-  const total      = (byDevice.mobile || 0) + (byDevice.desktop || 0);
-  const mobilePct  = total > 0 ? Math.round((byDevice.mobile  / total) * 100) : 0;
-  const desktopPct = total > 0 ? Math.round((byDevice.desktop / total) * 100) : 0;
-  return `<div class="kpi-grid">
-    <div class="kpi-card"><div class="kpi-value">${mobilePct}%</div><div class="kpi-label">Mobile</div></div>
-    <div class="kpi-card"><div class="kpi-value">${desktopPct}%</div><div class="kpi-label">Desktop</div></div>
-  </div>`;
-}
-
-function renderDistUserType(byUserType) {
-  if (!byUserType) return '';
-  const total   = (byUserType.anon || 0) + (byUserType.registered || 0);
-  const anonPct = total > 0 ? Math.round(((byUserType.anon || 0) / total) * 100) : 0;
-  const regPct  = total > 0 ? Math.round(((byUserType.registered || 0) / total) * 100) : 0;
-  return `<div class="kpi-grid">
-    <div class="kpi-card"><div class="kpi-value">${anonPct}%</div><div class="kpi-label">${t('distAnon')}</div></div>
-    <div class="kpi-card"><div class="kpi-value">${regPct}%</div><div class="kpi-label">${t('distRegistered')}</div></div>
-  </div>`;
-}
-
-function opLabel(op) {
-  const map = {
-    clip:              'opClip',
-    clip_exclude:      'opClipExclude',
-    intersect:         'opIntersect',
-    intersect_exclude: 'opIntersectExclude',
-    buffer:            'opBuffer',
-    buffer_exclude:    'opBufferExclude',
-  };
-  return map[op] ? t(map[op]) : op;
-}
-
-function renderDistQueryType(byQueryType) {
-  if (!byQueryType || !Object.keys(byQueryType).length) return '';
-  const total = Object.values(byQueryType).reduce((a, b) => a + b, 0);
-  const cards = Object.entries(byQueryType)
-    .sort((a, b) => b[1] - a[1])
-    .map(([op, count]) => {
-      const pct = Math.round((count / total) * 100);
-      return `<div class="kpi-card"><div class="kpi-value">${pct}%</div><div class="kpi-label">${opLabel(op)}</div></div>`;
-    }).join('');
-  return `<div class="kpi-grid">${cards}</div>`;
-}
-
-const SOURCE_LABELS = { ar: '🇦🇷 Argentina', uy: '🇺🇾 Uruguay', cl: '🇨🇱 Chile' };
-
-function renderDistSource(bySource) {
-  if (!bySource || !Object.keys(bySource).length) return '';
-  const total = Object.values(bySource).reduce((a, b) => a + b, 0);
-  const cards = Object.entries(bySource)
-    .sort((a, b) => b[1] - a[1])
-    .map(([src, count]) => {
-      const pct = Math.round((count / total) * 100);
-      return `<div class="kpi-card"><div class="kpi-value">${pct}%</div><div class="kpi-label">${SOURCE_LABELS[src] || src.toUpperCase()}</div></div>`;
-    }).join('');
-  return `<div class="kpi-grid">${cards}</div>`;
-}
-
 function renderMetrics(d) {
   const periodLabel = t('periodLabels');
   const S = (title) => `<div class="section-header"><span class="section-title">${title}</span></div>`;
@@ -462,18 +344,6 @@ function renderMetrics(d) {
     <!-- ── Capas más usadas ───────────────────────────────────── -->
     ${S(t('sectionTopLayers'))}
     ${renderTopLayers(d.topLayers)}
-
-    <!-- ── Audiencia ─────────────────────────────────────────── -->
-    ${S(t('sectionAudience'))}
-    ${renderDistLang(d.byLanguage)}
-
-    <!-- ── Operaciones ───────────────────────────────────────── -->
-    ${S(t('sectionOperations'))}
-    ${renderDistQueryType(d.byQueryType)}
-
-    <!-- ── Datos ─────────────────────────────────────────────── -->
-    ${S(t('sectionSources'))}
-    ${renderDistSource(d.bySource)}
 
   `;
 }
