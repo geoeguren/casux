@@ -485,7 +485,6 @@ let _currentPeriod = '30d';
 const PERIODS = [
   { id: '7d',  label: () => t('period7d') },
   { id: '30d', label: () => t('period30d') },
-  { id: '90d', label: () => t('period90d') },
   { id: 'all', label: () => t('periodAll') },
 ];
 
