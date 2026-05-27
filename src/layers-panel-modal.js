@@ -12,7 +12,7 @@ window.LP_MODAL = (() => {
 
   const {
     leaRow, toHex, colorPickerHTML, buildDashSelect,
-    wireCsel, wireSliderTouch
+    wireCsel, wireSliderTouch, wireTouchDrag
   } = window.LP_UTILS;
 
   // Devuelve SVG inline usando caché de map.js — evita <img src="CDN"> bloqueado por CSP.
@@ -496,6 +496,31 @@ window.LP_MODAL = (() => {
             window.LP_PANEL.persistClassification(k, nl2.classification);
           });
         });
+
+        // Soporte táctil (móvil): la HTML5 Drag & Drop API no funciona en touch.
+        wireTouchDrag(
+          itemsEl,
+          '.adv-cat-item',
+          '.adv-cat-drag',
+          () => {
+            const nl2 = window.MAP.getActiveLayers()[k];
+            if (!nl2?.classification?.colorMap) return;
+            const newOrder = [...itemsEl.querySelectorAll('.adv-cat-item')].map(i => i.dataset.val);
+            const oldMap   = nl2.classification.colorMap;
+            const oldStyle = nl2.classification.styleMap || {};
+            const newMap   = {};
+            const newStyle = {};
+            newOrder.forEach(v => {
+              if (oldMap[v] !== undefined) newMap[v] = oldMap[v];
+              if (oldStyle[v] !== undefined) newStyle[v] = oldStyle[v];
+            });
+            nl2.classification.colorMap = newMap;
+            nl2.classification.styleMap = newStyle;
+            nl2.classification.order    = newOrder;
+            window.MAP.applyClassificationFromData(k, nl2.classification);
+            window.LP_PANEL.persistClassification(k, nl2.classification);
+          }
+        );
       }
     }
 
