@@ -279,6 +279,116 @@ window.LP_UTILS = (() => {
   // CSS ya pone touch-action:none en .lea-range-input; aquí manejamos
   // el movimiento manualmente para actualizar el valor y disparar 'input'.
 
+  /**
+   * wireTouchDrag(container, itemSelector, onReorder)
+   *
+   * Agrega soporte táctil para reordenar elementos que ya usan la HTML5
+   * Drag & Drop API (que no funciona en móviles).
+   *
+   * @param {Element}  container      - Elemento padre que contiene los ítems.
+   * @param {string}   itemSelector   - Selector CSS de cada ítem arrastrable.
+   * @param {string}   handleSelector - Selector CSS del handle dentro del ítem
+   *                                    (si es null, el ítem completo es el handle).
+   * @param {Function} onReorder      - Callback(fromEl, toEl) llamado al soltar,
+   *                                    después de que el DOM ya fue reordenado.
+   */
+  function wireTouchDrag(container, itemSelector, handleSelector, onReorder) {
+    let dragEl   = null;  // ítem que se está arrastrando
+    let clone    = null;  // clon visual flotante
+    let startX   = 0;
+    let startY   = 0;
+    let offsetX  = 0;
+    let offsetY  = 0;
+
+    function getItemAt(x, y) {
+      // Oculta el clon para que elementFromPoint no lo devuelva a sí mismo
+      if (clone) clone.style.display = 'none';
+      const el = document.elementFromPoint(x, y);
+      if (clone) clone.style.display = '';
+      if (!el) return null;
+      return el.closest(itemSelector);
+    }
+
+    container.addEventListener('touchstart', e => {
+      const handle = handleSelector
+        ? e.target.closest(handleSelector)
+        : e.target.closest(itemSelector);
+      if (!handle) return;
+
+      const item = handle.closest(itemSelector);
+      if (!item) return;
+
+      dragEl = item;
+      const touch  = e.touches[0];
+      const rect   = item.getBoundingClientRect();
+      startX  = touch.clientX;
+      startY  = touch.clientY;
+      offsetX = touch.clientX - rect.left;
+      offsetY = touch.clientY - rect.top;
+
+      // Clon visual que sigue al dedo
+      clone = item.cloneNode(true);
+      clone.style.cssText = `
+        position: fixed;
+        z-index: 99999;
+        pointer-events: none;
+        opacity: 0.85;
+        width: ${rect.width}px;
+        left: ${rect.left}px;
+        top:  ${rect.top}px;
+        margin: 0;
+        box-shadow: 0 4px 16px rgba(0,0,0,.25);
+      `;
+      document.body.appendChild(clone);
+      item.classList.add('dragging');
+
+    }, { passive: true });
+
+    container.addEventListener('touchmove', e => {
+      if (!dragEl) return;
+      e.preventDefault();   // evita scroll mientras se arrastra
+
+      const touch = e.touches[0];
+      clone.style.left = `${touch.clientX - offsetX}px`;
+      clone.style.top  = `${touch.clientY - offsetY}px`;
+
+      const over = getItemAt(touch.clientX, touch.clientY);
+      container.querySelectorAll(itemSelector).forEach(i => i.classList.remove('drag-over', 'adv-cat-drag-over'));
+      if (over && over !== dragEl) {
+        over.classList.add('drag-over', 'adv-cat-drag-over');
+      }
+    }, { passive: false });
+
+    function endDrag(e) {
+      if (!dragEl) return;
+
+      const touch = (e.changedTouches || e.touches)[0];
+      const over  = touch ? getItemAt(touch.clientX, touch.clientY) : null;
+
+      // Limpieza visual
+      clone.remove();
+      clone = null;
+      dragEl.classList.remove('dragging');
+      container.querySelectorAll(itemSelector).forEach(i => i.classList.remove('drag-over', 'adv-cat-drag-over'));
+
+      if (over && over !== dragEl) {
+        // Reordena en el DOM
+        const items   = [...container.querySelectorAll(itemSelector)];
+        const fromIdx = items.indexOf(dragEl);
+        const toIdx   = items.indexOf(over);
+        if (fromIdx < toIdx) container.insertBefore(dragEl, over.nextSibling);
+        else                 container.insertBefore(dragEl, over);
+
+        if (onReorder) onReorder(dragEl, over);
+      }
+
+      dragEl = null;
+    }
+
+    container.addEventListener('touchend',    endDrag, { passive: true });
+    container.addEventListener('touchcancel', endDrag, { passive: true });
+  }
+
   function wireSliderTouch(inp) {
     inp.addEventListener('touchstart', e => {
       e.stopPropagation();
@@ -330,6 +440,7 @@ window.LP_UTILS = (() => {
     wireCsel,
     getCselValue,
     wireSliderTouch,
+    wireTouchDrag,
     fieldLabel
   };
 
