@@ -621,10 +621,9 @@ window.MAP = (() => {
           let html = `<div class="legend-item legend-item-title">
             <span>${entry.titulo || key}</span>${countTag}
           </div>`;
-          // Usar order explícito si existe para respetar el orden manual del usuario
-          const catKeys = (cl.order && cl.order.length)
-            ? cl.order.filter(k => cl.colorMap.hasOwnProperty(k))
-            : Object.keys(cl.colorMap);
+          // La leyenda siempre muestra las clases en orden alfabético (fijo e independiente
+          // del orden manual que el usuario haya definido en el modal de edición).
+          const catKeys = Object.keys(cl.colorMap).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }));
           catKeys.forEach(val => {
             const color = cl.colorMap[val];
             const valStyle   = cl.styleMap?.[val] || {};
