@@ -446,8 +446,8 @@ window.EXPORT_PDF = (() => {
       doc.setTextColor(TX_R, TX_G, TX_B);
       const textX = cx + SYM_W + SYM_GAP;
       if (lines.length === 1) {
-        // Una línea: centrar verticalmente respecto al símbolo
-        doc.text(lines[0], textX, iy + rowH / 2, { baseline: 'middle' });
+        // Centrar verticalmente respecto al símbolo (mismo centro que symY)
+        doc.text(lines[0], textX, symY, { baseline: 'middle' });
       } else {
         // Varias líneas: alinear al top con pequeño margen (igual que canvas)
         lines.forEach((line, li) => {
