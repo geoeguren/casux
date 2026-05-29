@@ -1598,18 +1598,22 @@ window.EXPORT_CANVAS = (() => {
         iconPromises.push(_drawMakiIcon(ctx, colX, iy, SYM_SIZE, item.icon, item.iconColor));
       }
 
-      ctx.fillStyle    = COLOR_TEXT;
-      ctx.font         = `${Math.round(14*S)}px sans-serif`;
-      ctx.textBaseline = 'top';
-      const textX = colX + SYM_SIZE + SYM_GAP;
+      ctx.fillStyle = COLOR_TEXT;
+      ctx.font      = `${Math.round(14*S)}px sans-serif`;
+      const textX       = colX + SYM_SIZE + SYM_GAP;
       const LINE_H_TEXT = dims.LINE_H_TEXT || Math.round(22 * S);
-      // Centrar verticalmente si es una sola línea, alinear al top si son varias
-      const textStartY = lines.length === 1
-        ? iy + (SYM_SIZE - LINE_H_TEXT) / 2
-        : iy + Math.round(4 * S);
-      lines.forEach((line, li) => {
-        ctx.fillText(line, textX, textStartY + li * LINE_H_TEXT);
-      });
+      if (lines.length === 1) {
+        // Centrar verticalmente respecto al símbolo usando textBaseline 'middle'
+        ctx.textBaseline = 'middle';
+        ctx.fillText(lines[0], textX, iy + SYM_SIZE / 2);
+      } else {
+        // Múltiples líneas: alinear al top con pequeño padding
+        ctx.textBaseline = 'top';
+        const textStartY = iy + Math.round(4 * S);
+        lines.forEach((line, li) => {
+          ctx.fillText(line, textX, textStartY + li * LINE_H_TEXT);
+        });
+      }
 
       colOffsets[col] += rowH;
     });
