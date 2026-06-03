@@ -4,8 +4,7 @@
  * Consume /api/metrics y renderiza las estadísticas.
  * Página pública — no requiere autenticación.
  * Diseñada para mostrar el impacto de Casux como iniciativa
- * de acceso abierto a datos geoespaciales, orientada a
- * presentaciones de financiamiento.
+ * de acceso abierto a datos geoespaciales.
  */
 
 // ── i18n ──────────────────────────────────────────────────────────
