@@ -472,9 +472,11 @@ function initStatus() {
   setTimeout(runHealthChecks, 100);
 }
 
-// applyStaticI18n corre siempre en DOMContentLoaded, sin esperar window.LAYERS.
-// Así el back-label y el título aparecen de inmediato, sin el flash de contenido vacío.
-document.addEventListener('DOMContentLoaded', applyStaticI18n);
+// applyStaticI18n se ejecuta top-level (igual que en metrics.js):
+// el script está al final del <body>, el DOM ya existe, y no depende
+// de window.LAYERS ni de ningún módulo. Así el back-label y el título
+// aparecen en el primer paint, sin esperar DOMContentLoaded ni layers:ready.
+applyStaticI18n();
 
 if (window.LAYERS && Object.keys(window.LAYERS).length > 0) {
   document.addEventListener('DOMContentLoaded', initStatus);
