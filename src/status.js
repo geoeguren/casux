@@ -473,9 +473,6 @@ function initStatus() {
 
   setTimeout(runHealthChecks, 100);
 
-  // Tema: siempre claro (independiente de la configuración del chat)
-  document.body.classList.add('day');
-  document.documentElement.classList.add('day');
 }
 
 if (window.LAYERS && Object.keys(window.LAYERS).length > 0) {
