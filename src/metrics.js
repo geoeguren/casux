@@ -141,8 +141,6 @@ const UI = {
 };
 
 function detectLang() {
-  const saved = localStorage.getItem('sm_lang');
-  if (saved && ['es','en','pt'].includes(saved)) return saved;
   const nav = (navigator.language || 'es').toLowerCase().slice(0, 2);
   if (nav === 'pt') return 'pt';
   if (nav === 'en') return 'en';
@@ -397,11 +395,8 @@ async function loadPeriod(period) {
   }
 }
 
-// Tema día/noche
-const savedTheme = localStorage.getItem('sm_theme');
-const isDayHour  = new Date().getHours() >= 7 && new Date().getHours() < 20;
-const theme      = savedTheme || (isDayHour ? 'day' : 'night');
-document.body.classList.toggle('day', theme === 'day');
+// Tema: siempre claro (independiente de la configuración del chat)
+document.body.classList.add('day');
 
 // Función global para los botones
 window.loadPeriod = loadPeriod;
