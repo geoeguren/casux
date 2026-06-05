@@ -4,17 +4,42 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Casux — Escribí lo que querés. Casux lo mapea.</title>
-  <meta name="description" content="Casux convierte instrucciones en lenguaje natural en mapas con datos oficiales abiertos."/>
+  <meta name="description" content="Casux convierte instrucciones en lenguaje natural en mapas con datos oficiales abiertos. Sin tecnicismos, sin curva de aprendizaje."/>
+  <link rel="canonical" href="https://casux.vercel.app"/>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+
+  <!-- Open Graph -->
   <meta property="og:title"       content="Casux — Escribí lo que querés. Casux lo mapea."/>
-  <meta property="og:description" content="Tu próximo mapa empieza con una frase."/>
+  <meta property="og:description" content="Casux convierte instrucciones en lenguaje natural en mapas con datos oficiales abiertos. Sin tecnicismos, sin curva de aprendizaje."/>
   <meta property="og:image"       content="https://casux.vercel.app/og-image.png"/>
   <meta property="og:url"         content="https://casux.vercel.app"/>
   <meta property="og:type"        content="website"/>
+
+  <!-- Twitter Card -->
   <meta name="twitter:card"        content="summary_large_image"/>
   <meta name="twitter:title"       content="Casux — Escribí lo que querés. Casux lo mapea."/>
-  <meta name="twitter:description" content="Tu próximo mapa empieza con una frase."/>
+  <meta name="twitter:description" content="Casux convierte instrucciones en lenguaje natural en mapas con datos oficiales abiertos. Sin tecnicismos, sin curva de aprendizaje."/>
   <meta name="twitter:image"       content="https://casux.vercel.app/og-image.png"/>
+
+  <!-- JSON-LD: SoftwareApplication -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Casux",
+    "url": "https://casux.vercel.app",
+    "description": "Casux convierte instrucciones en lenguaje natural en mapas con datos oficiales abiertos. Sin tecnicismos, sin curva de aprendizaje.",
+    "applicationCategory": "WebApplication",
+    "operatingSystem": "Any",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "inLanguage": ["es", "en", "pt"]
+  }
+  </script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=Fraunces:opsz,wght@9..144,300;9..144,500&display=swap" rel="stylesheet"/>
@@ -47,7 +72,10 @@
       <div class="hero-left">
         <h1 class="hero-tagline" data-i18n="hero_tagline">Escribí lo que querés.<br>Casux lo mapea.</h1>
         <ul class="hero-bullets" id="hero-bullets">
-          <!-- rendered by JS -->
+          <!-- rendered by JS; contenido estático para crawlers: -->
+          <li>Sin tecnicismos, sin curva de aprendizaje.</li>
+          <li>Con datos oficiales.</li>
+          <li>Listo para usar en minutos.</li>
         </ul>
         <div class="hero-prompt-wrap">
           <div class="prompt-box">
@@ -190,7 +218,21 @@
   <section id="coverage">
     <div class="container">
       <h2 class="section-heading reveal" data-i18n="coverage_label">Cobertura</h2>
-      <div class="coverage-grid" id="coverage-grid"></div>
+      <div class="coverage-grid" id="coverage-grid">
+        <!-- Contenido estático para crawlers; JS lo reemplaza con datos actualizados -->
+        <div class="country-card active"><div class="card-header"><span class="country-name">Argentina</span><span class="connected-label">Disponible</span></div></div>
+        <div class="country-card soon"><div class="card-header"><span class="country-name">Chile</span><span class="connected-label">Próximamente</span></div></div>
+        <div class="country-card active"><div class="card-header"><span class="country-name">Uruguay</span><span class="connected-label">Disponible</span></div></div>
+        <div class="country-card"><div class="card-header"><span class="country-name">Brasil</span></div></div>
+        <div class="country-card"><div class="card-header"><span class="country-name">Colombia</span></div></div>
+        <div class="country-card"><div class="card-header"><span class="country-name">Perú</span></div></div>
+        <div class="country-card"><div class="card-header"><span class="country-name">Bolivia</span></div></div>
+        <div class="country-card"><div class="card-header"><span class="country-name">Ecuador</span></div></div>
+        <div class="country-card"><div class="card-header"><span class="country-name">Paraguay</span></div></div>
+        <div class="country-card"><div class="card-header"><span class="country-name">Venezuela</span></div></div>
+        <div class="country-card"><div class="card-header"><span class="country-name">Guyana</span></div></div>
+        <div class="country-card"><div class="card-header"><span class="country-name">Surinam</span></div></div>
+      </div>
       <div class="coverage-more">
         <a href="/status" class="btn-coverage-more" data-i18n="coverage_more">VER ESTADO DE LOS GEOSERVICIOS</a>
       </div>
