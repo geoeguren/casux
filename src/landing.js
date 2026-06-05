@@ -449,9 +449,8 @@
         c.setAttribute('cx', px.toFixed(1));
         c.setAttribute('cy', py.toFixed(1));
         c.setAttribute('r', '5');
-        c.setAttribute('fill', 'rgba(61,82,160,0.55)');
-        c.setAttribute('stroke', '#2d3d7a');
-        c.setAttribute('stroke-width', '1.5');
+        c.setAttribute('fill', '#3d52a0');
+        c.setAttribute('opacity', '0.9');
         svgEl.appendChild(c);
       });
     }
