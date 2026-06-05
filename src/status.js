@@ -19,6 +19,7 @@ const UI = {
     checking:      'verificando…',
     layers:        'capas',
     noResults:     'Sin resultados',
+    loading:       'Cargando geoservicios…',
   },
   en: {
     pageTitle:    'Geoservice status',
@@ -34,6 +35,7 @@ const UI = {
     checking:      'checking…',
     layers:        'layers',
     noResults:     'No results',
+    loading:       'Loading geoservices…',
   },
   pt: {
     pageTitle:    'Estado dos geoserviços',
@@ -49,6 +51,7 @@ const UI = {
     checking:      'verificando…',
     layers:        'camadas',
     noResults:     'Sem resultados',
+    loading:       'Carregando geoserviços…',
   },
 };
 
@@ -276,12 +279,14 @@ function updateSummary() {
     </button>`;
   };
 
+  const wasSpinning = document.getElementById('btn-refresh')?.classList.contains('spinning');
+
   document.getElementById('summary-bar').innerHTML = `
     ${mkChip('ok',        'ok',    okCount,   ui('online'))}
     ${soonCount ? mkChip('soon-chip', 'soon', soonCount, ui('soon')) : ''}
     ${mkChip('err',       'error', errCount,  ui('offline'))}
     ${checkCount ? `<div class="summary-chip pend"><span class="dot"></span>${checkCount} …</div>` : ''}
-    <button class="refresh-btn" id="btn-refresh">
+    <button class="refresh-btn${wasSpinning ? ' spinning' : ''}" id="btn-refresh">
       <span class="material-icons">refresh</span>
       ${ui('refreshBtn')}
     </button>
@@ -439,12 +444,15 @@ function toggleService(sourceKey) {
 // ── Runner ─────────────────────────────────────────────────────────
 
 function runHealthChecks() {
-  const btn = document.getElementById('btn-refresh');
-  btn.classList.add('spinning');
+  document.getElementById('btn-refresh')?.classList.add('spinning');
   const sources = Object.keys(window.SOURCES || {});
   sources.forEach(k => { healthState[k] = 'checking'; });
   const checks = sources.map(k => checkSource(k));
-  Promise.allSettled(checks).then(() => btn.classList.remove('spinning'));
+  Promise.allSettled(checks).then(() => {
+    document.getElementById('btn-refresh')?.classList.remove('spinning');
+    const loading = document.getElementById('country-list-loading');
+    if (loading) loading.remove();
+  });
 }
 
 // ── Aplicar i18n al HTML estático ──────────────────────────────────
@@ -463,13 +471,24 @@ function initStatus() {
   const layersBySource  = getLayersBySource();
   window._STATUS_LAYERS = layersBySource;
 
-  document.getElementById('country-list').innerHTML =
-    getCountries().map(c => renderCountryBlock(c, layersBySource)).join('');
-
+  // Poblar healthState con 'checking' antes del primer updateSummary
+  // para que los chips aparezcan de inmediato con el conteo correcto.
   Object.keys(window.SOURCES || {}).forEach(k => { healthState[k] = 'checking'; });
   updateSummary();
 
-  setTimeout(runHealthChecks, 100);
+  // Mostrar loading en el country-list mientras se verifican los servicios
+  const list = document.getElementById('country-list');
+  list.innerHTML = `
+    <div id="country-list-loading" class="loading-state">
+      <span class="material-icons">refresh</span>
+      ${ui('loading')}
+    </div>
+  `;
+
+  setTimeout(() => {
+    list.innerHTML = getCountries().map(c => renderCountryBlock(c, layersBySource)).join('');
+    runHealthChecks();
+  }, 100);
 }
 
 // applyStaticI18n se ejecuta top-level (igual que en metrics.js):
