@@ -460,8 +460,6 @@ function applyStaticI18n() {
 // ── Init ───────────────────────────────────────────────────────────
 
 function initStatus() {
-  applyStaticI18n();
-
   const layersBySource  = getLayersBySource();
   window._STATUS_LAYERS = layersBySource;
 
@@ -472,8 +470,11 @@ function initStatus() {
   updateSummary();
 
   setTimeout(runHealthChecks, 100);
-
 }
+
+// applyStaticI18n corre siempre en DOMContentLoaded, sin esperar window.LAYERS.
+// Así el back-label y el título aparecen de inmediato, sin el flash de contenido vacío.
+document.addEventListener('DOMContentLoaded', applyStaticI18n);
 
 if (window.LAYERS && Object.keys(window.LAYERS).length > 0) {
   document.addEventListener('DOMContentLoaded', initStatus);
