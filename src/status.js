@@ -57,8 +57,6 @@ const UI = {
 // No depende de SETTINGS ni de I18N (módulos de la app interna).
 
 function detectLang() {
-  const saved = localStorage.getItem('sm_lang');
-  if (saved && ['es','en','pt'].includes(saved)) return saved;
   const nav = (navigator.language || 'es').toLowerCase().slice(0, 2);
   if (nav === 'pt') return 'pt';
   if (nav === 'en') return 'en';
@@ -224,10 +222,17 @@ function applyFilters() {
       return;
     }
 
-    // Bloques normales: 'soon' en filtros no los afecta
+    // Bloques normales: 'soon' en filtros no los afecta por estado, pero si SOLO está
+    // activo 'soon' (sin filtros de estado), los bloques normales deben ocultarse.
     const statusFilters = [...activeFilters].filter(f => f !== 'soon');
+    const onlySoon = activeFilters.has('soon') && statusFilters.length === 0;
+    if (onlySoon) {
+      // Solo filtro 'soon' activo → ocultar todos los bloques no-soon
+      block.style.display = 'none';
+      return;
+    }
     if (!statusFilters.length) {
-      // Solo filtro soon activo, bloques normales se muestran todos
+      // Ningún filtro activo (none ya fue manejado arriba) — no debería llegar aquí
       block.style.display = '';
       cards.forEach(c => { c.style.display = ''; });
       return;
@@ -468,12 +473,9 @@ function initStatus() {
 
   setTimeout(runHealthChecks, 100);
 
-  // Tema: igual que app.js — lee sm_theme de localStorage, fallback por hora
-  const savedTheme = localStorage.getItem('sm_theme');
-  const isDayHour  = new Date().getHours() >= 7 && new Date().getHours() < 20;
-  const theme      = savedTheme || (isDayHour ? 'day' : 'night');
-  document.body.classList.toggle('day', theme === 'day');
-  document.documentElement.classList.toggle('day', theme === 'day');
+  // Tema: siempre claro (independiente de la configuración del chat)
+  document.body.classList.add('day');
+  document.documentElement.classList.add('day');
 }
 
 if (window.LAYERS && Object.keys(window.LAYERS).length > 0) {
