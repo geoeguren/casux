@@ -144,6 +144,25 @@ body {
 
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
+/* ── Loading state ────────────────────────────── */
+
+.loading-state {
+  text-align: center;
+  padding: 60px 0;
+  color: var(--cream2);
+  font-size: 14px;
+}
+
+.loading-state .material-icons {
+  font-size: 32px;
+  display: block;
+  margin: 0 auto 12px;
+  animation: spin .9s linear infinite;
+  color: var(--cream2);
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* ── Country block ────────────────────────────── */
 
 .country-list { display: flex; flex-direction: column; gap: 10px; }
